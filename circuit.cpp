@@ -2341,16 +2341,16 @@ void Circuit::move_violate_pads(vector<double> ref_drop_vec){
 }
 
 void Circuit::resolve_direct(){
-	clock_t t1, t2;
-	t1 = clock();
+	//clock_t t1, t2;
+	//t1 = clock();
 	rebuild_voltage_nets();
 	solve();
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
 	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
-	t2 = clock();
-		clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
+	//t2 = clock();
+	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 }
 
 void Circuit::resolve_queue(vector<Node *> pad_set_old){
