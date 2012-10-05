@@ -15,9 +15,9 @@ LDFLAGS=
 CSCOPEFILES=cscope.files cscope.out cscope.po.out
 CSCOPE=/usr/local/bin/cscope
 
-PACKAGE= ../pad_MG/package_ck
+PACKAGE= ../powergrid_pad/pad_MG/package_ck
 
-UMFPACK=../pad_MG/umfpack
+UMFPACK=../powergrid_pad/pad_MG/umfpack
 UMFPACK_LIB_DIR=$(UMFPACK)/lib
 UMFPACK_INC_DIR=$(UMFPACK)/include
 UMFPACK_LIB=$(UMFPACK_LIB_DIR)/libumfpack.a \
