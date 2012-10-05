@@ -1,0 +1,4 @@
+1. Aug 21, 9:30am -finish testing single pad mode with 1. all currents. 2. less currents. 3. distribution 1(more center of the grid). 4. distribution 2 (close to corner pad).
+
+2. Start to test on multiple pad with single special node.
+
