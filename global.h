@@ -15,6 +15,7 @@ using namespace std;
 // important: each node has at most 4 connected nets
 enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, UNDEFINED};
 enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE};
+// three types of special nodes
 enum S_NODE{X, Y, Z};
 const int NUM_NET_TYPE = 5;
 enum LAYER_DIR{HR, VT, NA}; // NA means not available

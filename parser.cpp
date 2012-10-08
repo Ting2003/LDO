@@ -102,11 +102,9 @@ void Parser::insert_net_node(char * line){
 			ckt->add_node(nd_ptr[i]);
 			if( nd_ptr[i]->isS()== Y)    // determine circuit type
 				ckt->set_type(WB);
-
 			// find the coordinate max and min	
 		}
 	}
-
 
 	NET_TYPE net_type = RESISTOR;
 	// find net type
@@ -200,6 +198,18 @@ void Parser::update_node(Net * net){
 		if(a->isS()== X) swap<Node*>(a,b);
 		a->set_nbr(BOTTOM, net);
 		b->set_nbr(TOP, net);
+	}
+	// resistance type net with special nodes
+	else if(net->type == RESISTOR && a->isS()!= -1 
+		&& b->isS() != -1){
+		if(a->isS()== Y){
+			a->set_nbr(BOTTOM, net);
+			b->set_nbr(TOP, net);
+		}
+		else if(b->isS() == Y){
+			b->set_nbr(BOTTOM, net);
+			a->set_nbr(TOP, net);
+		}	
 	}
 	// resistance type net with special nodes
 	else if(net->type == RESISTOR && a->isS()!= -1 

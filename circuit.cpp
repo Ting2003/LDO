@@ -163,11 +163,9 @@ void Circuit::solve_init(){
 	Node *p=NULL;
 	for(size_t i=0,nr=0;i<size;i++){
 		p=nodelist[i];
-
 		// set the representative
 		Net * net = p->nbr[TOP];
 		if( p->isS()== Y) VDD = p->get_value();
-
 		// test short circuit
 		if( p->isS() !=Y && // Y must be representative 
 		    net != NULL &&
@@ -200,7 +198,7 @@ void Circuit::count_merge_nodes(){
 			if((p->nbr[EAST] !=NULL && p->nbr[WEST] !=NULL) 
 			&& (p->nbr[NORTH] ==NULL && p->nbr[SOUTH]==NULL))
 				count++;
-			else if((p->nbr[NORTH] !=NULL && p->nbr[SOUTH] !=NULL)			      &&(p->nbr[EAST]==NULL && p->nbr[WEST] ==NULL))
+			else if((p->nbr[NORTH] !=NULL && p->nbr[SOUTH] !=NULL)&&(p->nbr[EAST]==NULL && p->nbr[WEST] ==NULL))
 				count++;
 		}
 	}
@@ -219,12 +217,15 @@ void Circuit::solve_LU_core(Tran &tran){
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
+
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 
    Matrix A;
+   clog<<"before stamp by set. "<<endl;
    stamp_by_set(A, bp);
+   clog<<"after stamp by set. "<<endl;
    make_A_symmetric(bp);
    A.set_row(n);
    Algebra::solve_CK(A, L, x, b, cm);
@@ -235,8 +236,8 @@ void Circuit::solve_LU_core(Tran &tran){
 	//get_name()<<" "<<xp[i]<<endl;
    
    // print out dc solution
-   //cout<<"dc solution. "<<endl;
-   //cout<<nodelist<<endl;
+   cout<<nodelist<<endl;
+   return; // return after dc solution
 
    // A is already being cleared   
    size_t i=0;
@@ -373,6 +374,7 @@ void Circuit::solve_LU_core(Tran &tran){
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
+	clog<<"after solve init. "<<endl;
 	solve_LU_core(tran);
 }
 
@@ -388,8 +390,6 @@ void Circuit::get_voltages_from_LU_sol(double * x){
 
    }
 }
-
-
 
 // copy node voltages from the circuit to a Vec
 // from = true then copy circuit to x
@@ -419,6 +419,7 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 		switch(type){
 		case RESISTOR:
 			for(size_t i=0;i<ns.size();i++){
+				cout<<"net: "<<*ns[i]<<endl;
 				assert( fzero(ns[i]->value) == false );
 				stamp_resistor(A, ns[i]);
 			}
@@ -633,7 +634,6 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
 }
 
 void Circuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
-	//clog<<"net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
