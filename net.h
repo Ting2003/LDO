@@ -16,8 +16,10 @@ public:
 
 	NET_TYPE type;	// identify the type
 	//string name;
-	double value;
+	double value; // dc value
 	Node* ab[2];	// two connection node
+	// store the pulse parameter for current net
+	double V1, V2, TD, Tr, Tf, PW, Period;
 };
 
 #endif

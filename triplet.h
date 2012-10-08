@@ -24,6 +24,7 @@ class Triplet{
 public:
 	Triplet();
 	void merge();
+	void clear();
 	void push_back(size_t i,size_t j,double x);
 	size_t size() const;
 	size_t get_row() const;
@@ -47,7 +48,6 @@ public:
 	Triplet operator + (const Triplet & B) const;
 
 	friend class Algebra;
-//	friend class Circuit;
 private:
 	vector<size_t> Ti;
 	vector<size_t> Tj;

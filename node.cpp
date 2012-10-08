@@ -5,41 +5,14 @@ using namespace std;
 
 // empty constructor
 Node::Node():name(""),pt(Point(-1,-1,-1)), rid(0),
-	value(0.0), flag(false), rep(NULL){
+	value(0.0), flag(-1), rep(NULL){
 	for(int i=0;i<6;i++) this->nbr[i] = NULL;
-	for(int i=0;i<4;i++){
-		eqvr[i]=0.0;
-		end[i]=this;
-	}
 }
 
-Node::Node(string n, Point _pt, bool x, double v): 
-	name(n), pt(_pt), rid(0),
+Node::Node(string n, Point _pt, int x, double v): 
+	name(n), pt(_pt), rid(0), 
 	value(v), flag(x), rep(NULL) {
 	for(int i=0;i<6;i++) this->nbr[i] = NULL;
-	for(int i=0;i<4;i++){
-		eqvr[i]=0.0;
-		end[i]=this;
-	}
-}
-
-Node::Node(const Node & nd){
-	name = nd.name;
-	pt = nd.pt;
-	rid = nd.rid;
-	value = nd.value;
-	flag = nd.flag;
-	rep = nd.rep;
-	for(int i=0;i<6;i++) this->nbr[i] = nd.nbr[i];
-	for(int i=0;i<4;i++){
-		eqvr[i]=0.0;
-		end[i]=this;
-	}
-}
-
-Node & Node::operator = (const Node & nd){
-	(*this) = Node(nd);
-	return *this;
 }
 
 // Ting
@@ -69,7 +42,7 @@ ostream & operator << (ostream & os, const Node & node){
 	//os<<" rep="<<node.rep->name;
 	//Net * net = node.nbr[TOP];
 	os<<setw(OUTPUT_WIDTH_STRING)<<node.name
-	  //<<" -> "<<setw(OUTPUT_WIDTH_STRING)<<node.rep->name
+//	  <<" -> "<<setw(OUTPUT_WIDTH_STRING)<<node.rep->name
 	  //<<" top="<<(net==NULL?"NULL":net->name)
 	  <<setw(OUTPUT_WIDTH_FLOAT)<<scientific<<node.value;
 	return os;

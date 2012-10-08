@@ -15,55 +15,55 @@
 #include "util.h"
 #include "umfpack.h"
 #include "cholmod.h"
-
 using namespace std;
 
 class Block{
 	typedef vector<Net *> NetPtrVector;
 public:
-	Block(size_t count=0);
-	~Block();
-	void free_block_cholmod(cholmod_common *cm);
-	void LU_decomposition();
-	void CK_decomp(Matrix & A, cholmod_common *cm, size_t &peak_mem, size_t &CK_mem);
-	void solve_CK(cholmod_common *cm); // solve with cholesky decomp
+        Block(size_t count=0);
+        ~Block();
+        void free_block_cholmod(cholmod_common *cm);
+        void CK_decomp(Matrix & A, cholmod_common *cm);
+        void LU_decomposition();
+        void solve_CK(cholmod_common *cm);	// solve for the current matrix
 
-	// allocate space for the matrix and vectors accoding to count
-	void allocate_resource(cholmod_common*cm);
+        // get column compressed form from a Matrix
+        void get_col_compressed(Matrix & A);
 
-	DIRECTION relative_to(const Block & block) const;
+        // allocate space for the matrix and vectors accoding to count
+        void allocate_resource(cholmod_common *cm);
 
-	void update_x();
+        DIRECTION relative_to(const Block & block) const;
 
-	void update_rhs();
 
-	bool inside_bbox(long x, long y) const{
-		return (x>=lx && x<=ux && y>=ly && y<=uy);
-	}
+        void update_rhs(int flag_tr);
 
-	cholmod_factor * L;
+        bool inside_bbox(long x, long y) const{
+           return (x>=lx && x<=ux && y>=ly && y<=uy);
+        }
+        cholmod_factor * L;
 
-	NetPtrVector boundary_netlist;
-	
-	// vector b
-	cholmod_dense * b_ck, *b_new_ck;
-	// pointer to b_ck, b_new_ck, and x_ck;
-	double *bp, *bnewp, *xp;
-	// solution
-	cholmod_dense *x_ck;
+        NetPtrVector boundary_netlist;
 
-	// its id in the block_info
-	size_t bx, by;
-	size_t bid;
+        // vector b
+        cholmod_dense * b_ck, *b_tr, *b_new_ck;
+        // pointer to b_ck, b_new_ck, and x_ck;
+        double *bp, *b_trp, *bnewp, *xp, *x_old;
+        // solution
+        cholmod_dense *x_ck;
 
-	// number of *representative* nodes in this block
-	// equal to matrix size and b size
-	size_t count;
+        // its id in the block_info
+        size_t bx, by;
+        size_t bid;
 
-	Node ** nodes;
+        // number of *representative* nodes in this block
+        // equal to matrix size and b size
+        size_t count;
 
-	// geometric information of this block
-	double lx, ly, ux, uy;
+        Node ** nodes;
+
+        // geometric information of this block
+        double lx, ly, ux, uy;
 };
 
 class BlockInfo{
@@ -72,11 +72,7 @@ public:
 	len_per_block_x(0), len_per_block_y(0),
 	len_ovr_x(0), len_ovr_y(0){};
 
-	// update the right hand side according to the boundary netlist and
 	// value of x
-	void update_rhs(size_t block_id, vector<DIRECTION> & dirs);
-	void update_rhs(size_t block_id); // just a shorthand for updating four dirs
-
 	Block * get_block_neighbor(const Block & b, DIRECTION dir);
 
 	void resize(size_t n){blocks.resize(n);}

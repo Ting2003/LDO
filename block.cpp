@@ -9,7 +9,6 @@
 //   * added this log
 
 #include <cassert>
-#include "cholmod.h"
 #include "block.h"
 #include "node.h"
 #include "util.h"
@@ -34,13 +33,13 @@ Block::~Block(){
 void Block::free_block_cholmod(cholmod_common *cm){
     cholmod_free_factor(&L, cm);
     cholmod_free_dense(&b_ck, cm);
+    cholmod_free_dense(&b_tr, cm);
     cholmod_free_dense(&b_new_ck, cm);
     cholmod_free_dense(&x_ck, cm);
 }
 
-void Block::CK_decomp(Matrix & A, cholmod_common *cm, size_t &peak_mem,
-	size_t &CK_mem){
-	Algebra::CK_decomp(A, L, cm, peak_mem, CK_mem);
+void Block::CK_decomp(Matrix & A, cholmod_common *cm){
+	Algebra::CK_decomp(A, L, cm);
 }
 
 void Block::solve_CK(cholmod_common *cm){
@@ -56,7 +55,9 @@ void Block::allocate_resource(cholmod_common *cm){
 	bp = static_cast<double*>(b_ck->x);
 	xp = static_cast<double*>(x_ck->x);
 	b_new_ck = cholmod_zeros(count, 1, CHOLMOD_REAL, cm);
-	bnewp = static_cast<double*>(b_new_ck->x);	
+	bnewp = static_cast<double*>(b_new_ck->x);    
+	b_tr = cholmod_zeros(count, 1, CHOLMOD_REAL, cm);
+        b_trp = static_cast<double *>(b_tr->x);
 }
 
 // return the relative position of this block to another block
@@ -78,16 +79,22 @@ DIRECTION Block::relative_to(const Block & block) const{
 }
 
 // update rhs of each block with its boundary netlist
-void Block::update_rhs(){
+void Block::update_rhs(int flag_tr){
 	size_t size = boundary_netlist.size();
 	size_t k=0, l=0;
-	//b_new = b;
-	for(size_t i=0;i<count;i++)
-		bnewp[i] = bp[i];
+        if(flag_tr ==0){
+           for(k=0;k<count;k++)
+            bnewp[k] = bp[k];
+        }
+        else if(flag_tr ==1){
+           for(k=0;k<count;k++)
+            bnewp[k] = b_trp[k];
+        }
 
 	// for each net in this block
 	for(size_t i=0;i<size;i++){
 		Net * net = boundary_netlist[i];
+		//clog<<"net: "<<*net<<endl;
 		double G = 1.0/net->value;
 
 		Node * a = net->ab[0]->rep;
@@ -102,16 +109,22 @@ void Block::update_rhs(){
 		it = find(block_id_a.begin(), block_id_a.end(), bid);
 		if(it != block_id_a.end()){
 			k = a->id_in_block[it - block_id_a.begin()];
-			if(!a->isX())
+			//clog<<"a->id: "<<k<<endl;
+			if(!a->is_ground() && a->isS()!=Y){
 				bnewp[k] += G * b->value;
+				//clog<<"G, b->value, b_new: "<<G<<" "<<b->value<<" "<<b_new[k]<<endl;
+			}
 		}
 		else {
 			it = find(block_id_b.begin(),
 					block_id_b.end(), bid);
 			if(it !=block_id_b.end() ){
 				l = b->id_in_block[it - block_id_b.begin()];
-				if(!b->isX()) //b_new[l] += G *a->value;
-					bnewp[l] += G * a->value;
+				//clog<<"b->id: "<<l<<endl;
+				if(!b->is_ground() && b->isS()!=Y){ 
+					bnewp[l] += G *a->value;
+					//clog<<"G, a->value, b_new: "<<G<<" "<<a->value<<" "<<b_new[k]<<endl;
+				}
 			}
 		}
 	} // end of for i
@@ -119,7 +132,6 @@ void Block::update_rhs(){
 
 /////////////////////////////////////////////////////////////////
 // methods for BlockInfo
-//
 
 Block * BlockInfo::get_block_neighbor(const Block & b, DIRECTION dir) {
 	switch(dir){
@@ -183,4 +195,3 @@ void BlockInfo::set_len_per_block(size_t x_min, size_t x_max,
 	clog<<"len_ovr_x, len_ovr_y: "<<len_ovr_x
 		<<" / "<<len_ovr_y<<endl;
 }
-

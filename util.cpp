@@ -9,7 +9,6 @@
 #include <iomanip>
 #include <stdlib.h>
 #include <stdio.h>
-#include "global.h"
 #include "util.h"
 using namespace std;
 
@@ -76,18 +75,4 @@ void close_logfile(){
 	if(clog_save == NULL) return;
 	clog.rdbuf(clog_save);
 	logstream.close();
-}
-
-DIRECTION get_opposite_dir(DIRECTION dir){
-	DIRECTION ret;
-	switch(dir){
-	case NORTH: ret = SOUTH; break;
-	case SOUTH: ret = NORTH; break;
-	case EAST: ret = WEST; break;
-	case WEST: ret = EAST; break;
-	case TOP: ret = BOTTOM; break;
-	case BOTTOM: ret = TOP; break;
-	case UNDEFINED: report_exit("Invalid usage of get_opposite_dir"); break;
-	}
-	return ret;
 }
