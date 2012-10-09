@@ -83,6 +83,8 @@ public:
 
       // solve for node voltage
 	void solve(Tran &tran);
+
+	void solve_LU_DC();
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
@@ -194,13 +196,13 @@ private:
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
 	void release_tr_nodes(Tran &tran);
-	void release_ckt_nodes(Tran &tran);
+	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);
 	void save_ckt_nodes_to_tr(Tran &tran);
 	void link_tr_nodes(Tran &tran);
 	void link_ckt_nodes(Tran &tran);
 	void save_tr_nodes(Tran &tran, double *x);
-	void save_ckt_nodes(Tran &tran, double *x);
+	void save_ckt_nodes(double *x);
 
 	void print_tr_nodes(Tran &tran);
 

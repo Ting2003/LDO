@@ -215,6 +215,33 @@ void Circuit::solve(Tran &tran){
 	solve_LU(tran);
 }
 
+void Circuit::solve_LU_DC(){
+   solve_init();
+   size_t n = replist.size();	// replist dosn't contain ground node
+   if( n == 0 ) return;		// No node    
+   cm = &c;
+   cholmod_start(cm);
+   cm->print = 5;
+
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+
+   Matrix A;
+   stamp_by_set(A, bp);
+   make_A_symmetric(bp);
+   A.set_row(n);
+   Algebra::solve_CK(A, L, x, b, cm);
+   A.clear();
+   //return;
+   xp = static_cast<double *> (x->x);
+   for(size_t i=0;i<n;i++)
+	replist[i]->value = xp[i];
+
+   for(size_t i=0;i<nodelist.size();i++){
+	nodelist[i]->value = nodelist[i]->rep->value;
+   }
+}
 
 // stamp the matrix and solve
 void Circuit::solve_LU_core(Tran &tran){
@@ -326,7 +353,7 @@ void Circuit::solve_LU_core(Tran &tran){
    //xp = static_cast<double *> (x->x);
  
    //save_tr_nodes(tran, xp);
-   save_ckt_nodes(tran, xp);
+   save_ckt_nodes(xp);
    time += tran.step_t;
    //clog<<"before tr solve."<<endl;
    // then start other iterations
@@ -357,14 +384,14 @@ void Circuit::solve_LU_core(Tran &tran){
  
 
       //save_tr_nodes(tran, xp);
-      save_ckt_nodes(tran, xp);
+      save_ckt_nodes(xp);
       time += tran.step_t;
       //iter ++;
    }
    save_ckt_nodes_to_tr(tran);
    //print_ckt_nodes(tran);
    //release_tr_nodes(tran);
-   release_ckt_nodes(tran);
+   release_ckt_nodes();
    cholmod_free_dense(&b, cm);
    cholmod_free_dense(&bnew, cm);
    cholmod_free_factor(&L, cm);
@@ -1166,7 +1193,7 @@ void Circuit:: save_tr_nodes(Tran &tran, double *x){
 }
 
 // assign value back to transient nodes
-void Circuit:: save_ckt_nodes(Tran &tran, double *x){
+void Circuit:: save_ckt_nodes(double *x){
    size_t id=0;
    for(size_t j=0;j<ckt_nodes.size();j++){
 	 //cout<<"nodes: "<<ckt_nodes[j].node->name<<endl;
@@ -1218,7 +1245,7 @@ void Circuit:: release_tr_nodes(Tran &tran){
    }
 }
 
-void Circuit:: release_ckt_nodes(Tran &tran){
+void Circuit:: release_ckt_nodes(){
    for(size_t j=0;j<ckt_nodes.size();j++){
          ckt_nodes[j].node = NULL;
    }
@@ -1228,7 +1255,7 @@ void Circuit::make_A_symmetric(double *b){
 	int type = RESISTOR;
 	NetList & ns = net_set[type];
 	NetList::iterator it;
-	Node *p=NULL, *q=NULL, *r =NULL;
+	Node *p=NULL, *q=NULL;
 
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
@@ -2057,7 +2084,7 @@ double Circuit::locate_special_maxIRdrop(){
 void Circuit::relocate_pads_graph(){
 	vector<Node*> pad_set_old;
 	double dist = 0;
-	double new_dist = 0;
+	//double new_dist = 0;
 	pad_set_old.resize(pad_set.size());
 	assign_pad_set(pad_set_old);
 	// store a original copy of the pad set
@@ -2187,12 +2214,12 @@ void Circuit::modify_newxy(){
 // decide pad's new pos with the weights
 // need to be tuned
 double Circuit::update_pad_pos(double ref_drop_value, size_t i){
-	double total_dist=0;
+	//double total_dist=0;
 	Node *pad;
 	Pad *pad_ptr;
 	Node *nd;
 	double weight = 0;
-	double distance = 0;
+	//double distance = 0;
 	double pad_newx;
 	double pad_newy;
 	map<Node *, double>::iterator it;
@@ -2425,8 +2452,8 @@ void Circuit::rebuild_voltage_nets(){
 	size_t index_rm_net = 0;
 	Net *net=NULL;
 	Net *add_net=NULL;
-	Node *nd_ori=NULL;
-	Node *nd_new=NULL;
+	//Node *nd_ori=NULL;
+	//Node *nd_new=NULL;
 	Node *rm_node=NULL;
 	Node *add_node=NULL;
 	vector<Net*> rm_net;
@@ -2539,7 +2566,7 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 			if(pad_set[k]->node->name == 
 				nd->name){	
 				pad_ptr = pad_set[k];
-				double ref_drop_value = ref_drop_vec[k];
+				//double ref_drop_value = ref_drop_vec[k];
 
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
 			if(min_pads[j]->name == "n0_135_104" ||
@@ -2641,7 +2668,7 @@ void Circuit::extract_min_max_pads(vector<double> ref_drop_vec){
 			if(pad_set[k]->node->name == 
 				nd->name){	
 				pad_ptr = pad_set[k];
-				double ref_drop_value = ref_drop_vec[k];
+				//double ref_drop_value = ref_drop_vec[k];
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
@@ -2834,8 +2861,8 @@ double Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
 	Node *pad;
 	Pad *pad_ptr;
 	double max_drop, min_drop;
-	double sum_max = 0;
-	double sum_min = 0;
+	//double sum_max = 0;
+	//double sum_min = 0;
 	double sum_diff = 0;
 	size_t count = 0;
 	double ref_drop_value = 0;
@@ -2872,8 +2899,8 @@ double Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
 }
 
 double Circuit::calc_avg_ref(vector<double> ref_drop_vec){
-	Node *pad;
-	Pad *pad_ptr;
+	//Node *pad;
+	//Pad *pad_ptr;
 	double sum_ref = 0;
 	size_t count = 0;
 	double ref_drop_value = 0;
@@ -2907,7 +2934,7 @@ void Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
 	rebuild_voltage_nets();
-	solve();
+	solve_LU_DC();
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -2916,4 +2943,163 @@ void Circuit::resolve_direct(){
 		clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 }
 
+// build graph for pad nodes
+void Circuit::build_graph(){
+	Pad *pad;
+	Pad *pad_nbr;
+	Node *nd;
+	bool flag_pad = false;
+	bool flag_nbr = false;
+	// clear content
+	for(size_t i=0;i<pad_set.size();i++){
+		pad_set[i]->nbrs.clear();
+	}
+	// find nbr pad nodes
+	for(size_t i=0;i<pad_set.size();i++){
+		//clog<<"pad: "<<*pad->node<<endl;
+		flag_pad = false;
+		flag_nbr = false;
+		pad = pad_set[i];
+		pad_nbr = find_nbr_pad(pad);
+		for(size_t j=0;j<pad_nbr->nbrs.size();j++){
+			if(pad_nbr->nbrs[j]->node->name== pad->node->name)
+				flag_pad = true;
+				break;
+		}
+		for(size_t j=0;j<pad->nbrs.size();j++){
+			if(pad->nbrs[j]->node->name== pad_nbr->node->name)
+				flag_nbr = true;
+				break;
+		}
+		if(flag_pad == false){
+			pad->nbrs.push_back(pad_nbr);
+		}
+		if(flag_nbr == false)
+			pad_nbr->nbrs.push_back(pad);
+	}
+	/*for(size_t i=0;i<pad_set.size();i++){
+		Pad *pad = pad_set[i];
+		clog<<"pad: "<<*pad->node<<endl;
+		for(size_t j=0;j<pad->nbrs.size();j++){
+			clog<<"nbr: "<<*pad->nbrs[j]->node<<endl;
+		}
+	}*/
+}
 
+void Circuit::extract_pads(int pad_number){
+	vector<Node*> pair_first;
+	vector<double> pair_second;
+	pair<Node*, double> pair_nd;
+	//int pad_number = 5;
+	double distance = 0;
+	map<Node*, double>::iterator it;
+
+	clear_pad_control_nodes();
+	for(size_t i=0;i<special_nodes.size();i++){
+		int count = 0;
+		pair_first.clear();
+		pair_second.clear();
+		Node *nd = special_nodes[i];
+		// search for closest pads
+		for(size_t j=0;j<pad_set.size();j++){
+			Node *ptr = pad_set[j]->node;
+			distance = get_distance(ptr, nd);
+
+			if(count < pad_number){
+				pair_first.push_back(ptr);
+				pair_second.push_back(distance);
+				count++;
+			}else{// substitute the pad node
+				double max_dist = 0;
+				size_t max_index = 0;
+				for(size_t k=0;k<pair_second.size();k++){
+					if(pair_second[k]>max_dist){
+						max_dist = pair_second[k];
+						max_index = k;
+					}
+				}
+				if(distance < max_dist){ 
+					pair_first[max_index] = ptr;
+					pair_second[max_index] = distance;
+				}
+			}
+		}
+		// then map these distance into pads
+		for(size_t j=0;j<pair_first.size();j++){
+			Node *ptr = pair_first[j];
+			//if(nd->name == "n0_0_0")
+			//clog<<"ptr: "<<*ptr<<endl;
+			for(size_t k=0;k<pad_set.size();k++){
+				if(pad_set[k]->node->name == ptr->name){
+					// control nodes
+					pair_nd.first = nd;
+					// distance
+					pair_nd.second = pair_second[j];
+					pad_set[k]->control_nodes.insert(pair_nd);
+					break;
+				}
+			}
+		}
+	}
+	//print_pad_map();	
+	pair_first.clear();
+	pair_second.clear();
+	//print_pad_map();
+}
+
+// use Euclidiean distance to locate nearest nbr pad
+Pad * Circuit::find_nbr_pad(Pad *pad){
+	Pad * nbr;
+	double distance=-1;
+	double min_dist=0;
+	bool flag = false;
+	size_t min_index=0;
+	for(size_t i=0;i<pad_set.size();i++){
+		nbr = pad_set[i];
+		if(nbr->node->name == pad->node->name)
+			continue;
+		distance = get_distance(nbr->node, pad->node);
+		if(flag == false){
+			flag = true;
+			min_dist = distance;
+			min_index = i;
+		}else{
+			if(distance < min_dist){
+				min_dist = distance;	
+				min_index = i;
+			}	
+		}
+	}
+	return pad_set[min_index];
+}
+
+double Circuit::get_distance(Node *na, Node *nb){
+	double distance = 0;
+	double delta_x = 0;
+	double delta_y = 0;
+	delta_x=(na->pt.x-nb->pt.x);
+	delta_y=(na->pt.y-nb->pt.y);
+	delta_x *= delta_x;
+	delta_y *= delta_y;
+	distance = sqrt(delta_x + delta_y);
+	return distance;
+}
+
+void Circuit::clear_pad_control_nodes(){
+	Node *nd;
+	for(size_t i=0;i<pad_set.size();i++){
+		pad_set[i]->control_nodes.clear();
+	}
+}
+
+// tune 50% nodes with the small IR drops
+void Circuit::update_pad_control_nodes(vector<double> & ref_drop_value, size_t iter){
+	ref_drop_value.resize(pad_set.size());
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+		double middle_value = locate_ref(i);
+		ref_drop_value[i] = middle_value;
+		//clog<<"middle value: "<<middle_value<<endl;
+	}
+}
