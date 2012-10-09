@@ -187,7 +187,8 @@ void Parser::update_node(Net * net){
 	
 	if(net->type == CAPACITANCE){
 		// make sure a is the Z node, b is ground
-		if(a->isS() != Z) swap<Node*>(a,b);
+		if(a->is_ground()) swap<Node*>(a,b);
+		a->flag = Z;
 		// only needs single dir nbr net for index
 		// TOP for resistance
 		// BOTTOM for capacitance

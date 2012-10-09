@@ -185,7 +185,7 @@ void Circuit::solve_init(){
 		}
 		else
 			p->rid = p->rep->rid;
-		cout<<"p->rep, rid: "<<*p->rep<<" "<<p->rid<<endl;
+		//cout<<"p->rep, rid: "<<*p->rep<<" "<<p->rid<<endl;
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
@@ -232,8 +232,9 @@ void Circuit::solve_LU_core(Tran &tran){
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
    xp = static_cast<double *> (x->x);
-   for(size_t i=0;i<n;i++)
-	cout<<"dc solution from ckt: "<<" "<<*replist[i]<<" "<<xp[i]<<endl;
+   //for(size_t i=0;i<n;i++)
+	//replist[i]->value = xp[i];
+	//cout<<"dc solution from ckt: "<<" "<<*replist[i]<<" "<<xp[i]<<endl;
    
    // print out dc solution
    //cout<<nodelist<<endl;
@@ -252,10 +253,10 @@ void Circuit::solve_LU_core(Tran &tran){
    double time = 0;
    //int iter = 0;
    stamp_by_set_tr(A, bp, tran);
-   make_A_symmetric_tr(bp, xp, tran);
-   
+   make_A_symmetric(bp);
+    
    stamp_current_tr(bp, time);
-  
+
    Algebra::CK_decomp(A, L, cm);
    Lp = static_cast<int *>(L->p);
    Lx = static_cast<double*> (L->x);
@@ -267,7 +268,7 @@ void Circuit::solve_LU_core(Tran &tran){
    // build id_map immediately after transient factorization
    id_map = new int [n];
    cholmod_build_id_map(CHOLMOD_A, L, cm, id_map);
-
+   
    temp = new double [n];
    // then substitute all the nodes rid
    for(size_t i=0;i<n;i++){
@@ -284,13 +285,13 @@ void Circuit::solve_LU_core(Tran &tran){
    delete [] temp;
    delete [] id_map;
    /*****************************************/ 
-	for(size_t i=0;i<n;i++)
+	for(size_t i=0;i<n;i++){
 		bnewp[i] = bp[i];
+	}
   
-   set_eq_induc(tran);
+   // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
-
    // push rhs node into node_set b
    for(size_t i=0;i<n;i++){
 	   if(bnewp[i] !=0)
@@ -374,7 +375,6 @@ void Circuit::solve_LU_core(Tran &tran){
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
-	clog<<"after solve init. "<<endl;
 	solve_LU_core(tran);
 }
 
@@ -490,11 +490,11 @@ void Circuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
 		case RESISTOR:
-			for(size_t i=0;i<ns.size();i++){
+			/*for(size_t i=0;i<ns.size();i++){
 				if(fzero(ns[i]->value))
 					continue;
 				stamp_resistor_tr(A, ns[i]);
-			}
+			}*/
 			break;
 		case CURRENT:
 			//for(size_t i=0;i<ns.size();i++)
@@ -530,14 +530,16 @@ void Circuit::modify_rhs_tr_0(double * b, double *x){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		if(type ==CAPACITANCE){	
-			for(size_t i=0;i<ns.size();i++)
+			for(size_t i=0;i<ns.size();i++){
+				//clog<<"c net: "<<*ns[i]<<endl;
 				modify_rhs_c_tr_0(ns[i], b, x);
+			}
 		}
-		else if(type == INDUCTANCE){
+		/*else if(type == INDUCTANCE){
 			for(size_t i=0;i<ns.size();i++){
 				modify_rhs_l_tr_0(ns[i], b, x);	
 			}
-		}
+		}*/
 	}
 }
 // update rhs by transient nets
@@ -567,20 +569,20 @@ void Circuit::stamp_resistor(Matrix & A, Net * net){
         if( !nk->is_ground()&& nk->isS()!=X) {
            A.push_back(k,k, G);
 
-           cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+           //cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
            if(!nl->is_ground() &&nl->isS()!=X &&(k > l)){
                     A.push_back(k,l,-G);
 
-                  cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+                  //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
 	if( !nl->is_ground() && nl->isS() !=X) {
 		A.push_back(l,l, G);
-                cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+                //cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 		if(!nk->is_ground()&& nk->isS()!=X && l > k){
 			A.push_back(l,k,-G);
-		cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		//cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -595,34 +597,34 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
    G = 1./net->value;
 
    if( nk->isS()!=X && !nk->is_ground()) {
-      //clog<<"net: "<<*net<<endl;
+      //cout<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
-      //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+      //cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
       if(!nl->is_ground() && nl->isS()!=X){
          if(l < k){
             A.push_back(k,l,-G);
-            //clog<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+            //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
          }
          else if(l > k){ 
             A.push_back(l, k, -G);
-            //clog<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+            //cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
          }
       }
    }
 
    if( nl->isS() !=X && !nl->is_ground()) {
 
-      //clog<<"net: "<<*net<<endl;
+      //cout<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
-      //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+      //cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
       if(!nk->is_ground()&& nk->isS()!=X){
          if(k < l){
             A.push_back(l,k,-G);
-            //clog<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+            //cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
          }
          else if(k > l){
             A.push_back(k, l, -G);
-            //clog<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+            //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
          }
       }
    }
@@ -714,7 +716,7 @@ void Circuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 
 // stamp capacitance Geq = 2C/delta_t
 void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
-	//clog<<"net: "<<*net<<endl;
+	//cout<<"net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -723,24 +725,24 @@ void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 	// Geq = 2*C / delta_t
 	Geq = (2*net->value) / tran.step_t;
 	//net->value = Geq;
-	//clog<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
+	//cout<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
 	// Ieq = i(t) + 2*C / delta_t * v(t)
 
 	if( nk->isS()!=X  && !nk->is_ground()) {
 		A.push_back(k,k, Geq);
-		//clog<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
+		//cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		if(!nl->is_ground()&& k > l){
 			A.push_back(k,l,-Geq);
-			//clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+			//cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
 	if( nl->isS() !=X && !nl->is_ground()) {
 		A.push_back(l,l, Geq);
-		//clog<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
+		//cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground()&& l > k){
 			A.push_back(l,k,-Geq);
-			//clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			//cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
@@ -751,17 +753,17 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	double i_t = 0;
 	double temp = 0;
 	double Ieq = 0;
-	//clog<<"c net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
+
         // nk point to Z node
-        if(nk->isS() != Z){
+        if(nk->isS()!=Z){
 		swap<Node *>(nk, nl);
 		swap<Node*>(net->ab[0], net->ab[1]);
 	}
-	//clog<<"nk, nl: "<<*nk<<" "<<*nl<<endl;
 	size_t k = nk->rid;
 	size_t l = nl->rid;
+	//clog<<"k, l "<<k<<" "<<l<<endl;
 
 	Net *r = nk->nbr[TOP];
 	Node *a = r->ab[0]->rep;
@@ -771,7 +773,6 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 		swap<Node *>(a, b);
 		swap<Node*>(r->ab[0], r->ab[1]);
 	}
-	//clog<<"a, b: "<<*a<<" "<<*b<<endl;
 
 	size_t id_a = a->rid;
 	size_t id_b = b->rid;
@@ -808,7 +809,7 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
          //temp = 2*net->value/tran.step_t *(x[k] - x[l]);
 	 temp = net->value *(x[k]-x[l]);
 	//if(nk->value != x[k] || nl->value != x[l])
-	   //cout<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
+	   //clog<<"k, l, x_k, x_l: "<<x[k]<<" "<<x[l]<<" "<<x[k]-x[l]<<" "<<net->value << " "<<net->value * (x[k]-x[l])<<" "<<temp<<endl;
 	     //x[k]<<" "<<x[l]<<endl;
 	//clog<<"nk-nl "<<(nk->value - nl->value)<<" "<<2*net->value/tran.step_t<<" "<<temp<<endl;
 	
@@ -1029,8 +1030,6 @@ void Circuit::stamp_current(double * b, Net * net){
 
 void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	current_tr(net, time);
-	//clog<<"net: "<<*net<<endl;
-	//clog<<"current: "<<current<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 	if( !nk->is_ground()&& nk->isS()!=X) { 
@@ -1233,7 +1232,7 @@ void Circuit::make_A_symmetric(double *b){
 	   if(fzero((*it)->value)) continue;
            //assert( fzero((*it)->value) == false );
            if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
-	   cout<<"symmetric net: "<<*(*it)<<endl;
+	   //cout<<"symmetric net: "<<*(*it)<<endl;
            // node p points to X node
            if((*it)->ab[0]->rep->isS()==X){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
@@ -1249,16 +1248,18 @@ void Circuit::make_A_symmetric(double *b){
 }
 
 void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
-	int type = INDUCTANCE;
+	int type = RESISTOR;
 	NetList & ns = net_set[type];
 	NetList::iterator it;
 	Node *p, *q;
 
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
-           assert( fzero((*it)->value) == false );
+		clog<<"net: "<<*(*it)<<endl;
+           if( fzero((*it)->value))
+		continue;
            if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
-           //clog<<"net: "<<*(*it)<<endl;
+           clog<<"net: "<<*(*it)<<endl;
            // node p points to X node
            if((*it)->ab[0]->rep->isS()==X){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
@@ -1266,14 +1267,14 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
            else if((*it)->ab[1]->rep->isS()==X ){
               p = (*it)->ab[1]->rep; q = (*it)->ab[0]->rep;
            }           
-           //clog<<"p and q: "<<*p<<" "<<*q<<endl;
+           clog<<"p and q: "<<*p<<" "<<*q<<endl;
 
            size_t id = q->rid;
            double G = tran.step_t / ((*it)->value*2);
            
            //b[id] += p->value * G;
            b[id] += x[p->rid] *G;
-           //clog<<"stamp p->value, G, b: "<<p->value<<" "<<G<<" "<<b[id]<<endl;
+           clog<<"stamp p->value, G, b: "<<p->value<<" "<<G<<" "<<b[id]<<endl;
         }
 }
 
