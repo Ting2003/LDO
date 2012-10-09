@@ -421,14 +421,14 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 			for(size_t i=0;i<ns.size();i++){
 				if(fzero(ns[i]->value))
 					continue;
-				cout<<"net: "<<*ns[i]<<endl;
+				//cout<<"net: "<<*ns[i]<<endl;
 				//assert( fzero(ns[i]->value) == false );
 				stamp_resistor(A, ns[i]);
 			}
 			break;
 		case CURRENT:
 			for(size_t i=0;i<ns.size();i++){
-				cout<<"net: "<<*ns[i]<<endl;
+				//cout<<"net: "<<*ns[i]<<endl;
 				stamp_current(b, ns[i]);
 			}
 			break;
@@ -439,7 +439,7 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
 
-				cout<<"net: "<<*ns[i]<<endl;
+				//cout<<"net: "<<*ns[i]<<endl;
 				stamp_VDD(A, b, ns[i]);
 			}
 			break;
@@ -594,9 +594,7 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
    size_t l = nl->rid;
    G = 1./net->value;
 
-   if( nk->isS()!=X && !nk->is_ground()&& 
-     (nk->nbr[TOP]!=NULL && 
-      nk->nbr[TOP]->type == INDUCTANCE)) {
+   if( nk->isS()!=X && !nk->is_ground()) {
       //clog<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
       //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
@@ -612,9 +610,7 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
       }
    }
 
-   if( nl->isS() !=X && !nl->is_ground()&&
-     (nl->nbr[TOP]!=NULL &&
-      nl->nbr[TOP]->type == INDUCTANCE)) {
+   if( nl->isS() !=X && !nl->is_ground()) {
 
       //clog<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
