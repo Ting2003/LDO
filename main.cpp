@@ -58,7 +58,8 @@ int main(int argc, char * argv[]){
 //#pragma omp parallel for private(i)	
 	for(i=0;i<cktlist.size();i++){
 		Circuit * ckt = cktlist[i];
-		ckt->solve(tran);
+		//ckt->solve(tran);
+		ckt->solve_DC();
 		double max_IRdrop = ckt->locate_maxIRdrop();
 			
 		clog<<"max IRdrop is: "<<max_IRdrop<<endl;

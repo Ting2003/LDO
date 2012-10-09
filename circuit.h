@@ -84,7 +84,7 @@ public:
       // solve for node voltage
 	void solve(Tran &tran);
 
-	void solve_LU_DC();
+	void solve_DC();
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);

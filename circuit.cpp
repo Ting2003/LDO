@@ -192,6 +192,7 @@ void Circuit::solve_init(){
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
+	build_pad_set();
 }
 
 // count number of nodes that can be merged
@@ -215,7 +216,7 @@ void Circuit::solve(Tran &tran){
 	solve_LU(tran);
 }
 
-void Circuit::solve_LU_DC(){
+void Circuit::solve_DC(){
    solve_init();
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
@@ -2160,18 +2161,8 @@ void Circuit::mark_special_nodes(){
 		nd = net->ab[0];
 		if(nd->is_ground())
 			nd = net->ab[1];
-		//if(nd->pt.x%10==0 &&
-			//nd->pt.y%10==0){// i%4000==0){
-			special_nodes.push_back(nd);
-			//clog<<"special_nodes: "<<*nd<<endl;
-		//}
+		special_nodes.push_back(nd);
 	}
-	//clog<<"total special nodes: "<<special_nodes.size()<<endl;
-	/*for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->name == "n0_0_0" ||
-		   nodelist[i]->name =="n0_1_2")//"n0_150_100")
-			special_nodes.push_back(nodelist[i]);
-	}*/
 }
 
 double Circuit::update_pad_pos_all(vector<double> ref_drop_vec){
@@ -2934,7 +2925,7 @@ void Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
 	rebuild_voltage_nets();
-	solve_LU_DC();
+	solve_DC();
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -3103,3 +3094,19 @@ void Circuit::update_pad_control_nodes(vector<double> & ref_drop_value, size_t i
 		//clog<<"middle value: "<<middle_value<<endl;
 	}
 }
+
+void Circuit::build_pad_set(){
+	pad_set.resize(0);
+	//static Pad pad_a;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		if(nodelist[i]->isX()){
+			Pad *pad_ptr = new Pad();
+			pad_ptr->node = nodelist[i];
+			pad_set.push_back(pad_ptr);
+		}
+	}
+	//for(size_t j=0;j<pad_set.size();j++)
+		//clog<<"pad: "<<*pad_set[j]->node<<endl;
+}
+
+
