@@ -2131,10 +2131,8 @@ void Circuit::relocate_pads_graph(){
 
 		// move pads according to graph contraints
 		graph_move_pads(ref_drop_vec);	
-		clog<<"after graph move pads. "<<endl;
 		
 		clear_flags();
-		clog<<"after clear flags. "<<endl;
 		// actual move pads into the new spots
 		// project_pads();
 		
@@ -2350,12 +2348,13 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 
 	sstream<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	pt_name = sstream.str();
+	// clog<<"pt_name: "<<pt_name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(pt_name)){
 		nd_new = get_node_pt(pt_name);
-		//clog<<"has new node: "<<*nd_new<<" "<<nd_new->isX()<<endl;
+		// clog<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
 			nd->disableX();
@@ -2416,9 +2415,11 @@ void Circuit::build_map_node_pt(){
 
 	Node *nd;
 	pair<string, Node*> pt_pair;
-	for(size_t i=0;i<nodelist.size()-1;i++){
-		nd = nodelist[i];
+	for(size_t i=0;i<replist.size();i++){
+		nd = replist[i];
 		if(nd->get_layer()!=ref_layer)
+			continue;
+		if(nd->isS()==Z)
 			continue;
 		stringstream sstream;
 		sstream<<ref_layer<<"_"<<nd->pt.x<<
@@ -2721,7 +2722,7 @@ void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		clog<<endl<<"pad: "<<*pad<<endl;
+		//clog<<endl<<"pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
 
 		//bool flag = print_flag(pad);
@@ -2749,6 +2750,8 @@ int Circuit::locate_max_drop_pad(vector<double> vec){
 	double min_ref = 0;
 	bool flag = false;
 	for(size_t i=0;i<vec.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
 		if(pad_set[i]->visit_flag == true ||
 			pad_set[i]->fix_flag ==  true)
 			continue;
@@ -2762,22 +2765,9 @@ int Circuit::locate_max_drop_pad(vector<double> vec){
 			min_ref = vec[i];
 			min_id = i;
 		}
-	}
-	/*double max_id=-1;
-	double max_ref = 0;
-	for(size_t i=0;i<vec.size();i++){
-		if(pad_set[i]->visit_flag == true ||
-			pad_set[i]->fix_flag ==  true)
-			continue;
-		//clog<<"i, vec: "<<i<<" "<<vec[i]<<endl;
-		if(vec[i] > max_ref){
-			max_ref = vec[i];
-			max_id = i;
-		}
-	}*/
+	}	
 	//clog<<"min_ref, min_pad: "<<min_ref<<" "<<*pad_set[min_id]->node<<endl;
 	return min_id;
-	//return max_id;
 }
 
 // locate the tune spot for the control nodes.
