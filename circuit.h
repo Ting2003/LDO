@@ -16,6 +16,7 @@
 #define __CIRCUIT_H__
 
 #include <string>
+#include <sstream>
 #include <vector>
 #include <tr1/unordered_map>
 #include <map>
@@ -29,6 +30,8 @@
 #include <algorithm>
 #include "sp_graph_table.h"
 #include "sp_node.h"
+#include "pad.h"
+#include <queue>
 
 using namespace std;
 using namespace std::tr1;
@@ -84,6 +87,69 @@ public:
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
 	friend class Parser;
+
+	////// new functions for pad /////
+	double locate_maxIRdrop();
+	double locate_special_maxIRdrop();
+	void mark_special_nodes();
+	void build_pad_set();
+	////// new member for pad //////
+	
+	double max_IRdrop;
+	vector<Pad*> pad_set;
+	vector<Node*> origin_pad_set;
+	vector<Node*> special_nodes;
+	// mapping from name to Node object pointer
+	unordered_map<string, Node*> map_node_pt;
+
+	////// new functions for pad /////
+	void assign_distance(Node *nds, Node *nd, double dist);
+	void print_pad_map();
+	void clear_flags();
+	double update_pad_pos(double ref_drop_value, size_t i);
+	double update_pad_pos_all(vector<double> ref_drop_vec);
+	void round_data(double &data);
+	Node * pad_projection(Pad *pad, Node *nd);
+	void project_pads();
+	bool has_node_pt(string pt_name) const;
+	Node * get_node_pt(string pt_name);
+	void build_map_node_pt();
+	void relocate_pads();
+	void relocate_pads_graph();
+	void restore_pad_set(vector<Node*>&pad_set_old);
+	void assign_pad_set(vector<Node*>&pad_set_old);
+	void rebuild_voltage_nets();
+	void print_pad_set();
+	void extract_pads(int pad_number);
+	void print_matlab();
+	void clear_pad_control_nodes();
+	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
+	void extract_min_max_pads(vector<double> ref_drop_vec);
+	void extract_min_max_pads_new(vector<double> ref_drop_vec);
+
+	void build_graph();
+	Pad *find_nbr_pad(Pad *pad);
+	double get_distance(Node *na, Node *nb);
+	void graph_move_pads(vector<double> ref_drop_vec);
+	int locate_max_drop_pad(vector<double> vec);
+	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
+	double calc_avg_ref(vector<double> ref_drop_vec);
+	double locate_ref(size_t i);
+	void dynamic_update_violate_ref(vector<double> & ref_drop_vec);
+	bool print_flag(Node *nd);
+	void move_violate_pads(vector<double> ref_drop_vec);
+	void modify_newxy();
+	void resolve_direct();
+	void resolve_queue(vector<Node *> origin_pad_set);
+	void solve_queue(vector<Node *> pad_set_old);
+	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
+	double update_single_iter(vector<Node *> pad_set_old);
+	double update_value(Node *nd);
+	size_t update_queue(queue<Node *>&q, Node *nd);
+	void solve_GS();
+	void print_all_control_nodes();
+	//////// end functions for pad ////////
+
 
 	// C style output
 	void print();
@@ -233,6 +299,19 @@ inline bool Circuit::has_node(string name) const{
 	if( map_node.find(name) != map_node.end() ) return true;
 	return false;
 }
+
+inline bool Circuit::has_node_pt(string pt_name) const{
+	if( map_node_pt.find(pt_name) != map_node_pt.end() ) return true;
+	return false;
+}
+
+// get a node by pt
+inline Node * Circuit::get_node_pt(string pt_name){
+	unordered_map<string, Node*>::const_iterator it = map_node_pt.find(pt_name);
+	if( it != map_node_pt.end() ) return it->second;
+	else return NULL;
+}
+
 
 // get a node by name
 inline Node * Circuit::get_node(string name){

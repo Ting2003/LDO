@@ -59,6 +59,16 @@ int main(int argc, char * argv[]){
 	for(i=0;i<cktlist.size();i++){
 		Circuit * ckt = cktlist[i];
 		ckt->solve(tran);
+		double max_IRdrop = ckt->locate_maxIRdrop();
+			
+		clog<<"max IRdrop is: "<<max_IRdrop<<endl;
+		double special_IRdrop = ckt->locate_special_maxIRdrop();
+		clog<<"special IRdrop is: "<<special_IRdrop<<endl;
+		//ckt->relocate_pads();
+		ckt->relocate_pads_graph();
+		//ckt->print_matlab();
+		clog<<endl;
+
 	        // after that, this circuit can be released
 		delete ckt;
 	}

@@ -29,6 +29,7 @@ public:
 	int get_layer() const;
 
 	int isS() const;
+	bool isX() const;
 	bool is_ground() const;
 
 	double get_value() const;
@@ -48,7 +49,13 @@ public:
 	Net * nbr[6];		// neighboring nets
 
 	size_t rid;		// id in rep_list
+	bool flag_visited;
+	//////// member and function for pad //////
 
+	// disable the flag of some pad node
+	void disableX();
+	// enable the flag of some pad node
+	void enableX();	
 private:
 	double value;		// voltage
 	// flag = 1 --> X
@@ -59,8 +66,11 @@ private:
 	//vector<size_t> blocklist;	// belongs to which block
 	//vector<size_t> id_in_block;	// local index inside block	
 };      	
-
+inline bool Node::isX() const{return flag;}
 inline int Node::isS() const{return flag;}
+inline void Node::disableX() {flag = false;}
+inline void Node::enableX() {flag = true;}
+
 
 //inline bool Node::is_ground() const{return name == "0";}
 // use a tricky way to speed up
