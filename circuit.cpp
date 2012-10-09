@@ -196,6 +196,7 @@ void Circuit::solve_init(){
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
 	build_pad_set();
+	mark_special_nodes();
 }
 
 // count number of nodes that can be merged
@@ -2108,7 +2109,6 @@ void Circuit::relocate_pads_graph(){
 		build_graph();
 		// find control nodes for each pad
 		extract_pads(pad_number);
-		clog<<"after extract_pads."<<endl;
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(ref_drop_vec, i);
 		clog<<"after update pad control nodes. "<<endl;
@@ -2165,7 +2165,7 @@ void Circuit::assign_pad_set(vector<Node*>&pad_set_old){
 
 void Circuit::mark_special_nodes(){
 	special_nodes.clear();
-	int type = CURRENT;
+	/*int type = CURRENT;
 	Net *net;
 	Node *nd;
 	// push back all current nodes
@@ -2175,6 +2175,10 @@ void Circuit::mark_special_nodes(){
 		if(nd->is_ground())
 			nd = net->ab[1];
 		special_nodes.push_back(nd);
+	}*/
+	for(size_t i=0;i<replist.size();i++){
+		if(replist[i]->isS()!=X)
+			special_nodes.push_back(replist[i]);
 	}
 }
 
@@ -2803,10 +2807,12 @@ double Circuit::locate_ref(size_t i){
 	pad_ptr = pad_set[i];
 	pad = pad_ptr->node;
 	pad_ptr->drop_vec.clear();
+	cout<<"pad: "<<*pad<<endl;
 	for(it = pad_ptr->control_nodes.begin();
 			it != pad_ptr->control_nodes.end();
 			it++){
 		nd = it->first;
+		cout<<"control: "<<*nd<<endl;
 		weight = nd->value;
 		if(weight <0)
 			weight *=10;
@@ -3102,6 +3108,7 @@ void Circuit::update_pad_control_nodes(vector<double> & ref_drop_value, size_t i
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
+		
 		double middle_value = locate_ref(i);
 		ref_drop_value[i] = middle_value;
 		//clog<<"middle value: "<<middle_value<<endl;
@@ -3122,4 +3129,20 @@ void Circuit::build_pad_set(){
 		//clog<<"pad: "<<*pad_set[j]->node<<endl;
 }
 
-
+void Circuit::print_pad_map(){
+	Node *nd;
+	Pad *pad;
+	pair<Node*, double> pad_pair;
+	map<Node*, double>::iterator it;
+	for(size_t i=0;i<pad_set.size();i++){
+		nd = pad_set[i]->node;
+		pad = pad_set[i];
+		if(nd->name == "n0_477_17"){// ||
+		   //nd->name == "n0_255_59" ||
+		   //nd->name == "n0_30_74"){
+		for(it = pad->control_nodes.begin();it != pad->control_nodes.end();it++){
+			printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
+		}
+		}
+	}
+}
