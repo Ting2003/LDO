@@ -48,7 +48,7 @@ private:
 // Trick: try to modify the net
 inline void Parser::try_change_via(Net * net){
 	// is it a via?
-	if( net->ab[0]->get_layer() == net->ab[1]->get_layer() )
+	 if( net->ab[0]->get_layer() == net->ab[1]->get_layer() )
 		return;
 
 	// make it a zero voltage via

@@ -100,7 +100,7 @@ void Parser::insert_net_node(char * line){
 			nd_ptr[i] = new Node(nd[i]); // copy constructor
 			nd_ptr[i]->rep = nd_ptr[i];  // set rep to be itself
 			ckt->add_node(nd_ptr[i]);
-			if( nd_ptr[i]->isS()== Y)    // determine circuit type
+			if( nd_ptr[i]->isS()== X)    // determine circuit type
 				ckt->set_type(WB);
 			// find the coordinate max and min	
 		}
@@ -202,11 +202,11 @@ void Parser::update_node(Net * net){
 	// resistance type net with special nodes
 	else if(net->type == RESISTOR && a->isS()!= -1 
 		&& b->isS() != -1){
-		if(a->isS()== Y){
+		if(a->isS()== X){
 			a->set_nbr(BOTTOM, net);
 			b->set_nbr(TOP, net);
 		}
-		else if(b->isS() == Y){
+		else if(b->isS() == X){
 			b->set_nbr(BOTTOM, net);
 			a->set_nbr(TOP, net);
 		}	
@@ -264,7 +264,7 @@ void Parser::update_node(Net * net){
 		// one is X node, one is ground node
 		// Let a be X node, b be another
 		if( a->is_ground() ) swap<Node*>(a,b);
-		a->flag = Y;		// set a to be X node
+		a->flag = X;		// set a to be X node
 		a->set_nbr(TOP, net);	// X -- VDD -- Ground
 		a->set_value(net->value);
 	}

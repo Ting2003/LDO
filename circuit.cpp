@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------//
 // Filename : circuit.cpp
 // Author : Zigang Xiao <zxiao2@illinois.edu>
-//          Ting Yu <tingyu1@illinois.edu>
+//          Ting Xu <tingyu1@illinois.edu>
 //
 // implementation file of circuit.h
 // ----------------------------------------------------------------//
@@ -65,7 +65,7 @@ Circuit::~Circuit(){
 }
 
 void Circuit::check_sys() const{
-	clog<<"**** CHECKING SYSTEM ENVIRONMENT ****"<<endl;
+	clog<<"**** CHECKING SXSTEM ENVIRONMENT ****"<<endl;
 	clog<<"* int size     = "<< sizeof(int)<<endl;
 	clog<<"* long size    = "<< sizeof(long)<<endl;
 	clog<<"* size_t size  = "<< sizeof(size_t)<<endl;
@@ -165,9 +165,9 @@ void Circuit::solve_init(){
 		p=nodelist[i];
 		// set the representative
 		Net * net = p->nbr[TOP];
-		if( p->isS()== Y) VDD = p->get_value();
+		if( p->isS()== X) VDD = p->get_value();
 		// test short circuit
-		if( p->isS() !=Y && // Y must be representative 
+		if( p->isS() !=X && // X must be representative 
 		    net != NULL &&
 		    fzero(net->value) ){
 			// TODO: ensure ab[1] is not p itself
@@ -175,6 +175,7 @@ void Circuit::solve_init(){
 			p->rep = net->ab[1]->rep;
 		} // else the representative is itself
 
+		//cout<<"p, p->rep: "<<*p<<" "<<*p->rep<<endl;
 		// push the representatives into list
 		if( p->rep == p ) {
 			replist.push_back(p);
@@ -182,10 +183,12 @@ void Circuit::solve_init(){
 			p->rid = nr;
 			++nr;
 		}
-		//clog<<"p->rep: "<<*p->rep<<endl;
+		else
+			p->rid = p->rep->rid;
+		cout<<"p->rep, rid: "<<*p->rep<<" "<<p->rid<<endl;
 	}
-	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
-	//clog<<"replist.size: "<<replist.size()<<endl;
+	//cout<<"nodelist.size: "<<nodelist<<endl;
+	//clog<<"replist.size: "<<replist<<endl;
 }
 
 // count number of nodes that can be merged
@@ -223,21 +226,18 @@ void Circuit::solve_LU_core(Tran &tran){
    bp = static_cast<double *> (b->x);
 
    Matrix A;
-   clog<<"before stamp by set. "<<endl;
    stamp_by_set(A, bp);
-   clog<<"after stamp by set. "<<endl;
    make_A_symmetric(bp);
    A.set_row(n);
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
    xp = static_cast<double *> (x->x);
-   //for(size_t i=0;i<n;i++)
-	//cout<<"dc solution from ckt: "<<
-	//get_name()<<" "<<xp[i]<<endl;
+   for(size_t i=0;i<n;i++)
+	cout<<"dc solution from ckt: "<<" "<<*replist[i]<<" "<<xp[i]<<endl;
    
    // print out dc solution
-   cout<<nodelist<<endl;
-   return; // return after dc solution
+   //cout<<nodelist<<endl;
+   //return; // return after dc solution
 
    // A is already being cleared   
    size_t i=0;
@@ -419,14 +419,18 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 		switch(type){
 		case RESISTOR:
 			for(size_t i=0;i<ns.size();i++){
+				if(fzero(ns[i]->value))
+					continue;
 				cout<<"net: "<<*ns[i]<<endl;
-				assert( fzero(ns[i]->value) == false );
+				//assert( fzero(ns[i]->value) == false );
 				stamp_resistor(A, ns[i]);
 			}
 			break;
 		case CURRENT:
-			for(size_t i=0;i<ns.size();i++)
+			for(size_t i=0;i<ns.size();i++){
+				cout<<"net: "<<*ns[i]<<endl;
 				stamp_current(b, ns[i]);
+			}
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
@@ -434,6 +438,8 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 				    !ns[i]->ab[0]->is_ground() &&
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
+
+				cout<<"net: "<<*ns[i]<<endl;
 				stamp_VDD(A, b, ns[i]);
 			}
 			break;
@@ -485,7 +491,8 @@ void Circuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 		switch(type){
 		case RESISTOR:
 			for(size_t i=0;i<ns.size();i++){
-				assert( fzero(ns[i]->value) == false );
+				if(fzero(ns[i]->value))
+					continue;
 				stamp_resistor_tr(A, ns[i]);
 			}
 			break;
@@ -507,9 +514,9 @@ void Circuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 				stamp_capacitance_tr(A, ns[i], tran);
 			break;
 		case INDUCTANCE:
-			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_tr(A, ns[i], tran);	
-			}
+			//for(size_t i=0;i<ns.size();i++){
+				//stamp_inductance_tr(A, ns[i], tran);	
+			//}
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -557,29 +564,23 @@ void Circuit::stamp_resistor(Matrix & A, Net * net){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 	G = 1./net->value;
-        if( !nk->is_ground()&& nk->isS()!=Y && 
-          (nk->nbr[TOP]== NULL 
-           || nk->nbr[TOP]->type != INDUCTANCE)) {
+        if( !nk->is_ground()&& nk->isS()!=X) {
            A.push_back(k,k, G);
 
-           //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-           if(!nl->is_ground() &&(nl->nbr[TOP]==NULL || 
-                 nl->nbr[TOP]->type != INDUCTANCE)&&(k > l)){
+           cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+           if(!nl->is_ground() &&nl->isS()!=X &&(k > l)){
                     A.push_back(k,l,-G);
 
-                  //clog<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+                  cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
-	if( !nl->is_ground() && nl->isS() !=Y && 
-			(nl->nbr[TOP] ==NULL 
-		||nl->nbr[TOP]->type != INDUCTANCE)) {
+	if( !nl->is_ground() && nl->isS() !=X) {
 		A.push_back(l,l, G);
-                //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-		if(!nk->is_ground()&& (nk->nbr[TOP]==NULL ||
-		  nk->nbr[TOP]->type != INDUCTANCE) && l > k){
+                cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+		if(!nk->is_ground()&& nk->isS()!=X && l > k){
 			A.push_back(l,k,-G);
-		//clog<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -593,14 +594,13 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
    size_t l = nl->rid;
    G = 1./net->value;
 
-   if( nk->isS()!=Y && !nk->is_ground()&& 
+   if( nk->isS()!=X && !nk->is_ground()&& 
      (nk->nbr[TOP]!=NULL && 
       nk->nbr[TOP]->type == INDUCTANCE)) {
       //clog<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
       //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-      if(!nl->is_ground() &&(nl->nbr[TOP]==NULL || 
-           nl->nbr[TOP]->type != INDUCTANCE)){
+      if(!nl->is_ground() && nl->isS()!=X){
          if(l < k){
             A.push_back(k,l,-G);
             //clog<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
@@ -612,15 +612,14 @@ void Circuit::stamp_resistor_tr(Matrix & A, Net * net){
       }
    }
 
-   if( nl->isS() !=Y && !nl->is_ground()&&
+   if( nl->isS() !=X && !nl->is_ground()&&
      (nl->nbr[TOP]!=NULL &&
       nl->nbr[TOP]->type == INDUCTANCE)) {
 
       //clog<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
       //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-      if(!nk->is_ground()&& (nk->nbr[TOP]==NULL ||
-           nk->nbr[TOP]->type != INDUCTANCE)){
+      if(!nk->is_ground()&& nk->isS()!=X){
          if(k < l){
             A.push_back(l,k,-G);
             //clog<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
@@ -640,7 +639,7 @@ void Circuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 	G = 1./net->value;
-	if( nk->isS()!=Y && !nk->is_ground()) {
+	if( nk->isS()!=X && !nk->is_ground()) {
 		A.push_back(k,k, 1);
 		// general stamping
 		if(!nl->is_ground())
@@ -651,7 +650,7 @@ void Circuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
 		//clog<<"("<<k<<" "<<l<<" "<<-1<<")"<<endl;
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=X && !nl->is_ground()) {
 		A.push_back(l,l, 1);
 		if(!nk->is_ground())
 		// general stamping
@@ -670,13 +669,13 @@ void Circuit::stamp_capacitance_dc(Matrix & A, Net * net){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 	G = 1./net->value;
-	if( nk->isS()!=Y && !nk->is_ground()) {
+	if( nk->isS()!=X && !nk->is_ground()) {
 		A.push_back(k,k, 0);
 		if(!nl->is_ground())
 			A.push_back(k,l,0);
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=X && !nl->is_ground()) {
 		A.push_back(l,l, 0);
 		if(!nk->is_ground())
 			A.push_back(l,k,0);
@@ -695,22 +694,22 @@ void Circuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	Geq = tran.step_t / (2*net->value);
 	//net->value = Geq;
 
-	if( nk->isS()!=Y  && !nk->is_ground()) {
+	if( nk->isS()!=X  && !nk->is_ground()) {
 		// -1 is to clear formal inserted 1 at (k,k)
 		A.push_back(k,k, Geq-1);
 		//clog<<"("<<k<<" "<<k<<" "<<Geq-1<<")"<<endl;
 		//clog<<nl->isS()<<endl;
-		if(!nl->is_ground()&& nl->isS()!=Y && k>l){
+		if(!nl->is_ground()&& nl->isS()!=X && k>l){
 			A.push_back(k,l,-Geq);
 		        //clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=X && !nl->is_ground()) {
 		// -1 is to clear formal inserted 1 at (l,l)
 		A.push_back(l,l, Geq-1);
 		//clog<<"("<<l<<" "<<l<<" "<<Geq-1<<")"<<endl;
-		if(!nk->is_ground() && nk->isS()!=Y && l>k){
+		if(!nk->is_ground() && nk->isS()!=X && l>k){
 			A.push_back(l,k,-Geq);
 			//clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
@@ -731,7 +730,7 @@ void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 	//clog<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
 	// Ieq = i(t) + 2*C / delta_t * v(t)
 
-	if( nk->isS()!=Y  && !nk->is_ground()) {
+	if( nk->isS()!=X  && !nk->is_ground()) {
 		A.push_back(k,k, Geq);
 		//clog<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		if(!nl->is_ground()&& k > l){
@@ -740,7 +739,7 @@ void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 		}
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=X && !nl->is_ground()) {
 		A.push_back(l,l, Geq);
 		//clog<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground()&& l > k){
@@ -820,11 +819,11 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	Ieq  = (i_t + temp);
 	//clog<< "Ieq is: "<<Ieq<<endl;
 	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
-	if(!nk->is_ground()&& nk->isS()!=Y){
+	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
 		//clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
 	}
-	if(!nl->is_ground()&& nl->isS()!=Y){
+	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] += -Ieq; 
 		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
 	}
@@ -861,10 +860,10 @@ void Circuit::modify_rhs_c_tr(Net *net, double * rhs, double *x){
 	 temp = net->value *(x[k]-x[l]);
 	
 	double Ieq  = i_t + temp;
-	if(!nk->is_ground()&& nk->isS()!=Y){
+	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
 	}
-	if(!nl->is_ground()&& nl->isS()!=Y){
+	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] -= Ieq; 
 	}
 }
@@ -938,11 +937,11 @@ void Circuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x){
 //#endif
 	Ieq  = i_t + temp;
 	//clog<<"Ieq: "<<Ieq<<endl;
-	if(nk->isS() !=Y && !nk->is_ground()){
+	if(nk->isS() !=X && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD circuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
 	}
-	if(nl->isS()!=Y && !nl->is_ground()){
+	if(nl->isS()!=X && !nl->is_ground()){
 		 rhs[l] += -Ieq; // VDD circuit
 		//clog<<*nl<<" "<<rhs[l]<<endl;
 	}
@@ -1005,11 +1004,11 @@ void Circuit::modify_rhs_l_tr(Net *net, double *rhs, double *x){
 #endif
 	Ieq  = i_t + temp;
 	//clog<<"Ieq: "<<Ieq<<endl;
-	if(nk->isS() !=Y && !nk->is_ground()){
+	if(nk->isS() !=X && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD circuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
 	}
-	if(nl->isS()!=Y && !nl->is_ground()){
+	if(nl->isS()!=X && !nl->is_ground()){
 		 rhs[l] += -Ieq; // VDD circuit
 		//clog<<*nl<<" "<<rhs[l]<<endl;
 	}
@@ -1020,12 +1019,12 @@ void Circuit::stamp_current(double * b, Net * net){
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 
-	if( !nk->is_ground() && nk->isS()!=Y){// && 
+	if( !nk->is_ground() && nk->isS()!=X){// && 
 		size_t k = nk->rid;
 		b[k] += -net->value;
 		//clog<<"b: "<<k<<" "<<-net->value<<endl;
 	}
-	if( !nl->is_ground() && nl->isS() !=Y){// &&
+	if( !nl->is_ground() && nl->isS() !=X){// &&
 		size_t l = nl->rid;
 		b[l] +=  net->value;
 		//clog<<"b: "<<l<<" "<<-net->value<<endl;
@@ -1038,13 +1037,13 @@ void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	//clog<<"current: "<<current<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
-	if( !nk->is_ground()&& nk->isS()!=Y) { 
+	if( !nk->is_ground()&& nk->isS()!=X) { 
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -net->value;//current;
 		//clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
-	if( !nl->is_ground() && nl->isS()!=Y) {
+	if( !nl->is_ground() && nl->isS()!=X) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  net->value;// current;
@@ -1067,7 +1066,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 		//clog<<"current: "<<current<<endl;
 		Node * nk = net->ab[0]->rep;
 		Node * nl = net->ab[1]->rep;
-		if( !nk->is_ground()&& nk->isS()!=Y) { 
+		if( !nk->is_ground()&& nk->isS()!=X) { 
 			size_t k = nk->rid;
 			//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 			//clog<<"time, k, b bef: "<<time<<" "<<k<<" "<<b[k]<<endl;
@@ -1075,7 +1074,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			bp[k] = b[k];
 			//clog<<"time, k, b: "<<time <<" "<<k<<" "<<b[k]<<endl;
 		}
-		if( !nl->is_ground() && nl->isS()!=Y) {
+		if( !nl->is_ground() && nl->isS()!=X) {
 			size_t l = nl->rid;
 			//clog<<"time, l, b bef: "<<time<<" "<<l<<" "<<b[l]<<endl;
 			//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
@@ -1235,25 +1234,21 @@ void Circuit::make_A_symmetric(double *b){
 
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
-           assert( fzero((*it)->value) == false );
+	   if(fzero((*it)->value)) continue;
+           //assert( fzero((*it)->value) == false );
            if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
+	   cout<<"symmetric net: "<<*(*it)<<endl;
            // node p points to X node
-           if((*it)->ab[0]->rep->isS()==X && ((*it)->ab[0]->rep->nbr[TOP]!=NULL && 
-                (*it)->ab[0]->rep->nbr[TOP]->type==INDUCTANCE)){
+           if((*it)->ab[0]->rep->isS()==X){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
            } 
-           else if((*it)->ab[1]->rep->isS()==X && ((*it)->ab[1]->rep->nbr[TOP]!=NULL && 
-                (*it)->ab[1]->rep->nbr[TOP]->type==INDUCTANCE)){
+           else if((*it)->ab[1]->rep->isS()==X){
               p = (*it)->ab[1]->rep; q = (*it)->ab[0]->rep;
            }           
-           r = p->nbr[TOP]->ab[0]->rep;
-           if(r->isS()!=Y) 
-              r = p->nbr[TOP]->ab[1]->rep;
-
            size_t id = q->rid;
            double G = 1.0 / (*it)->value;
            
-           b[id] += r->value * G;
+           b[id] += p->value * G;
         }
 }
 
@@ -1266,13 +1261,13 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
            assert( fzero((*it)->value) == false );
-           if(!((*it)->ab[0]->rep->isS()==Y || (*it)->ab[1]->rep->isS()==Y)) continue;
+           if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
            //clog<<"net: "<<*(*it)<<endl;
-           // node p points to Y node
-           if((*it)->ab[0]->rep->isS()==Y){
+           // node p points to X node
+           if((*it)->ab[0]->rep->isS()==X){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
            } 
-           else if((*it)->ab[1]->rep->isS()==Y ){
+           else if((*it)->ab[1]->rep->isS()==X ){
               p = (*it)->ab[1]->rep; q = (*it)->ab[0]->rep;
            }           
            //clog<<"p and q: "<<*p<<" "<<*q<<endl;
