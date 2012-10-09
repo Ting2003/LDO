@@ -62,8 +62,7 @@ int main(int argc, char * argv[]){
 		ckt->solve_DC();
 		double max_IRdrop = ckt->locate_maxIRdrop();
 			
-		clog<<"max IRdrop is: "<<max_IRdrop<<endl;
-		
+		clog<<"max IRdrop is: "<<max_IRdrop<<endl;	
 		ckt->mark_special_nodes();
 		double special_IRdrop = ckt->locate_special_maxIRdrop();
 		clog<<"special IRdrop is: "<<special_IRdrop<<endl;

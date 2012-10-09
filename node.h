@@ -29,7 +29,6 @@ public:
 	int get_layer() const;
 
 	int isS() const;
-	bool isX() const;
 	bool is_ground() const;
 
 	double get_value() const;
@@ -66,10 +65,9 @@ private:
 	//vector<size_t> blocklist;	// belongs to which block
 	//vector<size_t> id_in_block;	// local index inside block	
 };      	
-inline bool Node::isX() const{return flag;}
 inline int Node::isS() const{return flag;}
-inline void Node::disableX() {flag = false;}
-inline void Node::enableX() {flag = true;}
+inline void Node::disableX() {flag = -1;}
+inline void Node::enableX() {flag = 1;}
 
 
 //inline bool Node::is_ground() const{return name == "0";}

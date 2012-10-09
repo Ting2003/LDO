@@ -52,6 +52,9 @@ Circuit::Circuit(string _name):name(_name),
 
 // Trick: do not release memory to increase runtime
 Circuit::~Circuit(){
+	pad_set.clear();
+	special_nodes.clear();
+	map_node_pt.clear();
 	for(size_t i=0;i<nodelist.size();i++) delete nodelist[i];
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
@@ -2105,33 +2108,42 @@ void Circuit::relocate_pads_graph(){
 		build_graph();
 		// find control nodes for each pad
 		extract_pads(pad_number);
+		clog<<"after extract_pads."<<endl;
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(ref_drop_vec, i);
+		clog<<"after update pad control nodes. "<<endl;
 		//print_all_control_nodes();	
 		if(i>=6)
 			dynamic_update_violate_ref(ref_drop_vec);
 		// find new point for all pads	
-		dist = update_pad_pos_all(ref_drop_vec);		
+		dist = update_pad_pos_all(ref_drop_vec);
+		clog<<"after update pad pos all. "<<endl;		
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0)
 			extract_min_max_pads(ref_drop_vec);
+		clog<<"after extract min max pads. "<<endl;
 		// update the old pad set value
 		assign_pad_set(pad_set_old);
+		clog<<"after assign pad set. "<<endl;
 		
-		move_violate_pads(ref_drop_vec);	
+		move_violate_pads(ref_drop_vec);
+		clog<<"after move violate pads. "<<endl;	
 		
 		// actual move pads into the new spots
 		//project_pads();
 
 		// move pads according to graph contraints
 		graph_move_pads(ref_drop_vec);	
+		clog<<"after graph move pads. "<<endl;
 		
 		clear_flags();
+		clog<<"after clear flags. "<<endl;
 		// actual move pads into the new spots
 		// project_pads();
 		
 		resolve_direct();
+		clog<<"after resolve direct. "<<endl;
 		//resolve_queue(origin_pad_set);
 		//solve_GS();
 		//clog<<"max_IRS is: "<<max_IRS<<endl<<endl;
@@ -2345,7 +2357,7 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 		nd_new = get_node_pt(pt_name);
 		//clog<<"has new node: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 		// if this node is not occupied by pad
-		if(!nd_new->isX()){
+		if(nd_new->isS()!=X){
 			nd->disableX();
 			nd->value = 0;
 			nd_new->enableX();
@@ -2374,7 +2386,7 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 				nd_new = get_node_pt(pt_name);
 
 				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
-				if(!nd_new->isX()){
+				if(nd_new->isS()!=X){
 					nd->disableX();
 					nd->value = 0;
 					nd_new->enableX();
@@ -2714,13 +2726,14 @@ void Circuit::move_violate_pads(vector<double> ref_drop_vec){
 void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 	Node *new_pad;
 	int id=0;
-	do{
+	for(size_t i=0;i<5;i++){
+	//do{
 		id = locate_max_drop_pad(ref_drop_vec);
 		if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		//clog<<endl<<"pad: "<<*pad<<endl;
+		clog<<endl<<"pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
 
 		//bool flag = print_flag(pad);
@@ -2739,7 +2752,7 @@ void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();
-	}while(id != -1);
+	}//while(id != -1);
 }
 
 // locate id that has minimum value and not visited or fixed 
@@ -2952,6 +2965,7 @@ void Circuit::build_graph(){
 		flag_nbr = false;
 		pad = pad_set[i];
 		pad_nbr = find_nbr_pad(pad);
+		//cout<<"pad, nbr: "<<*pad->node<<" "<<*pad_nbr->node<<endl;
 		for(size_t j=0;j<pad_nbr->nbrs.size();j++){
 			if(pad_nbr->nbrs[j]->node->name== pad->node->name)
 				flag_pad = true;
@@ -2970,9 +2984,9 @@ void Circuit::build_graph(){
 	}
 	/*for(size_t i=0;i<pad_set.size();i++){
 		Pad *pad = pad_set[i];
-		clog<<"pad: "<<*pad->node<<endl;
+		cout<<"pad: "<<*pad->node<<endl;
 		for(size_t j=0;j<pad->nbrs.size();j++){
-			clog<<"nbr: "<<*pad->nbrs[j]->node<<endl;
+			cout<<"nbr: "<<*pad->nbrs[j]->node<<endl;
 		}
 	}*/
 }
@@ -3098,7 +3112,7 @@ void Circuit::build_pad_set(){
 	pad_set.resize(0);
 	//static Pad pad_a;
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->isX()){
+		if(nodelist[i]->isS()==X){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
 			pad_set.push_back(pad_ptr);
