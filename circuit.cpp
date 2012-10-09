@@ -1282,7 +1282,8 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
 	int type = RESISTOR;
 	NetList & ns = net_set[type];
 	NetList::iterator it;
-	Node *p, *q;
+	Node *p = NULL;
+	Node *q = NULL;
 
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
@@ -2092,11 +2093,11 @@ void Circuit::relocate_pads_graph(){
 	
 	// build up the map for nodes in PAD layer
 	build_map_node_pt();
-	mark_special_nodes();
 	
 	vector<double> ref_drop_vec;
 	//print_pad_set();
 	for(size_t i=0;i<12;i++){
+		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set.resize(pad_set.size());
 		assign_pad_set(origin_pad_set);
@@ -2497,7 +2498,7 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 	temp_flag.resize(pad_set.size());
 	for(size_t i=0;i<temp_flag.size();i++)
 		temp_flag[i] = false;
-	size_t id_minpad;
+	size_t id_minpad = 0;
 	double drop = 0;
 	double avg_ref = calc_avg_ref(ref_drop_vec);
 	double avg_drop = VDD - avg_ref;
@@ -2938,7 +2939,6 @@ void Circuit::resolve_direct(){
 void Circuit::build_graph(){
 	Pad *pad;
 	Pad *pad_nbr;
-	Node *nd;
 	bool flag_pad = false;
 	bool flag_nbr = false;
 	// clear content
@@ -3077,7 +3077,6 @@ double Circuit::get_distance(Node *na, Node *nb){
 }
 
 void Circuit::clear_pad_control_nodes(){
-	Node *nd;
 	for(size_t i=0;i<pad_set.size();i++){
 		pad_set[i]->control_nodes.clear();
 	}
