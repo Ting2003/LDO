@@ -222,9 +222,15 @@ void Circuit::solve(Tran &tran){
 }
 
 void Circuit::solve_DC(){
+   for(size_t i=0;i<nodelist.size()-1;i++){
+	nodelist[i]->rep = nodelist[i];
+   }
    solve_init();
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
+   for(size_t i=0;i<nodelist.size()-1;i++){
+	cout<<"id, node, rep: "<<nodelist[i]->rid<<" "<<*nodelist[i]<<" "<<*nodelist[i]->rep<<endl;
+   }
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
@@ -237,6 +243,7 @@ void Circuit::solve_DC(){
    stamp_by_set(A, bp);
    make_A_symmetric(bp);
    A.set_row(n);
+   cout<<endl<<A<<endl;
    Algebra::solve_CK(A, L, x, b, cm);
    A.clear();
    //return;
@@ -458,7 +465,7 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 			for(size_t i=0;i<ns.size();i++){
 				if(fzero(ns[i]->value))
 					continue;
-				//cout<<"net: "<<*ns[i]<<endl;
+				cout<<"net: "<<*ns[i]<<endl;
 				//assert( fzero(ns[i]->value) == false );
 				stamp_resistor(A, ns[i]);
 			}
@@ -606,20 +613,20 @@ void Circuit::stamp_resistor(Matrix & A, Net * net){
         if( !nk->is_ground()&& nk->isS()!=X) {
            A.push_back(k,k, G);
 
-           //cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+           cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
            if(!nl->is_ground() &&nl->isS()!=X &&(k > l)){
                     A.push_back(k,l,-G);
 
-                  //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+                  cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
 	if( !nl->is_ground() && nl->isS() !=X) {
 		A.push_back(l,l, G);
-                //cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+                cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 		if(!nk->is_ground()&& nk->isS()!=X && l > k){
 			A.push_back(l,k,-G);
-		//cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -2461,8 +2468,8 @@ void Circuit::rebuild_voltage_nets(){
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
-	Node add_node_temp;
-	Node add_node_new;
+	int type_1 = RESISTOR;
+	Node *add_node_new;
 	stringstream sstream;
 	//Node *nd_ori=NULL;
 	//Node *nd_new=NULL;
@@ -2470,10 +2477,6 @@ void Circuit::rebuild_voltage_nets(){
 	Node *add_node=NULL;
 	vector<Net*> rm_net;
 	
-	for(int type = RESISTOR; type <= INDUCTANCE; type++)
-	for(size_t i=0;i<net_set[type].size();i++)
-		cout<<"id, orig net: "<<net_set[type][i]->id<<" "<<*net_set[type][i]<<endl;
-	cout<<endl;
 	// delete all origin pad set
 	// and build nets of new pad set
 	for(size_t i=0;i<origin_pad_set.size();i++){
@@ -2498,53 +2501,54 @@ void Circuit::rebuild_voltage_nets(){
 					resistor_net = net->ab[0]->nbr[BOTTOM];
 					rm_net.push_back(resistor_net);
 					index_rm_resistor_net = resistor_net->id;
+					net->ab[0]->nbr[BOTTOM] = NULL;
+					resistor_net->ab[0]->nbr[TOP] = NULL;
 				}
 				else if(net->ab[1]->name == rm_node->name){
 					resistor_net = net->ab[1]->nbr[BOTTOM];
 					rm_net.push_back(resistor_net);
 					index_rm_resistor_net = resistor_net->id;
+					net->ab[1]->nbr[TOP] = NULL;
+					resistor_net->ab[0]->nbr[TOP] = NULL;
 				}
-
-				clog<<"rm net: "<<*net<<" "<<index_rm_net<< endl;
-				clog<<"rm resistor net: "<<*resistor_net<<" "<<index_rm_resistor_net<<endl;
 				break;
 			}
 		}
 		// stores the X node
-		add_node_new = *add_node;
-		add_node_temp = *add_node;
+		// new node id and rep  =  old one
+		add_node_new = new Node(*add_node);
+		add_node_new->enableX();
 
 		// modify add_node_new with _X_xxxx
-		sstream<<"_X_"<<add_node_new.name;
-		add_node_new.name = sstream.str();
+		sstream<<"_X_"<<add_node_new->name;
+		add_node_new->name = sstream.str();
 
-		sstream.str("");		
-		sstream<<"n"<<rm_node->pt.z<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y;
-
-		rm_node->name = sstream.str();
-
-		add_net = new Net(VOLTAGE, VDD, &add_node_new, 
+		add_net = new Net(VOLTAGE, VDD, add_node_new, 
 				nodelist[nodelist.size()-1]);
 		add_net->id = index_rm_net;
 
 		net_set[type][index_rm_net] = add_net;
-		//netlist[index_rm_net] = add_net;
 
-
-		add_resistor_net = new Net(RESISTOR, 0, &add_node_temp, add_node);
+		add_resistor_net = new Net(RESISTOR, 0, add_node, add_node_new);
 		add_resistor_net->id = index_rm_resistor_net;
-		net_set[type][index_rm_resistor_net] = add_resistor_net;
-		//netlist[index_rm_resistor_net] = add_resistor_net;
+
+		// modify the neighboring nets
+		add_net->ab[0]->nbr[BOTTOM] = add_resistor_net;
+		add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
+	
+		type_1 = RESISTOR;
+		net_set[type_1][index_rm_resistor_net] = add_resistor_net;
+
+		// substitue the new pos with the old one
+		// may need to free rm node
+		nodelist[rm_node->rid] = add_node_new;
 	}
 
 	for(size_t i=0;i<rm_net.size();i++){
 		delete rm_net[i];
 	}
 	origin_pad_set.clear();
-
-	for(int type = RESISTOR; type <= INDUCTANCE; type++)
-	for(size_t i=0;i<net_set[type].size();i++)
-		cout<<"id, temp net: "<<net_set[type][i]->id<<" "<<*net_set[type][i]<<endl;
+	//free(rm_node);
 }
 
 void Circuit::print_pad_set(){
@@ -2976,16 +2980,7 @@ void Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
 	rebuild_voltage_nets();	
-	Net *net;
-
-	cout<<endl;
-	// print out the new nets
-	for(int type = RESISTOR; type <= INDUCTANCE; type++){
-		for(size_t i=0;i<net_set[type].size();i++){
-			net = net_set[type][i];
-			cout<<"id, net: "<<net->id<<" "<<*net<<endl;	
-		}
-	}	
+	Net *net;	
 
 	solve_DC();
 	//solve_LU_core();
