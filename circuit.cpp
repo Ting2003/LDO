@@ -170,8 +170,11 @@ void Circuit::solve_init(){
 	Node *p=NULL;
 	for(size_t i=0,nr=0;i<size;i++){
 		p=nodelist[i];
+		p->id = i;
 		// set the representative
 		Net * net = p->nbr[TOP];
+		//if(net!=NULL)
+			//cout<<"p, net: "<<*p<<" "<<p->isS()<<" "<<*net<<endl;
 		if( p->isS()== X) VDD = p->get_value();
 		// test short circuit
 		if( p->isS() !=X && // X must be representative 
@@ -222,15 +225,19 @@ void Circuit::solve(Tran &tran){
 }
 
 void Circuit::solve_DC(){
+   replist.clear();
    for(size_t i=0;i<nodelist.size()-1;i++){
 	nodelist[i]->rep = nodelist[i];
    }
    solve_init();
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
+   
+   cout<<"========nodelist: ====="<<endl;
    for(size_t i=0;i<nodelist.size()-1;i++){
-	cout<<"id, node, rep: "<<nodelist[i]->rid<<" "<<*nodelist[i]<<" "<<*nodelist[i]->rep<<endl;
+	cout<<"id, isS, node, rep: "<<nodelist[i]->rid<<" "<<nodelist[i]->rep->isS()<<" "<<*nodelist[i]<<" "<<*nodelist[i]->rep<<endl;
    }
+   //cout<<nodelist<<endl;
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
@@ -243,7 +250,10 @@ void Circuit::solve_DC(){
    stamp_by_set(A, bp);
    make_A_symmetric(bp);
    A.set_row(n);
-   cout<<endl<<A<<endl;
+   //cout<<endl<<A<<endl;
+   //cout<<"replist size: "<<n<<endl;
+   //for(size_t i=0;i<n;i++)
+	//cout<<"i, bp: "<<i<<" "<<bp[i]<<endl;
    Algebra::solve_CK(A, L, x, b, cm);
    A.clear();
    //return;
@@ -254,7 +264,7 @@ void Circuit::solve_DC(){
    for(size_t i=0;i<nodelist.size();i++){
 	nodelist[i]->value = nodelist[i]->rep->value;
    }
-   //clog<<nodelist<<endl;
+   clog<<nodelist<<endl;
 }
 
 // stamp the matrix and solve
@@ -465,7 +475,7 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 			for(size_t i=0;i<ns.size();i++){
 				if(fzero(ns[i]->value))
 					continue;
-				cout<<"net: "<<*ns[i]<<endl;
+				//cout<<"net: "<<*ns[i]<<endl;
 				//assert( fzero(ns[i]->value) == false );
 				stamp_resistor(A, ns[i]);
 			}
@@ -610,23 +620,25 @@ void Circuit::stamp_resistor(Matrix & A, Net * net){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 	G = 1./net->value;
+	//cout<<"nk, nl: "<<nk->isS()<<" "<<nl->isS()<<endl;
         if( !nk->is_ground()&& nk->isS()!=X) {
            A.push_back(k,k, G);
 
-           cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+           //cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
            if(!nl->is_ground() &&nl->isS()!=X &&(k > l)){
                     A.push_back(k,l,-G);
 
-                  cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+                  //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
 	if( !nl->is_ground() && nl->isS() !=X) {
+		//cout<<"nb: "<<*nl<<" "<<nl->isS()<<" "<<X<<endl;
 		A.push_back(l,l, G);
-                cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+                //cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 		if(!nk->is_ground()&& nk->isS()!=X && l > k){
 			A.push_back(l,k,-G);
-		cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		//cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -1056,19 +1068,19 @@ void Circuit::modify_rhs_l_tr(Net *net, double *rhs, double *x){
 }
 // stamp a current source
 void Circuit::stamp_current(double * b, Net * net){
-	//clog<<"net: "<<*net<<endl;
+	//cout<<"net: "<<*net<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 
 	if( !nk->is_ground() && nk->isS()!=X){// && 
 		size_t k = nk->rid;
 		b[k] += -net->value;
-		//clog<<"b: "<<k<<" "<<-net->value<<endl;
+		//cout<<"b: "<<k<<" "<<-net->value<<endl;
 	}
 	if( !nl->is_ground() && nl->isS() !=X){// &&
 		size_t l = nl->rid;
 		b[l] +=  net->value;
-		//clog<<"b: "<<l<<" "<<-net->value<<endl;
+		//cout<<"b: "<<l<<" "<<-net->value<<endl;
 	}
 }
 
@@ -1276,6 +1288,7 @@ void Circuit::make_A_symmetric(double *b){
 	   if(fzero((*it)->value)) continue;
            //assert( fzero((*it)->value) == false );
            if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
+	   if((*it)->ab[0]->rep->isS()==X && (*it)->ab[1]->rep->isS()==X)  continue;
 	   //cout<<"symmetric net: "<<*(*it)<<endl;
            // node p points to X node
            if((*it)->ab[0]->rep->isS()==X){
@@ -2145,7 +2158,6 @@ void Circuit::relocate_pads_graph(){
 		// project_pads();
 		
 		resolve_direct();
-		clog<<"after resolve direct. "<<endl;
 		//resolve_queue(origin_pad_set);
 		//solve_GS();
 		//clog<<"max_IRS is: "<<max_IRS<<endl<<endl;
@@ -2310,10 +2322,7 @@ void Circuit::project_pads(){
 		// pad_newy)
 		
 		new_pad = pad_projection(pad_ptr, pad);
-		if(pad->name == "n0_135_104" ||
-			pad->name == "n0_255_159"||
-			pad->name == "n0_30_74")
-			clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 		// update pad information
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();	
@@ -2362,13 +2371,13 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(pt_name)){
 		nd_new = get_node_pt(pt_name);
-		// clog<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
+		 cout<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
 			nd->disableX();
 			nd->value = 0;
-			nd_new->enableX();
-			nd_new->value = VDD;
+			//nd_new->enableX();
+			//nd_new->value = VDD;
 			return nd_new;
 		}
 	}
@@ -2396,8 +2405,8 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 				if(nd_new->isS()!=X){
 					nd->disableX();
 					nd->value = 0;
-					nd_new->enableX();
-					nd_new->value = VDD;
+					//nd_new->enableX();
+					//nd_new->value = VDD;
 					return_flag = true;
 					break;
 				}
@@ -2439,6 +2448,7 @@ void Circuit::build_map_node_pt(){
 	}
 }
 
+// need to be modified: - rebuild voltage nets
 void Circuit::restore_pad_set(vector<Node*>&pad_set_old){
 	Node *nd_old=NULL;
 	Node *nd_new=NULL;
@@ -2452,8 +2462,8 @@ void Circuit::restore_pad_set(vector<Node*>&pad_set_old){
 			//*nd_old<<" "<<*nd_new<<endl;
 			nd_new->disableX();
 			nd_new->value = 0;
-			nd_old->enableX();
-			nd_old->value = VDD;		
+			//nd_old->enableX();
+			//nd_old->value = VDD;		
 		}
 		pad_set[i]->node = nd_old;	
 	}
@@ -2476,6 +2486,10 @@ void Circuit::rebuild_voltage_nets(){
 	Node *rm_node=NULL;
 	Node *add_node=NULL;
 	vector<Net*> rm_net;
+
+	/*for(size_t i=0;i<origin_pad_set.size();i++){
+		cout<<"add: "<<*pad_set[i]->node<<endl;
+	}*/
 	
 	// delete all origin pad set
 	// and build nets of new pad set
@@ -2483,9 +2497,10 @@ void Circuit::rebuild_voltage_nets(){
 		rm_node = origin_pad_set[i];
 		//rm_node = pad_set_old[i];
 		add_node = pad_set[i]->node;
-		if(rm_node == add_node)
+		if(rm_node == add_node || add_node->isS()==X)
 			continue;
 
+		cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
 			//cout<<"id, net: "<<net->id<<" "<<*net<<endl;
@@ -2518,6 +2533,7 @@ void Circuit::rebuild_voltage_nets(){
 		// new node id and rep  =  old one
 		add_node_new = new Node(*add_node);
 		add_node_new->enableX();
+		add_node_new->value = VDD;
 
 		// modify add_node_new with _X_xxxx
 		sstream<<"_X_"<<add_node_new->name;
@@ -2529,7 +2545,8 @@ void Circuit::rebuild_voltage_nets(){
 
 		net_set[type][index_rm_net] = add_net;
 
-		add_resistor_net = new Net(RESISTOR, 0, add_node, add_node_new);
+		double value = resistor_net->value;
+		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
@@ -2541,7 +2558,10 @@ void Circuit::rebuild_voltage_nets(){
 
 		// substitue the new pos with the old one
 		// may need to free rm node
-		nodelist[rm_node->rid] = add_node_new;
+		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node<<" "<<*add_node_new<<endl;
+		nodelist[rm_node->id] = add_node_new;
+		//cout<<"old_map name, and new: "<<*map_node_pt[rm_node->name]<<" "<<endl;
+		//map_node_pt[rm_node->name] = add_node_new->name;
 	}
 
 	for(size_t i=0;i<rm_net.size();i++){
@@ -2635,13 +2655,7 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 				//double ref_drop_value = ref_drop_vec[k];
 
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
-			if(min_pads[j]->name == "n0_135_104" ||
-			min_pads[j]->name == "n0_30_74"||
-			min_pads[j]->name == "n0_81_29" ||
-			min_pads[j]->name =="n0_186_47"||
-			min_pads[j]->name == "n0_255_59"||
-			min_pads[j]->name == "n0_67_148")
-			clog<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+				cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 
 				size_t m = id_minpad;
 				pad_set[m]->node->disableX();
@@ -2724,6 +2738,8 @@ void Circuit::extract_min_max_pads(vector<double> ref_drop_vec){
 				pad_ptr = pad_set[k];
 				//double ref_drop_value = ref_drop_vec[k];
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
+				
+				cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
 				pad_set[m]->node->value = 0;
@@ -2760,12 +2776,7 @@ void Circuit::move_violate_pads(vector<double> ref_drop_vec){
 		// if violate, move this pad
 		if(pad_ptr->violate_flag == true){
 			new_pad = pad_projection(pad_ptr, pad);
-			/*if(pad->name == "n0_135_104" ||
-			pad->name == "n0_255_159"||
-			pad->name == "n0_30_74")
-			clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;*/
-
-			//clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+			cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 			pad_ptr->node = new_pad;
 			pad_ptr->control_nodes.clear();
 			pad_ptr->visit_flag = true;
@@ -2785,6 +2796,8 @@ void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 		Node *pad = pad_ptr->node;
 		//clog<<endl<<"pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
+		
+		cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		//bool flag = print_flag(pad);
 		//if(flag == true || new_pad->name == "n0_86_30" || new_pad->name =="n0_477_17" || pad->name == "n0_477_17")
@@ -2979,6 +2992,8 @@ void Circuit::clear_flags(){
 void Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
+	cout<<endl;
+	cout<<"============ a new round ======"<<endl;
 	rebuild_voltage_nets();	
 	Net *net;	
 
@@ -3163,7 +3178,7 @@ void Circuit::build_pad_set(){
 		}
 	}
 	//for(size_t j=0;j<pad_set.size();j++)
-		//clog<<"pad: "<<*pad_set[j]->node<<endl;
+		//cout<<"pad: "<<*pad_set[j]->node<<endl;
 }
 
 void Circuit::print_pad_map(){

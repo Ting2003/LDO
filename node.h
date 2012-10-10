@@ -48,6 +48,7 @@ public:
 	Net * nbr[6];		// neighboring nets
 
 	size_t rid;		// id in rep_list
+	size_t id;		// id in nodelist
 	bool flag_visited;
 	//////// member and function for pad //////
 
@@ -67,7 +68,7 @@ private:
 };      	
 inline int Node::isS() const{return flag;}
 inline void Node::disableX() {flag = -1;}
-inline void Node::enableX() {flag = 1;}
+inline void Node::enableX() {flag = 0;}
 
 
 //inline bool Node::is_ground() const{return name == "0";}
