@@ -233,10 +233,10 @@ void Circuit::solve_DC(){
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
    
-   cout<<"========nodelist: ====="<<endl;
+   /*cout<<"========nodelist: ====="<<endl;
    for(size_t i=0;i<nodelist.size()-1;i++){
 	cout<<"id, isS, node, rep: "<<nodelist[i]->rid<<" "<<nodelist[i]->rep->isS()<<" "<<*nodelist[i]<<" "<<*nodelist[i]->rep<<endl;
-   }
+   }*/
    //cout<<nodelist<<endl;
    cm = &c;
    cholmod_start(cm);
@@ -2322,7 +2322,7 @@ void Circuit::project_pads(){
 		// pad_newy)
 		
 		new_pad = pad_projection(pad_ptr, pad);
-		cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		//cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 		// update pad information
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();	
@@ -2371,7 +2371,7 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(pt_name)){
 		nd_new = get_node_pt(pt_name);
-		 cout<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
+		 //cout<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
 			nd->disableX();
@@ -2432,11 +2432,11 @@ void Circuit::build_map_node_pt(){
 
 	Node *nd;
 	pair<string, Node*> pt_pair;
-	for(size_t i=0;i<replist.size();i++){
-		nd = replist[i];
+	for(size_t i=0;i<nodelist.size();i++){
+		nd = nodelist[i];
 		if(nd->get_layer()!=ref_layer)
 			continue;
-		if(nd->isS()==Z)
+		if(nd->isS()==Z || nd->isS() ==X)
 			continue;
 		stringstream sstream;
 		sstream<<ref_layer<<"_"<<nd->pt.x<<
@@ -2500,7 +2500,7 @@ void Circuit::rebuild_voltage_nets(){
 		if(rm_node == add_node || add_node->isS()==X)
 			continue;
 
-		cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
+		//cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
 			//cout<<"id, net: "<<net->id<<" "<<*net<<endl;
@@ -2535,6 +2535,7 @@ void Circuit::rebuild_voltage_nets(){
 		add_node_new->enableX();
 		add_node_new->value = VDD;
 
+		sstream.str("");
 		// modify add_node_new with _X_xxxx
 		sstream<<"_X_"<<add_node_new->name;
 		add_node_new->name = sstream.str();
@@ -2560,8 +2561,6 @@ void Circuit::rebuild_voltage_nets(){
 		// may need to free rm node
 		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node<<" "<<*add_node_new<<endl;
 		nodelist[rm_node->id] = add_node_new;
-		//cout<<"old_map name, and new: "<<*map_node_pt[rm_node->name]<<" "<<endl;
-		//map_node_pt[rm_node->name] = add_node_new->name;
 	}
 
 	for(size_t i=0;i<rm_net.size();i++){
@@ -2655,7 +2654,7 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 				//double ref_drop_value = ref_drop_vec[k];
 
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
-				cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 
 				size_t m = id_minpad;
 				pad_set[m]->node->disableX();
@@ -2739,7 +2738,7 @@ void Circuit::extract_min_max_pads(vector<double> ref_drop_vec){
 				//double ref_drop_value = ref_drop_vec[k];
 				new_pad = pad_projection(pad_ptr, min_pads[j]);
 				
-				cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
 				pad_set[m]->node->value = 0;
@@ -2776,7 +2775,7 @@ void Circuit::move_violate_pads(vector<double> ref_drop_vec){
 		// if violate, move this pad
 		if(pad_ptr->violate_flag == true){
 			new_pad = pad_projection(pad_ptr, pad);
-			cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+			//cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 			pad_ptr->node = new_pad;
 			pad_ptr->control_nodes.clear();
 			pad_ptr->visit_flag = true;
@@ -2797,7 +2796,7 @@ void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 		//clog<<endl<<"pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
 		
-		cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		//cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		//bool flag = print_flag(pad);
 		//if(flag == true || new_pad->name == "n0_86_30" || new_pad->name =="n0_477_17" || pad->name == "n0_477_17")
@@ -2992,8 +2991,8 @@ void Circuit::clear_flags(){
 void Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
-	cout<<endl;
-	cout<<"============ a new round ======"<<endl;
+	//cout<<endl;
+	//cout<<"============ a new round ======"<<endl;
 	rebuild_voltage_nets();	
 	Net *net;	
 

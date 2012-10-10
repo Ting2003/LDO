@@ -73,7 +73,7 @@ int main(int argc, char * argv[]){
 	        // after that, this circuit can be released
 		delete ckt;
 	}
-	tran.print_tr_nodes();
+	//tran.print_tr_nodes();
 
 	close_logfile();
 
