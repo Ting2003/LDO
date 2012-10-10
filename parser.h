@@ -34,7 +34,7 @@ private:
 	void try_change_via(Net *);
 
 	//void insert_net_node(string line);
-	void insert_net_node(char * line);
+	void insert_net_node(char * line, int *count);
 	void extract_node(char * str, Node & nd);
 	void update_node(Net * net);
 	void parse_dot(char *line, Tran &tran);

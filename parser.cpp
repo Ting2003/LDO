@@ -66,7 +66,7 @@ void Parser::extract_node(char * str, Node & nd){
 }
 
 // given a line, extract net and node information
-void Parser::insert_net_node(char * line){
+void Parser::insert_net_node(char * line, int *count){
 	char *chs, *saveptr;
 	const char* sep = " (),\n";
 	char sname[MAX_BUF];
@@ -136,6 +136,7 @@ void Parser::insert_net_node(char * line){
 	// create a Net
 	//Net * net = new Net(net_type, name, value, nd_ptr[0], nd_ptr[1]);
 	Net * net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
+	net->id = count[net_type] ++;
 	// assign pulse paramter for pulse input
 	chs = strtok_r(line, sep, &saveptr);
 	for(int i=0;i<3;i++)
@@ -332,6 +333,9 @@ int Parser::create_circuits(){
 void Parser::parse(char * filename, Tran & tran){
 	//filename = "../data/netlist_2M.txt";
 	this->filename = filename;
+	int count[6];
+	for(size_t i=0;i<6;i++)
+		count[i] = 0;
 	//clog<<"open "<<filename<<endl;
 
 	FILE * f;
@@ -357,7 +361,7 @@ void Parser::parse(char * filename, Tran & tran){
 		case 'C':
 		case 'l':
 		case 'L':
-			insert_net_node(line);
+			insert_net_node(line, count);
 			break;
 		case '.': // command
 			parse_dot(line, tran);	
