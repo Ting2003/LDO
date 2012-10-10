@@ -264,7 +264,7 @@ void Circuit::solve_DC(){
    for(size_t i=0;i<nodelist.size();i++){
 	nodelist[i]->value = nodelist[i]->rep->value;
    }
-   clog<<nodelist<<endl;
+   //clog<<nodelist<<endl;
 }
 
 // stamp the matrix and solve
@@ -2157,7 +2157,9 @@ void Circuit::relocate_pads_graph(){
 		// actual move pads into the new spots
 		// project_pads();
 		
-		resolve_direct();
+		double max_IR = resolve_direct();
+		if(max_IR ==0)
+			break;
 		//resolve_queue(origin_pad_set);
 		//solve_GS();
 		//clog<<"max_IRS is: "<<max_IRS<<endl<<endl;
@@ -2167,6 +2169,7 @@ void Circuit::relocate_pads_graph(){
 	origin_pad_set.clear();
 	pad_set_old.clear();
 	//print_pad_set();
+	cout<<nodelist<<endl;
 }
 
 void Circuit::assign_pad_set(vector<Node*>&pad_set_old){
@@ -2786,8 +2789,8 @@ void Circuit::move_violate_pads(vector<double> ref_drop_vec){
 void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 	Node *new_pad;
 	int id=0;
-	for(size_t i=0;i<5;i++){
-	//do{
+	//for(size_t i=0;i<5;i++){
+	do{
 		id = locate_max_drop_pad(ref_drop_vec);
 		if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
@@ -2814,7 +2817,7 @@ void Circuit::graph_move_pads(vector<double> ref_drop_vec){
 
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();
-	}//while(id != -1);
+	}while(id != -1);
 }
 
 // locate id that has minimum value and not visited or fixed 
@@ -2988,7 +2991,7 @@ void Circuit::clear_flags(){
 	}
 }
 
-void Circuit::resolve_direct(){
+double Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
 	//cout<<endl;
@@ -3002,7 +3005,8 @@ void Circuit::resolve_direct(){
 	//double max_IRS = locate_special_maxIRdrop();
 	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
 	t2 = clock();
-		clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
+	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
+	return max_IR;
 }
 
 // build graph for pad nodes
