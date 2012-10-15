@@ -222,6 +222,12 @@ void Circuit::count_merge_nodes(){
 
 void Circuit::solve(Tran &tran){
 	solve_LU(tran);
+	// cout<<nodelist<<endl;
+	double max_IRdrop = locate_maxIRdrop_tr(tran);
+			
+	clog<<"max IRdrop for tr is: "<<max_IRdrop<<endl;	
+	clog<<endl;
+
 }
 
 void Circuit::solve_DC(){
@@ -264,7 +270,14 @@ void Circuit::solve_DC(){
    for(size_t i=0;i<nodelist.size();i++){
 	nodelist[i]->value = nodelist[i]->rep->value;
    }
-   //clog<<nodelist<<endl;
+   cout<<nodelist<<endl;
+
+   double max_IRdrop = locate_maxIRdrop();
+			
+   clog<<"max IRdrop is: "<<max_IRdrop<<endl;	
+   double special_IRdrop = locate_special_maxIRdrop();
+   clog<<"special IRdrop is: "<<special_IRdrop<<endl;
+   clog<<endl;
 }
 
 // stamp the matrix and solve
@@ -413,7 +426,7 @@ void Circuit::solve_LU_core(Tran &tran){
       //iter ++;
    }
    save_ckt_nodes_to_tr(tran);
-   //print_ckt_nodes(tran);
+   print_ckt_nodes(tran);
    //release_tr_nodes(tran);
    release_ckt_nodes();
    cholmod_free_dense(&b, cm);
@@ -2064,6 +2077,25 @@ void Circuit::print_ckt_nodes(Tran &tran){
 		}
 		cout<<"END: "<<ckt_nodes[i].node->name<<endl;
 	}
+}
+
+// calculate maximum IR drop from the observation nodelist
+double Circuit::locate_maxIRdrop_tr(Tran &tran){
+	double time = 0;
+	size_t j=0;
+	double max_IRdrop = 0;
+	//clog<<"ckt, nodes: "<<get_name()<<" "<<ckt_nodes.size()<<endl;
+	for(size_t i=0;i<ckt_nodes.size();i++){
+		time = 0;
+		j=0;
+		while(time < tran.tot_t){// && iter <1){
+			if(VDD - ckt_nodes[i].value[j] > max_IRdrop)
+				max_IRdrop = VDD - ckt_nodes[i].value[j];
+			j++;
+			time += tran.step_t;
+		}
+	}
+	return max_IRdrop;
 }
 
 void Circuit::save_ckt_nodes_to_tr(Tran &tran){

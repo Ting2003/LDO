@@ -92,6 +92,7 @@ public:
 
 	////// new functions for pad /////
 	double locate_maxIRdrop();
+	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
 	void build_pad_set();
