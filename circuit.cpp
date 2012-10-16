@@ -362,7 +362,7 @@ void Circuit::solve_LU_core(Tran &tran){
    for(size_t i=0;i<tran.nodes.size();i++){
 	  //tran.nodes[i].node = get_node(tran.nodes[i].name);
 	  
-	   if(tran.nodes[i].node == NULL){
+	   if(get_node(tran.nodes[i].name) == NULL){
 		 continue;
 	   }
 	   if(!tran.nodes[i].node->rep->is_ground()){
