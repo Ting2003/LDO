@@ -361,6 +361,7 @@ void Circuit::solve_LU_core_all(Tran &tran){
  
    // push all nodes into tran node list
    tran.nodes.clear();
+   pg.node_set_x.clear();
    for(size_t i=0;i<replist.size();i++){
 	tran.nodes[i].node = replist[i];
 	tran.nodes[i].name = replist[i]->name;
