@@ -30,5 +30,7 @@ public:
 	double data; // stores the maximum diff
 	double ratio;
 	bool violate_flag;
+	// extracted current of each time step
+	vector<double> current;
 };
 #endif

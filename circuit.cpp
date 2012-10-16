@@ -280,8 +280,8 @@ void Circuit::solve_DC(){
    clog<<endl;
 }
 
-// stamp the matrix and solve
-void Circuit::solve_LU_core(Tran &tran){
+// stamp the matrix and solve for all nodes
+void Circuit::solve_LU_core_all(Tran &tran){
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
    cm = &c;
@@ -300,10 +300,6 @@ void Circuit::solve_LU_core(Tran &tran){
    //return;
    xp = static_cast<double *> (x->x);
     
-   // print out dc solution
-   //cout<<nodelist<<endl;
-   //return; // return after dc solution
-
    // A is already being cleared   
    size_t i=0;
    for(i=0;i<replist.size();i++)
@@ -354,13 +350,142 @@ void Circuit::solve_LU_core(Tran &tran){
    // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
-   //pg.node_set_b.clear();
-   //pg.node_set_x.clear();
-   // push rhs node into node_set b
    for(size_t i=0;i<n;i++){
 	   if(bnewp[i] !=0){
 		   pg.node_set_b.push_back(i);
-		   //cout<<"push b: "<<i<<endl;
+	  }
+   }
+
+   // push back all nodes in output list
+   size_t id;
+ 
+   // push all nodes into tran node list
+   tran.nodes.clear();
+   for(size_t i=0;i<replist.size();i++){
+	tran.nodes[i].node = replist[i];
+	tran.nodes[i].name = replist[i]->name;
+	id = replist[i]->rid;
+	pg.node_set_x.push_back(id);
+   }
+   
+   map_node.clear();
+   // get path_b, path_x, len_path_b, len_path_x
+   build_path_graph();
+
+   s_col_FFS = new int [len_path_b];
+   s_col_FBS = new int [len_path_x];
+   find_super();
+   solve_eq_sp(xp);
+ 
+   //save_tr_nodes(tran, xp);
+   save_ckt_nodes(xp);
+   time += tran.step_t;
+   // then start other iterations
+   while(time < tran.tot_t){// && iter < 0){
+	for(size_t i=0;i<n;i++)
+		bnewp[i] = bp[i];
+      // only stamps if net current changes
+      // set bp into last state
+      //stamp_current_tr(bnewp, tran, time);
+      stamp_current_tr_1(bp, bnewp, time);
+     // get the new bnewp
+      modify_rhs_tr(bnewp, xp); 
+	
+      solve_eq_sp(xp); 
+
+      //save_tr_nodes(tran, xp);
+      save_ckt_nodes(xp);
+      time += tran.step_t;
+   }
+   save_ckt_nodes_to_tr(tran);
+   print_ckt_nodes(tran);
+   //release_tr_nodes(tran);
+   release_ckt_nodes();
+   cholmod_free_dense(&b, cm);
+   cholmod_free_dense(&bnew, cm);
+   cholmod_free_factor(&L, cm);
+   cholmod_free_dense(&x, cm);
+   cholmod_finish(&c);
+   
+   delete [] s_col_FFS;
+   delete [] s_col_FBS;
+}
+
+
+
+// stamp the matrix and solve
+void Circuit::solve_LU_core(Tran &tran){
+   size_t n = replist.size();	// replist dosn't contain ground node
+   if( n == 0 ) return;		// No node    
+   cm = &c;
+   cholmod_start(cm);
+   cm->print = 5;
+
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+
+   Matrix A;
+   stamp_by_set(A, bp);
+   make_A_symmetric(bp);
+   A.set_row(n);
+   Algebra::solve_CK(A, L, x, b, cm);
+   //return;
+   xp = static_cast<double *> (x->x);
+    
+   // A is already being cleared   
+   size_t i=0;
+   for(i=0;i<replist.size();i++)
+	bp[i] = 0;
+   link_ckt_nodes(tran);
+
+   bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
+   bnewp = static_cast<double *>(bnew->x);
+ 
+   double time = 0;
+   //int iter = 0;
+   stamp_by_set_tr(A, bp, tran);
+   make_A_symmetric(bp);
+   stamp_current_tr(bp, time);
+
+   Algebra::CK_decomp(A, L, cm);
+   Lp = static_cast<int *>(L->p);
+   Lx = static_cast<double*> (L->x);
+   Li = static_cast<int*>(L->i) ;
+   Lnz = static_cast<int *>(L->nz); 
+   A.clear();
+//#if 0 
+   /*********** the following 2 parts can be implemented with pthreads ***/
+   // build id_map immediately after transient factorization
+   id_map = new int [n];
+   cholmod_build_id_map(CHOLMOD_A, L, cm, id_map);
+   
+   temp = new double [n];
+   // then substitute all the nodes rid
+   for(size_t i=0;i<n;i++){
+	   int id = id_map[i];
+	   replist[id]->rid = i;
+	   temp[i] = bp[i];
+   }
+   for(size_t i=0;i<n;i++)
+	   bp[i] = temp[id_map[i]];
+   for(size_t i=0;i<n;i++)
+	   temp[i] = xp[i];
+   for(size_t i=0;i<n;i++)
+	   xp[i] = temp[id_map[i]];
+   delete [] temp;
+   delete [] id_map;
+   /*****************************************/ 
+   for(size_t i=0;i<n;i++){
+	bnewp[i] = bp[i];
+   }
+  
+   // set_eq_induc(tran);
+   set_eq_capac(tran);
+   modify_rhs_tr_0(bnewp, xp);
+   for(size_t i=0;i<n;i++){
+	   if(bnewp[i] !=0){
+		   pg.node_set_b.push_back(i);
 	  }
    }
 
@@ -382,6 +507,7 @@ void Circuit::solve_LU_core(Tran &tran){
 		   }
 	   }
    }
+
    map_node.clear();
    // get path_b, path_x, len_path_b, len_path_x
    build_path_graph();
@@ -390,29 +516,14 @@ void Circuit::solve_LU_core(Tran &tran){
    s_col_FBS = new int [len_path_x];
    find_super();
    solve_eq_sp(xp);
-   
-   //Algebra::solve_CK(A, L, x, b, cm);
-   //xp = static_cast<double *> (x->x);
  
    //save_tr_nodes(tran, xp);
    save_ckt_nodes(xp);
    time += tran.step_t;
-   //clog<<"before tr solve."<<endl;
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
-	// bnewp[i] = bp[i];
-	//if(n<THRESHOLD){
-		for(size_t i=0;i<n;i++)
-			bnewp[i] = bp[i];
-	//}
-#if 0
-	else{
-		size_t i=0;
-#pragma omp parallel for private(i)
-		for(i=0;i<n;i++)
-			bnewp[i] = bp[i];
-	}
-#endif
+	for(size_t i=0;i<n;i++)
+		bnewp[i] = bp[i];
       // only stamps if net current changes
       // set bp into last state
       //stamp_current_tr(bnewp, tran, time);
@@ -420,15 +531,11 @@ void Circuit::solve_LU_core(Tran &tran){
      // get the new bnewp
       modify_rhs_tr(bnewp, xp); 
 	
-      solve_eq_sp(xp);
-      //Algebra::solve_CK(A, L, x, b, cm);
-      //xp = static_cast<double *> (x->x);
- 
+      solve_eq_sp(xp); 
 
       //save_tr_nodes(tran, xp);
       save_ckt_nodes(xp);
       time += tran.step_t;
-      //iter ++;
    }
    save_ckt_nodes_to_tr(tran);
    print_ckt_nodes(tran);
@@ -603,15 +710,9 @@ void Circuit::modify_rhs_tr_0(double * b, double *x){
 		NetPtrVector & ns = net_set[type];
 		if(type ==CAPACITANCE){	
 			for(size_t i=0;i<ns.size();i++){
-				//clog<<"c net: "<<*ns[i]<<endl;
 				modify_rhs_c_tr_0(ns[i], b, x);
 			}
-		}
-		/*else if(type == INDUCTANCE){
-			for(size_t i=0;i<ns.size();i++){
-				modify_rhs_l_tr_0(ns[i], b, x);	
-			}
-		}*/
+		}	
 	}
 }
 // update rhs by transient nets
@@ -837,7 +938,6 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	}
 	size_t k = nk->rid;
 	size_t l = nl->rid;
-	//clog<<"k, l "<<k<<" "<<l<<endl;
 
 	Net *r = nk->nbr[TOP];
 	Node *a = r->ab[0]->rep;
@@ -852,55 +952,30 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	size_t id_b = b->rid;
 	//i_t = (b->value - a->value) / r->value;
 	i_t = (x[id_b] - x[id_a]) / r->value;
-	//if(b->value != x[id_b] || a->value != x[id_a])
-	   //cout<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<
-	     //x[id_a]<<" "<<x[id_b]<<endl;
-	//clog<<"i_t: "<<i_t<<endl;
-	//temp = 2*net->value / tran.step_t * 
-		//(nk->value - nl->value);
-       
-        // push 2 nodes into node_set_x
-        //clog<<*nk<<" "<<k<<endl;
-//#if 0
-        pg.node_set_x.push_back(k);
-        if(!nl->is_ground()) {
-              //clog<<*nl<<" "<<l<<endl;
-           pg.node_set_x.push_back(l);
-        }
-        else if(!b->is_ground()){
-              //clog<<*b<<" "<<id_b<<endl;
-           pg.node_set_x.push_back(id_b);
-        }
-//#endif
+	//#if 0
+	pg.node_set_x.push_back(k);
+
+	if(!nl->is_ground()) {
+		pg.node_set_x.push_back(l);
+	}
+	else if(!b->is_ground()){
+		pg.node_set_x.push_back(id_b);
+	}
 	if(nk->is_ground())
-	 //temp = 2*net->value/tran.step_t*(0-x[l]);
 	 temp = net->value *(-x[l]);
         else if(nl->is_ground()){
-         //temp = 2*net->value/tran.step_t *(x[k]);
 	 temp = net->value *x[k];
         }
         else
-         //temp = 2*net->value/tran.step_t *(x[k] - x[l]);
 	 temp = net->value *(x[k]-x[l]);
-	//if(nk->value != x[k] || nl->value != x[l])
-	   //clog<<"k, l, x_k, x_l: "<<x[k]<<" "<<x[l]<<" "<<x[k]-x[l]<<" "<<net->value << " "<<net->value * (x[k]-x[l])<<" "<<temp<<endl;
-	     //x[k]<<" "<<x[l]<<endl;
-	//clog<<"nk-nl "<<(nk->value - nl->value)<<" "<<2*net->value/tran.step_t<<" "<<temp<<endl;
-	
 	Ieq  = (i_t + temp);
-	//clog<< "Ieq is: "<<Ieq<<endl;
-	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
 	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
-		//clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
 	}
 	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] += -Ieq; 
-		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
 	}
 }
-
-
 
 // add Ieq into rhs
 // Ieq = i(t) + 2*C / delta_t *v(t)
@@ -3240,3 +3315,41 @@ void Circuit::print_pad_map(){
 		}
 	}
 }
+
+void Circuit::get_pad_tr_cur(Tran &tran){
+	Net *net;
+	Node *na, *nb;
+	size_t p=0;
+	double time = 0;
+	while(time < tran.tot_t){
+		// insert all the pad node into tran object
+		for(size_t i=0;i<pad_set.size();i++){
+			net = pad_set[i]->node->nbr[BOTTOM];
+			if(net == NULL) clog<<"no bottom net for pad. ERROR. "<<endl;
+			p = 0;
+			if(net->ab[0]->isS()==X)
+				p = 1;
+			na = net->ab[p];
+			double current = 0;
+			// add neighboring nodes of pad nodes into the list
+			for(DIRECTION d=WEST;d<=NORTH;d=DIRECTION(d+1)){
+				net = na->nbr[d];
+				if(net == NULL) continue;
+				nb = net->ab[0];
+				if(nb->name == na->name)
+					nb = net->ab[1];
+				current += fabs(na - nb)/net->value;
+			}
+			// add bottom current if there is one
+			if(na->nbr[BOTTOM]!=NULL){
+				net = na->nbr[BOTTOM];
+				if(net->type == CURRENT){
+					current += net->value;
+				}
+			}
+			pad_set[i]->current.push_back(current);
+		}
+		time += tran.step_t;
+	}
+}
+

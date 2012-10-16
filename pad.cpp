@@ -15,10 +15,12 @@ Pad::Pad(): node(NULL){
 	data = 0;
 	ratio = 0;
 	violate_flag = false;
+	current.clear();
 }
 
 Pad::~Pad(){
 	control_nodes.clear();
 	nbrs.clear();
 	drop_vec.clear();
+	current.clear();
 }
