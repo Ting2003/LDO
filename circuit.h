@@ -161,7 +161,7 @@ private:
 	// member functions
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
-	
+
 	// initialize things before solve_iteration
 	void solve_init();
 	void count_merge_nodes();

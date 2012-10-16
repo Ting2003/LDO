@@ -299,19 +299,15 @@ void Circuit::solve_LU_core(Tran &tran){
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
    xp = static_cast<double *> (x->x);
-   //for(size_t i=0;i<n;i++)
-	//replist[i]->value = xp[i];
-	//cout<<"dc solution from ckt: "<<" "<<*replist[i]<<" "<<xp[i]<<endl;
-   
+    
    // print out dc solution
    //cout<<nodelist<<endl;
    //return; // return after dc solution
 
    // A is already being cleared   
    size_t i=0;
-   //if(replist.size()<THRESHOLD){
-   	for(i=0;i<replist.size();i++)
-		bp[i] = 0;
+   for(i=0;i<replist.size();i++)
+	bp[i] = 0;
    link_ckt_nodes(tran);
 
    bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
@@ -321,7 +317,6 @@ void Circuit::solve_LU_core(Tran &tran){
    //int iter = 0;
    stamp_by_set_tr(A, bp, tran);
    make_A_symmetric(bp);
-    
    stamp_current_tr(bp, time);
 
    Algebra::CK_decomp(A, L, cm);
@@ -352,24 +347,32 @@ void Circuit::solve_LU_core(Tran &tran){
    delete [] temp;
    delete [] id_map;
    /*****************************************/ 
-	for(size_t i=0;i<n;i++){
-		bnewp[i] = bp[i];
-	}
+   for(size_t i=0;i<n;i++){
+	bnewp[i] = bp[i];
+   }
   
    // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
+   //pg.node_set_b.clear();
+   //pg.node_set_x.clear();
    // push rhs node into node_set b
    for(size_t i=0;i<n;i++){
-	   if(bnewp[i] !=0)
+	   if(bnewp[i] !=0){
 		   pg.node_set_b.push_back(i);
+		   //cout<<"push b: "<<i<<endl;
+	  }
    }
 
    // push back all nodes in output list
    vector<size_t>::iterator it;
    size_t id;
    for(size_t i=0;i<tran.nodes.size();i++){
-	   if(tran.nodes[i].node == NULL) continue;
+	  tran.nodes[i].node = get_node(tran.nodes[i].name);
+	  
+	   if(tran.nodes[i].node == NULL){
+		 continue;
+	   }
 	   if(!tran.nodes[i].node->rep->is_ground()){
 		   id = tran.nodes[i].node->rep->rid;
 		   it = find(pg.node_set_x.begin(), pg.node_set_x.end(), 
@@ -379,6 +382,7 @@ void Circuit::solve_LU_core(Tran &tran){
 		   }
 	   }
    }
+   map_node.clear();
    // get path_b, path_x, len_path_b, len_path_x
    build_path_graph();
 
@@ -386,6 +390,7 @@ void Circuit::solve_LU_core(Tran &tran){
    s_col_FBS = new int [len_path_x];
    find_super();
    solve_eq_sp(xp);
+   
    //Algebra::solve_CK(A, L, x, b, cm);
    //xp = static_cast<double *> (x->x);
  
@@ -1235,9 +1240,10 @@ void Circuit:: save_tr_nodes(Tran &tran, double *x){
 void Circuit:: save_ckt_nodes(double *x){
    size_t id=0;
    for(size_t j=0;j<ckt_nodes.size();j++){
-	 //cout<<"nodes: "<<ckt_nodes[j].node->name<<endl;
+	//if(ckt_nodes[j].node->name == "n0_4_75")
          id = ckt_nodes[j].node->rep->rid;
-	 //cout<<"value: "<<x[id]<<endl;
+	
+	//if(ckt_nodes[j].node->name == "n0_4_75")
          ckt_nodes[j].value.push_back(x[id]);
       }
 }
@@ -1245,6 +1251,7 @@ void Circuit:: save_ckt_nodes(double *x){
 // link transient nodes with nodelist
 void Circuit:: link_ckt_nodes(Tran &tran){
    Node_TR_PRINT nodes_temp;
+	
    for(size_t i=0;i<nodelist.size();i++){
       for(size_t j=0;j<tran.nodes.size();j++){
          if(nodelist[i]->name == tran.nodes[j].name){
