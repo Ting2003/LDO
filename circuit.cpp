@@ -280,140 +280,6 @@ void Circuit::solve_DC(){
    clog<<endl;
 }
 
-// stamp the matrix and solve for all nodes
-void Circuit::solve_LU_core_all(Tran &tran){
-   size_t n = replist.size();	// replist dosn't contain ground node
-   if( n == 0 ) return;		// No node    
-   cm = &c;
-   cholmod_start(cm);
-   cm->print = 5;
-
-   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
-
-   Matrix A;
-   stamp_by_set(A, bp);
-   make_A_symmetric(bp);
-   A.set_row(n);
-   Algebra::solve_CK(A, L, x, b, cm);
-   //return;
-   xp = static_cast<double *> (x->x);
-    
-   // A is already being cleared   
-   size_t i=0;
-   for(i=0;i<replist.size();i++)
-	bp[i] = 0;
-   link_ckt_nodes(tran);
-
-   bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
-   bnewp = static_cast<double *>(bnew->x);
- 
-   double time = 0;
-   //int iter = 0;
-   stamp_by_set_tr(A, bp, tran);
-   make_A_symmetric(bp);
-   stamp_current_tr(bp, time);
-
-   Algebra::CK_decomp(A, L, cm);
-   Lp = static_cast<int *>(L->p);
-   Lx = static_cast<double*> (L->x);
-   Li = static_cast<int*>(L->i) ;
-   Lnz = static_cast<int *>(L->nz); 
-   A.clear();
-//#if 0 
-   /*********** the following 2 parts can be implemented with pthreads ***/
-   // build id_map immediately after transient factorization
-   id_map = new int [n];
-   cholmod_build_id_map(CHOLMOD_A, L, cm, id_map);
-   
-   temp = new double [n];
-   // then substitute all the nodes rid
-   for(size_t i=0;i<n;i++){
-	   int id = id_map[i];
-	   replist[id]->rid = i;
-	   temp[i] = bp[i];
-   }
-   for(size_t i=0;i<n;i++)
-	   bp[i] = temp[id_map[i]];
-   for(size_t i=0;i<n;i++)
-	   temp[i] = xp[i];
-   for(size_t i=0;i<n;i++)
-	   xp[i] = temp[id_map[i]];
-   delete [] temp;
-   delete [] id_map;
-   /*****************************************/ 
-   for(size_t i=0;i<n;i++){
-	bnewp[i] = bp[i];
-   }
-  
-   // set_eq_induc(tran);
-   set_eq_capac(tran);
-   modify_rhs_tr_0(bnewp, xp);
-   for(size_t i=0;i<n;i++){
-	   if(bnewp[i] !=0){
-		   pg.node_set_b.push_back(i);
-	  }
-   }
-
-   // push back all nodes in output list
-   size_t id;
- 
-   // push all nodes into tran node list
-   tran.nodes.clear();
-   pg.node_set_x.clear();
-   for(size_t i=0;i<replist.size();i++){
-	tran.nodes[i].node = replist[i];
-	tran.nodes[i].name = replist[i]->name;
-	id = replist[i]->rid;
-	pg.node_set_x.push_back(id);
-   }
-   
-   map_node.clear();
-   // get path_b, path_x, len_path_b, len_path_x
-   build_path_graph();
-
-   s_col_FFS = new int [len_path_b];
-   s_col_FBS = new int [len_path_x];
-   find_super();
-   solve_eq_sp(xp);
- 
-   //save_tr_nodes(tran, xp);
-   save_ckt_nodes(xp);
-   time += tran.step_t;
-   // then start other iterations
-   while(time < tran.tot_t){// && iter < 0){
-	for(size_t i=0;i<n;i++)
-		bnewp[i] = bp[i];
-      // only stamps if net current changes
-      // set bp into last state
-      //stamp_current_tr(bnewp, tran, time);
-      stamp_current_tr_1(bp, bnewp, time);
-     // get the new bnewp
-      modify_rhs_tr(bnewp, xp); 
-	
-      solve_eq_sp(xp); 
-
-      //save_tr_nodes(tran, xp);
-      save_ckt_nodes(xp);
-      time += tran.step_t;
-   }
-   save_ckt_nodes_to_tr(tran);
-   print_ckt_nodes(tran);
-   //release_tr_nodes(tran);
-   release_ckt_nodes();
-   cholmod_free_dense(&b, cm);
-   cholmod_free_dense(&bnew, cm);
-   cholmod_free_factor(&L, cm);
-   cholmod_free_dense(&x, cm);
-   cholmod_finish(&c);
-   
-   delete [] s_col_FFS;
-   delete [] s_col_FBS;
-}
-
-
-
 // stamp the matrix and solve
 void Circuit::solve_LU_core(Tran &tran){
    size_t n = replist.size();	// replist dosn't contain ground node
@@ -494,7 +360,7 @@ void Circuit::solve_LU_core(Tran &tran){
    vector<size_t>::iterator it;
    size_t id;
    for(size_t i=0;i<tran.nodes.size();i++){
-	  tran.nodes[i].node = get_node(tran.nodes[i].name);
+	  //tran.nodes[i].node = get_node(tran.nodes[i].name);
 	  
 	   if(tran.nodes[i].node == NULL){
 		 continue;
@@ -556,6 +422,7 @@ void Circuit::solve_LU_core(Tran &tran){
 void Circuit::solve_LU(Tran &tran){
         solve_init();
 	solve_LU_core(tran);
+	//solve_LU_core_all(tran);
 }
 
 // given vector x that obtained from LU, set the value to the corresponding
@@ -1327,21 +1194,17 @@ void Circuit:: save_ckt_nodes(double *x){
 // link transient nodes with nodelist
 void Circuit:: link_ckt_nodes(Tran &tran){
    Node_TR_PRINT nodes_temp;
-	
-   for(size_t i=0;i<nodelist.size();i++){
-      for(size_t j=0;j<tran.nodes.size();j++){
-         if(nodelist[i]->name == tran.nodes[j].name){
-	    // record the index in tran.nodes
-	    nodes_temp.flag = j;
-	    //cout<<"tran.nodes, index: "<<
-		//nodelist[i]->name<<" "<<nodes_temp.flag<<endl;
-	    nodes_temp.node = nodelist[i];
-	    ckt_nodes.push_back(nodes_temp);
-            // record the id for ckt_nodes
-            break;
-         }
-      }
-   }
+   
+   for(size_t i=0;i<tran.nodes.size();i++){
+	  tran.nodes[i].node = get_node(tran.nodes[i].name);
+	  
+	   if(tran.nodes[i].node == NULL){
+		 continue;
+	   }
+	   nodes_temp.flag = i;
+	   nodes_temp.node = tran.nodes[i].node;
+	   ckt_nodes.push_back(nodes_temp);
+   } 
 }
 
 // link transient nodes with nodelist

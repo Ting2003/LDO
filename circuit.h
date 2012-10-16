@@ -162,7 +162,6 @@ private:
 	// member functions
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
-	void solve_LU_core_all(Tran &tran);
 
 	// initialize things before solve_iteration
 	void solve_init();
