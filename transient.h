@@ -15,7 +15,7 @@ class Node_TR_PRINT{
 	string name;
 	Node * node;
 	int flag;
-	vector<double> value;
+	vector<double> value; // voltage or current value
 };
 
 class Tran{

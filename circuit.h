@@ -203,6 +203,7 @@ private:
 	void save_ckt_nodes_to_tr(Tran &tran);
 	void link_tr_nodes(Tran &tran);
 	void link_ckt_nodes(Tran &tran);
+	void add_pad_tran(Tran &tran);
 	void save_tr_nodes(Tran &tran, double *x);
 	void save_ckt_nodes(double *x);
 
