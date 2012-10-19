@@ -19,8 +19,7 @@
 using namespace std;
 
 // store the pointer to circuits
-Parser::Parser(vector<Circuit*> * ckts):n_layer(0), p_ckts(ckts){
-	layer_in_ckt=vector<int>(MAX_LAYER);
+Parser::Parser(vector<CKT_TOP> * ckts):n_layer(0), p_ckts(ckts){
 }
 
 // Trick: do not descruct to speed up
@@ -77,34 +76,9 @@ void Parser::insert_net_node(char * line, int *count){
 	double value;
 	int ckt_id;
 	sscanf(line, "%s %s %s %lf", sname, sa, sb, &value);
-	
+	clog<<endl<<"origin net: "<<line;	
 	extract_node(sa, nd[0]);
-	extract_node(sb, nd[1]);
-
-	// insert these two node into Circuit according to the node's layer types
-	// Note: 1. these two nodes may exist already, need to check
-	//       2. these two nodes must be in the same circuit (network), 
-	//       (except 0), so their layer_type must be the same
-
-	int layer;
-	if( nd[0].name == "0" ) // ground node
-		layer = nd[1].get_layer();
-	else
-		layer = nd[0].get_layer();
-
-	ckt_id = layer_in_ckt[layer];
-	Circuit * ckt = (*p_ckts)[ckt_id];
-	for(int i=0;i<2;i++){
-		if ( (nd_ptr[i] = ckt->get_node(nd[i].name) ) == NULL ){
-			// create new node and insert
-			nd_ptr[i] = new Node(nd[i]); // copy constructor
-			nd_ptr[i]->rep = nd_ptr[i];  // set rep to be itself
-			ckt->add_node(nd_ptr[i]);
-			if( nd_ptr[i]->isS()== X)    // determine circuit type
-				ckt->set_type(WB);
-			// find the coordinate max and min	
-		}
-	}
+	extract_node(sb, nd[1]);	
 
 	NET_TYPE net_type = RESISTOR;
 	// find net type
@@ -129,14 +103,25 @@ void Parser::insert_net_node(char * line, int *count){
 	case 'L':
 		net_type = INDUCTANCE;
 		break;
+	case 'x':
+	case 'X':
+		net_type = LDO;
+		break;
 	default:
 		report_exit("Invalid net type!\n");
 		break;
 	}
+
+	int layer;
+	int i = 0;
+	Circuit *ckt;
+
 	// create a Net
 	//Net * net = new Net(net_type, name, value, nd_ptr[0], nd_ptr[1]);
 	Net * net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
-	net->id = count[net_type] ++;
+	cout<<net_type<<" "<<value<<" "<<*nd_ptr[0]<<" "<<*nd_ptr[1]<<endl;
+	cout<<"new net: "<<*net<<endl;	
+
 	// assign pulse paramter for pulse input
 	chs = strtok_r(line, sep, &saveptr);
 	for(int i=0;i<3;i++)
@@ -163,9 +148,39 @@ void Parser::insert_net_node(char * line, int *count){
 	// treat it as a 0-voltage via
 	try_change_via(net);
 
-	// insert this net into circuit
-	ckt->add_net(net);
-
+	// modify the nets and insert into two circuits
+	if(nd[0].name == "0" || nd[1].name == "0" || nd[0].get_layer() == nd[1].get_layer()){
+		if(nd[0].name == "0"){
+			layer = nd[1].get_layer();
+			ckt = layer_map_ckt[layer];
+			i = 1;
+		}
+		/*else if(nd[1].name == "0"){
+			layer = nd[0].get_layer();
+			ckt = layer_map_ckt[layer];
+			i = 0;
+		}*/
+		else{
+			layer = nd[0].get_layer();
+			ckt = layer_map_ckt[layer];
+			i = 0;
+		}
+		// insert this net into circuit
+		cout<<"net: "<<*net<<endl;	
+		add_node(ckt, nd[i], nd_ptr[i]);
+		ckt->add_net(net);
+		cout<<"add net: "<<*net<<endl;
+	}
+	else{ // boundary nets
+		for(int i=0;i<2;i++){
+			layer = nd[i].get_layer();
+			ckt = layer_map_ckt[layer];
+			add_node(ckt, nd[i], nd_ptr[i]);
+			// both add net
+			ckt->add_net(net);
+		}
+	}	
+		
 	// IMPORTANT: set the relationship between node and net
 	// update node voltage if it is an X node
 	// set node to be X node if it connects to a voltage source
@@ -283,8 +298,10 @@ int Parser::create_circuits(){
 	FILE * fp;		// used for popen/pclose
 	int status;		// return status of popen/pclose
 	const char grep[]="grep 'layer' ";
-	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3";
-	char cmd[MAX_BUF], name[MAX_BUF]="";
+	//const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3";
+	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3,4";
+
+	char cmd[MAX_BUF], name[MAX_BUF]="", GL[MAX_BUF] = "";
 	string prev_ckt_name("");
 	int layer, n_circuit=0;
 
@@ -292,37 +309,51 @@ int Parser::create_circuits(){
 	sprintf(cmd, "%s %s %s", grep, filename, rest);
 	if( (fp = popen(cmd, "r")) == NULL ) report_exit("popen error!\n");
 
-	Circuit * p_last_circuit=NULL;
+	CKT_TOP * p_last_circuit=NULL;
+	pair <int, Circuit*> layer_ckt_pair;
 	// now read filename.info to create circuits (they are SORTED)
-	while( fscanf(fp, "%s %d", name, &layer) != EOF ){
+	while( fscanf(fp, "%s %d %s", name, &layer, GL) != EOF ){
 		string name_string(name);
-		//cout<<name_string<<":"<<layer<<endl;
+		string GL_string(GL);
+		//cout<<name_string<<" "<<layer<<" "<<GL_string<<endl;
+		string fullname = name_string;
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
 		    name_string != prev_ckt_name ){
-			Circuit * circuit = new Circuit(name_string);
-			(*p_ckts).push_back(circuit);
+			fullname.append("G");
+			//Circuit * circuit = new Circuit(name_string);
+			CKT_TOP * ckt_top = new CKT_TOP(name_string);
+			Circuit * ckt1 = new Circuit(fullname);
+			fullname = name_string;
+			fullname.append("L");
+			ckt1->type = "GLOBAL";
+			Circuit * ckt2 = new Circuit(fullname);
+			ckt_top->ckt1 = ckt1;
+			ckt_top->ckt2 = ckt2;
+			
+			ckt2->type = "LOCAL";
+			(*p_ckts).push_back(*ckt_top);
 			++n_circuit;
 			prev_ckt_name = name_string;
-			p_last_circuit = circuit;
+			p_last_circuit = ckt_top;
 		}
-
-		p_last_circuit->layers.push_back(layer);
-
-		// note that initial size may not be accurate
-		if( layer > (int)layer_in_ckt.size()-1 ) 
-			layer_in_ckt.resize(layer+10); // 10 can be a arbitrary num.
-
-		layer_in_ckt[layer] = n_circuit-1; // map layer id to circuit id
+		
+		layer_ckt_pair.first = layer;
+		if(GL_string == "G"){
+			layer_ckt_pair.second = p_last_circuit->ckt1;
+			p_last_circuit->ckt1->layers.push_back(layer);
+		}
+		else if(GL_string == "L"){
+			layer_ckt_pair.second = p_last_circuit->ckt2;
+			p_last_circuit->ckt2->layers.push_back(layer);
+		}		
+		layer_map_ckt.insert(layer_ckt_pair);
 		this->n_layer++;
 	}
 	
 	if( (status = pclose(fp)) == -1 )    report_exit("pclose error!\n");
 
-	// now we know the correct number of layers
-	layer_in_ckt.resize(this->n_layer);
-	Circuit::layer_dir.resize(this->n_layer);
-
+	Circuit::layer_dir.resize(1);
 	return n_circuit;
 }
 
@@ -420,4 +451,16 @@ void Parser::parse_dot(char *line, Tran &tran){
 		default: 
 			break;
 	}
+}
+
+void Parser::add_node(Circuit *ckt, Node &nd, Node *nd_ptr){
+	if ( (nd_ptr = ckt->get_node(nd.name) ) == NULL ){
+		// create new node and insert
+		nd_ptr = new Node(nd); // copy constructor
+		nd_ptr->rep = nd_ptr;  // set rep to be itself
+		ckt->add_node(nd_ptr);
+		if( nd_ptr->isS()== X)    // determine circuit type
+			ckt->set_type(WB);
+		// find the coordinate max and min	
+	}	
 }

@@ -48,22 +48,28 @@ int main(int argc, char * argv[]){
 		report_exit("Ouptut file error\n");
 
 	Tran tran;
+	vector<CKT_TOP> cktlist; 
 	// start to parfile
-	vector<Circuit *> cktlist;
-	Parser parser(&cktlist);
+	// vector<Circuit *> cktlist;
+	Parser parser(&cktlist);	
 	parser.parse(input, tran);
-
+	return 0;
 	// do the job
 	size_t i=0;
 //#pragma omp parallel for private(i)	
 	for(i=0;i<cktlist.size();i++){
-		Circuit * ckt = cktlist[i];
+		Circuit * ckt1 = cktlist[i].ckt1;
+		Circuit * ckt2 = cktlist[i].ckt2;
+		ckt1->print_netlist();
+		clog<<endl;
+		ckt2->print_netlist();
 		// functions for transient solve
-		ckt->solve(tran);
+		//ckt->solve(tran);
 
 		//ckt->solve_DC();	
-		delete ckt;
+		//delete cktlist[i];
 	}
+	cktlist.clear();
 	//tran.print_tr_nodes();
 
 	close_logfile();

@@ -158,6 +158,9 @@ public:
 	// C style output
 	void print();
 
+	void print_nodelist();
+	void print_netlist();
+
 private:
 	// member functions
 	void solve_LU(Tran &tran);
@@ -203,6 +206,7 @@ private:
 	void save_ckt_nodes_to_tr(Tran &tran);
 	void link_tr_nodes(Tran &tran);
 	void link_ckt_nodes(Tran &tran);
+	void add_pad_tran(Tran &tran);
 	void save_tr_nodes(Tran &tran, double *x);
 	void save_ckt_nodes(double *x);
 
@@ -269,6 +273,7 @@ private:
 
 	// circuit name
 	string name;
+	string type;
 
 	// blocks
 	//BlockInfo block_info;

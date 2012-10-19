@@ -14,7 +14,7 @@ using std::pair;
 using namespace std;
 // important: each node has at most 4 connected nets
 enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, UNDEFINED};
-enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE};
+enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE, LDO};
 // three types of special nodes
 enum S_NODE{X, Y, Z};
 const int NUM_NET_TYPE = 5;

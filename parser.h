@@ -14,13 +14,14 @@
 #include "global.h"
 #include "circuit.h"
 #include "transient.h"
+#include "ckt_top.h"
 using std::vector;
 
 // given an input file, parse it and store corresponding result into Circuit
 class Parser{
 public:
 	// supply Circuit objects
-	Parser(vector<Circuit*> * ckts);
+	Parser(vector<CKT_TOP> * ckts);
 	~Parser();
 
 	// parser a input file and construct the circuit
@@ -38,11 +39,12 @@ private:
 	void extract_node(char * str, Node & nd);
 	void update_node(Net * net);
 	void parse_dot(char *line, Tran &tran);
+	void add_node(Circuit *ckt, Node &nd, Node *nd_ptr);
 
 	char * filename;		  // input file name
 	int n_layer;			  // total number of layers
-	vector<int> layer_in_ckt;	  // which circuit a layer belong
-	vector<Circuit*> * p_ckts;	  // pointer to circkt list
+	map<int, Circuit*> layer_map_ckt;	  // which circuit a layer belong
+	vector<CKT_TOP> * p_ckts;	  // pointer to circkt list
 };
 
 // Trick: try to modify the net
