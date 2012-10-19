@@ -66,20 +66,51 @@ void Parser::extract_node(char * str, Node & nd){
 
 // given a line, extract net and node information
 void Parser::insert_net_node(char * line, int *count){
-	char *chs, *saveptr;
-	const char* sep = " (),\n";
-	char sname[MAX_BUF];
-	char sa[MAX_BUF];
-	char sb[MAX_BUF];
+	static char sname[MAX_BUF];
+	static char sa[MAX_BUF];
+	static char sb[MAX_BUF];
 	static Node nd[2];
 	Node * nd_ptr[2];	// this will be set to the two nodes found
 	double value;
-	int ckt_id;
 	sscanf(line, "%s %s %s %lf", sname, sa, sb, &value);
-	clog<<endl<<"origin net: "<<line;	
-	extract_node(sa, nd[0]);
-	extract_node(sb, nd[1]);	
+	
+	if( sa[0] == '0' ) { nd[0].pt.set(-1,-1,-1); }
+	else extract_node(sa, nd[0]);
 
+	if( sb[0] == '0' ) { nd[1].pt.set(-1,-1,-1); }
+	else extract_node(sb, nd[1]);
+
+	// add node section
+	int layer;
+	Circuit *ckt[2];
+	ckt[0] = NULL;
+	ckt[1] = NULL;
+	if( nd[0].is_ground() ){ 
+		layer = nd[1].get_layer();
+		ckt[1] = layer_map_ckt[layer];
+	}else if(nd[1].is_ground()){
+		layer = nd[0].get_layer();
+		ckt[0] = layer_map_ckt[layer];
+	}
+	else{
+		for(int i=0;i<2;i++){
+			layer = nd[i].get_layer();
+			ckt[i] = layer_map_ckt[layer];
+		}
+	}
+	for(int i=0;i<2;i++){
+		if ( nd[i].is_ground() ){
+			nd_ptr[i] = ckt[1-i]->nodelist[0]; // ground node
+		}
+		else if ( (nd_ptr[i] = ckt[i]->get_node(nd[i].name) ) == NULL ){
+			// create new node and insert
+			nd_ptr[i] = new Node(nd[i]); // copy constructor
+			nd_ptr[i]->rep = nd_ptr[i];  // set rep to be itself
+			ckt[i]->add_node(nd_ptr[i]);
+			if( nd_ptr[i]->isS()==X )	     // determine circuit type
+				ckt[i]->set_type(WB);
+		}
+	}
 	NET_TYPE net_type = RESISTOR;
 	// find net type
 	switch(sname[0]){
@@ -95,92 +126,35 @@ void Parser::insert_net_node(char * line, int *count){
 	case 'I':
 		net_type = CURRENT;
 		break;
-	case 'c': // capacitance
-	case 'C':
-		net_type = CAPACITANCE;
-		break;
-	case 'l':
-	case 'L':
-		net_type = INDUCTANCE;
-		break;
-	case 'x':
-	case 'X':
-		net_type = LDO;
-		break;
 	default:
 		report_exit("Invalid net type!\n");
 		break;
 	}
 
-	int layer;
-	int i = 0;
-	Circuit *ckt;
-
 	// create a Net
-	//Net * net = new Net(net_type, name, value, nd_ptr[0], nd_ptr[1]);
 	Net * net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
-	cout<<net_type<<" "<<value<<" "<<*nd_ptr[0]<<" "<<*nd_ptr[1]<<endl;
-	cout<<"new net: "<<*net<<endl;	
 
-	// assign pulse paramter for pulse input
-	chs = strtok_r(line, sep, &saveptr);
-	for(int i=0;i<3;i++)
-		chs = strtok_r(NULL, sep, &saveptr);
-	if(chs != NULL)
-		chs = strtok_r(NULL, sep, &saveptr);
-	if(chs != NULL){
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->V1 = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->V2 = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->TD = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->Tr = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->Tf = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->PW = atof(chs);
-		chs = strtok_r(NULL, sep, &saveptr);
-		net->Period = atof(chs);
-	}
 	// trick: when the value of a resistor via is below a threshold,
 	// treat it as a 0-voltage via
 	try_change_via(net);
-
-	// modify the nets and insert into two circuits
-	if(nd[0].name == "0" || nd[1].name == "0" || nd[0].get_layer() == nd[1].get_layer()){
-		if(nd[0].name == "0"){
-			layer = nd[1].get_layer();
-			ckt = layer_map_ckt[layer];
-			i = 1;
-		}
-		/*else if(nd[1].name == "0"){
-			layer = nd[0].get_layer();
-			ckt = layer_map_ckt[layer];
-			i = 0;
-		}*/
-		else{
-			layer = nd[0].get_layer();
-			ckt = layer_map_ckt[layer];
-			i = 0;
-		}
-		// insert this net into circuit
-		cout<<"net: "<<*net<<endl;	
-		add_node(ckt, nd[i], nd_ptr[i]);
-		ckt->add_net(net);
-		cout<<"add net: "<<*net<<endl;
-	}
-	else{ // boundary nets
+	// insert this net into circuit
+	if(nd_ptr[0]->is_ground() || nd_ptr[1]->is_ground()){
 		for(int i=0;i<2;i++){
-			layer = nd[i].get_layer();
-			ckt = layer_map_ckt[layer];
-			add_node(ckt, nd[i], nd_ptr[i]);
-			// both add net
-			ckt->add_net(net);
+			if(nd_ptr[i]->is_ground()){
+				ckt[1-i]->add_net(net);
+			}
 		}
-	}	
-		
+	}
+	else{	
+		if(nd_ptr[0]->get_layer()==nd_ptr[1]->get_layer()){
+			ckt[0]->add_net(net);
+		}
+		else{
+			for(int i=0;i<2;i++){
+				ckt[i]->add_net(net);
+			}
+		}
+	}
 	// IMPORTANT: set the relationship between node and net
 	// update node voltage if it is an X node
 	// set node to be X node if it connects to a voltage source

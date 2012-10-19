@@ -53,7 +53,6 @@ int main(int argc, char * argv[]){
 	// vector<Circuit *> cktlist;
 	Parser parser(&cktlist);	
 	parser.parse(input, tran);
-	return 0;
 	// do the job
 	size_t i=0;
 //#pragma omp parallel for private(i)	
