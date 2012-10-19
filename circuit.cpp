@@ -299,7 +299,7 @@ void Circuit::solve_LU_core(Tran &tran){
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
    xp = static_cast<double *> (x->x);
-   clog<<"finish dc. "<<endl ;
+    
    // A is already being cleared   
    size_t i=0;
    for(i=0;i<replist.size();i++)
@@ -1185,7 +1185,8 @@ void Circuit:: save_ckt_nodes(double *x){
    for(size_t j=0;j<ckt_nodes.size();j++){
 	//if(ckt_nodes[j].node->name == "n0_4_75")
          id = ckt_nodes[j].node->rep->rid;
-		
+	
+	//if(ckt_nodes[j].node->name == "n0_4_75")
          ckt_nodes[j].value.push_back(x[id]);
       }
 }
@@ -1193,9 +1194,7 @@ void Circuit:: save_ckt_nodes(double *x){
 // link transient nodes with nodelist
 void Circuit:: link_ckt_nodes(Tran &tran){
    Node_TR_PRINT nodes_temp;
-  
-   // add pad bottom node and its neighbors into the list
-   //add_pad_tran(tran);
+   
    for(size_t i=0;i<tran.nodes.size();i++){
 	  tran.nodes[i].node = get_node(tran.nodes[i].name);
 	  
@@ -3178,72 +3177,6 @@ void Circuit::print_pad_map(){
 			printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
 		}
 		}
-	}
-}
-
-// add pad bottom node and its neighbors into the list
-void Circuit::add_pad_tran(Tran &tran){
-	Net *net;
-	Node *na, *nb;
-	size_t p=0;
-	double time = 0;
-	vector<Node_TR_PRINT>::iterator it;
-	Node_TR_PRINT item;
-	bool flag = false;
-	// insert all the pad node into tran object
-	for(size_t i=0;i<pad_set.size();i++){
-		net = pad_set[i]->node->nbr[BOTTOM];
-		if(net == NULL) clog<<"no bottom net for pad. ERROR. "<<endl;
-		p = 0;
-		if(net->ab[0]->isS()==X)
-			p = 1;
-		na = net->ab[p];
-		flag = false;
-		for(it = tran.nodes.begin();it!=tran.nodes.end();it++){
-			if(it->name == na->name){
-				flag = true;
-				break;
-			}
-		}
-		// add this node if it is included
-		if(flag == false){
-			item.name = na->name;
-			item.node = na;
-			//clog<<"add bot node: "<<*na<<endl;
-			tran.nodes.push_back(item);
-		}
-		double current = 0;
-		// add neighboring nodes of pad nodes into the list
-		for(DIRECTION d=WEST;d<=NORTH;d=DIRECTION(d+1)){
-			net = na->nbr[d];
-			if(net == NULL) continue;
-			nb = net->ab[0];
-			if(nb->name == na->name)
-				nb = net->ab[1];
-			flag = false;
-			for(it = tran.nodes.begin();it!=tran.nodes.end();it++){
-				if(it->name == nb->name){
-					flag = true;
-					break;
-				}
-			}
-			// add this node if it is included
-			if(flag == false){
-				item.name = nb->name;
-				item.node = nb;
-				//clog<<"add nbr node: "<<*nb<<endl;
-				tran.nodes.push_back(item);
-			}
-			//current += fabs(na - nb)/net->value;
-		}
-		/*// add bottom current if there is one
-		if(na->nbr[BOTTOM]!=NULL){
-			net = na->nbr[BOTTOM];
-			if(net->type == CURRENT){
-				current += net->value;
-			}
-		}
-		pad_set[i]->current.push_back(current);*/
 	}
 }
 
