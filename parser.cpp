@@ -66,9 +66,11 @@ void Parser::extract_node(char * str, Node & nd){
 
 // given a line, extract net and node information
 void Parser::insert_net_node(char * line, int *count){
-	static char sname[MAX_BUF];
-	static char sa[MAX_BUF];
-	static char sb[MAX_BUF];
+	char *chs, *saveptr;
+	const char* sep = " (),\n";
+	char sname[MAX_BUF];
+	char sa[MAX_BUF];
+	char sb[MAX_BUF];
 	static Node nd[2];
 	Node * nd_ptr[2];	// this will be set to the two nodes found
 	double value;
@@ -127,6 +129,18 @@ void Parser::insert_net_node(char * line, int *count){
 	case 'I':
 		net_type = CURRENT;
 		break;
+	case 'c':
+	case 'C':
+		net_type = CAPACITANCE;
+		break;
+	case 'l':
+	case 'L':
+		net_type = INDUCTANCE;
+		break;
+	case 'x':
+	case 'X':
+		net_type = LDO;
+		break;
 	default:
 		report_exit("Invalid net type!\n");
 		break;
@@ -152,6 +166,7 @@ void Parser::insert_net_node(char * line, int *count){
 		
 		// create current net
 		net = new Net(CURRENT, value, nd_ptr_g, ckt[0]->nodelist[0]);
+		
 		try_change_via(net);
 		ckt_ptr_g->add_net(net);
 		// create new X node for local grid
@@ -162,6 +177,7 @@ void Parser::insert_net_node(char * line, int *count){
 		nd_new.name = sstream.str();
 		if(ckt_ptr_l->get_node(nd_new.name) == NULL){
 			Node *nd_new_ptr = new Node(nd_new);
+			nd_new_ptr->rep = nd_new_ptr;
 			nd_new_ptr->flag=X;
 			nd_new_ptr->value = VDD_G;
 			ckt_ptr_l->add_node(nd_new_ptr);
@@ -175,7 +191,28 @@ void Parser::insert_net_node(char * line, int *count){
 	else{	
 		// create a Net
 		net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
-
+		// assign pulse paramter for pulse input
+		chs = strtok_r(line, sep, &saveptr);
+		for(int i=0;i<3;i++)
+			chs = strtok_r(NULL, sep, &saveptr);
+		if(chs != NULL)
+			chs = strtok_r(NULL, sep, &saveptr);
+		if(chs != NULL){
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->V1 = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->V2 = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->TD = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->Tr = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->Tf = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->PW = atof(chs);
+			chs = strtok_r(NULL, sep, &saveptr);
+			net->Period = atof(chs);
+		}
 		// trick: when the value of a resistor via is below a threshold,
 		// treat it as a 0-voltage via
 		try_change_via(net);

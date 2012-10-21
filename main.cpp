@@ -59,9 +59,8 @@ int main(int argc, char * argv[]){
 	for(i=0;i<cktlist.size();i++){
 		Circuit * ckt1 = cktlist[i].ckt1;
 		Circuit * ckt2 = cktlist[i].ckt2;
-		ckt1->print_netlist();
-		clog<<endl;
-		ckt2->print_netlist();
+		//ckt2->print_netlist();
+		ckt2->solve(tran);
 		// functions for transient solve
 		//ckt->solve(tran);
 

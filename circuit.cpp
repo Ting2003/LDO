@@ -195,7 +195,7 @@ void Circuit::solve_init(){
 		}
 		else
 			p->rid = p->rep->rid;
-		//cout<<"p->rep, rid: "<<*p->rep<<" "<<p->rid<<endl;
+		// cout<<"p, p->rep, rid: "<<*p<<" "<<*p->rep<<" "<<p->rid<<endl;
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
@@ -222,7 +222,6 @@ void Circuit::count_merge_nodes(){
 
 void Circuit::solve(Tran &tran){
 	solve_LU(tran);
-	// cout<<nodelist<<endl;
 	double max_IRdrop = locate_maxIRdrop_tr(tran);
 			
 	clog<<"max IRdrop for tr is: "<<max_IRdrop<<endl;	
@@ -300,6 +299,14 @@ void Circuit::solve_LU_core(Tran &tran){
    //return;
    xp = static_cast<double *> (x->x);
    clog<<"finish dc. "<<endl ;
+   for(size_t i=0;i<n;i++)
+	replist[i]->value = xp[i];
+
+   for(size_t i=0;i<nodelist.size();i++){
+	nodelist[i]->value = nodelist[i]->rep->value;
+   }
+   //cout<<nodelist<<endl;
+
    // A is already being cleared   
    size_t i=0;
    for(i=0;i<replist.size();i++)
@@ -315,6 +322,10 @@ void Circuit::solve_LU_core(Tran &tran){
    make_A_symmetric(bp);
    stamp_current_tr(bp, time);
 
+   //cout<<endl<<A<<endl;
+   /*for(int i=0;i<n;i++){
+	cout<<"i, bp: "<<i<<" "<<bp[i]<<endl;
+   }*/
    Algebra::CK_decomp(A, L, cm);
    Lp = static_cast<int *>(L->p);
    Lx = static_cast<double*> (L->x);
@@ -509,8 +520,9 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 // stamp transient current values into rhs
 void Circuit::stamp_current_tr(double *b, double &time){
 	NetPtrVector & ns = net_set[CURRENT];
-	for(size_t i=0;i<ns.size();i++)
+	for(size_t i=0;i<ns.size();i++){
 		stamp_current_tr_net(b, ns[i], time);
+	}
 }
 
 // stamp transient current values into rhs
@@ -1046,20 +1058,22 @@ void Circuit::stamp_current(double * b, Net * net){
 }
 
 void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
-	current_tr(net, time);
+	current_tr(net, time);	
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 	if( !nk->is_ground()&& nk->isS()!=X) { 
 		size_t k = nk->rid;
-		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
+		//cout<<"node, rid: "<<*nk<<" "<<k<<endl;
+		//cout<<"b, value: "<<b[k]<<" "<<net->value<<endl;
 		b[k] += -net->value;//current;
-		//clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
+		//cout<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=X) {
 		size_t l = nl->rid;
-		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
+		//cout<<"node, rid: "<<*nl<<" "<<l<<endl;
+		//cout<<"b, value: "<<b[l]<<" "<<net->value<<endl;
 		b[l] +=  net->value;// current;
-		//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
+		//cout<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
 
@@ -3286,7 +3300,9 @@ void Circuit::get_pad_tr_cur(Tran &tran){
 
 
 void Circuit::print_nodelist(){
-	clog<<nodelist<<endl;
+	for(size_t i=0;i<nodelist.size();i++){
+		cout<<*nodelist[i]<<" "<<nodelist[i]->isS()<<endl;
+	}
 }
 
 void Circuit::print_netlist(){
