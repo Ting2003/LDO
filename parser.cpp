@@ -72,6 +72,7 @@ void Parser::insert_net_node(char * line, int *count){
 	static Node nd[2];
 	Node * nd_ptr[2];	// this will be set to the two nodes found
 	double value;
+	Net *net;
 	sscanf(line, "%s %s %s %lf", sname, sa, sb, &value);
 	
 	if( sa[0] == '0' ) { nd[0].pt.set(-1,-1,-1); }
@@ -130,35 +131,78 @@ void Parser::insert_net_node(char * line, int *count){
 		report_exit("Invalid net type!\n");
 		break;
 	}
-
-	// create a Net
-	Net * net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
-
-	// trick: when the value of a resistor via is below a threshold,
-	// treat it as a 0-voltage via
-	try_change_via(net);
-	// insert this net into circuit
-	if(nd_ptr[0]->is_ground() || nd_ptr[1]->is_ground()){
-		for(int i=0;i<2;i++){
-			if(nd_ptr[i]->is_ground()){
-				ckt[1-i]->add_net(net);
-			}
+	Circuit *ckt_ptr_g;
+	Circuit *ckt_ptr_l;
+	Node *nd_ptr_g;
+	Node *nd_ptr_l;	
+	// if the two nodes belongs to different ckt
+	if(ckt[0]!=NULL && ckt[1]!=NULL && nd_ptr[0]->get_layer()!=nd_ptr[1]->get_layer()){
+		if(ckt[0]->type == "GLOBAL"){
+			ckt_ptr_g = ckt[0];
+			ckt_ptr_l = ckt[1];
+			nd_ptr_g = nd_ptr[0];
+			nd_ptr_l = nd_ptr[1];
+		}
+		else{
+			ckt_ptr_g = ckt[1];
+			ckt_ptr_l = ckt[0];
+			nd_ptr_g = nd_ptr[1];
+			nd_ptr_l = nd_ptr[0];
+		}
+		
+		// create current net
+		net = new Net(CURRENT, value, nd_ptr_g, ckt[0]->nodelist[0]);
+		try_change_via(net);
+		ckt_ptr_g->add_net(net);
+		// create new X node for local grid
+		stringstream sstream;
+		Node nd_new;
+		nd_new = *nd_ptr_l;
+		sstream<<"_X_"<<nd_new.name;	
+		nd_new.name = sstream.str();
+		if(ckt_ptr_l->get_node(nd_new.name) == NULL){
+			Node *nd_new_ptr = new Node(nd_new);
+			nd_new_ptr->flag=X;
+			nd_new_ptr->value = VDD_G;
+			ckt_ptr_l->add_node(nd_new_ptr);
+			// then add net
+			net = new Net(RESISTOR, value, nd_ptr_l, nd_new_ptr);
+			ckt_ptr_l->add_net(net);
+			net = new Net(VOLTAGE, VDD_G, nd_new_ptr, ckt_ptr_l->nodelist[0]);
+			ckt_ptr_l->add_net(net);
 		}
 	}
 	else{	
-		if(nd_ptr[0]->get_layer()==nd_ptr[1]->get_layer()){
-			ckt[0]->add_net(net);
-		}
-		else{
+		// create a Net
+		net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
+
+		// trick: when the value of a resistor via is below a threshold,
+		// treat it as a 0-voltage via
+		try_change_via(net);
+		// insert this net into circuit
+		if(nd_ptr[0]->is_ground() || nd_ptr[1]->is_ground()){
 			for(int i=0;i<2;i++){
-				ckt[i]->add_net(net);
+				if(nd_ptr[i]->is_ground()){
+					ckt[1-i]->add_net(net);
+				}
 			}
 		}
+		else{	
+			if(nd_ptr[0]->get_layer()==nd_ptr[1]->get_layer()){
+				ckt[0]->add_net(net);
+			}
+			else{
+				for(int i=0;i<2;i++){
+					ckt[i]->add_net(net);
+				}
+			}
+		}
+	
+		// IMPORTANT: set the relationship between node and net
+		// update node voltage if it is an X node
+		// set node to be X node if it connects to a voltage source
+		update_node(net);
 	}
-	// IMPORTANT: set the relationship between node and net
-	// update node voltage if it is an X node
-	// set node to be X node if it connects to a voltage source
-	update_node(net);
 }
 
 // Given a net with its two nodes, update the connection information
