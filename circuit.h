@@ -85,10 +85,11 @@ public:
 	void solve(Tran &tran);
 
 	void solve_DC();
-	void solve_DC(Tran &tran);
+	void solve_DC_mstep();
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
 	friend class Parser;
+	friend class CKT_TOP;
 
 	////// new functions for pad /////
 	double locate_maxIRdrop();
@@ -172,10 +173,10 @@ private:
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
-	void stamp_by_set(Matrix & A, double * b, Tran &tran);
+	void stamp_by_set_mstep(Matrix & A, double * b);
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
-	void stamp_current(double * b, Net * net, Tran &tran);
+	void stamp_current_mstep(double *b, int step);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
 	void stamp_VDD_tr(double *b, Net * net);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
@@ -213,6 +214,8 @@ private:
 	void save_ckt_nodes(double *x);
 
 	void print_tr_nodes(Tran &tran);
+	void print_ckt_nodes_vol();
+	void print_ckt_nodes_cur();
 
 	void copy_node_voltages(double *x, size_t &size, bool from=true);
 

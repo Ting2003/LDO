@@ -180,6 +180,7 @@ void Parser::insert_net_node(char * line, int *count){
 		net = new Net(CURRENT, value, nd_ptr_g, ckt[0]->nodelist[0]);
 		
 		try_change_via(net);
+		update_node(net);
 		ckt_ptr_g->add_net(net);
 		// create new X node for local grid
 		stringstream sstream;
@@ -195,9 +196,11 @@ void Parser::insert_net_node(char * line, int *count){
 			ckt_ptr_l->add_node(nd_new_ptr);
 			// then add net
 			net = new Net(RESISTOR, value, nd_ptr_l, nd_new_ptr);
+			update_node(net);
 			ckt_ptr_l->add_net(net);
 			net = new Net(VOLTAGE, VDD_G, nd_new_ptr, ckt_ptr_l->nodelist[0]);
 			ckt_ptr_l->add_net(net);
+			update_node(net);
 		}
 	}
 	else{	
@@ -388,12 +391,12 @@ int Parser::create_circuits(){
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
 		    name_string != prev_ckt_name ){
-			fullname.append("G");
+			//fullname.append("G");
 			//Circuit * circuit = new Circuit(name_string);
 			CKT_TOP * ckt_top = new CKT_TOP(name_string);
 			Circuit * ckt1 = new Circuit(fullname);
 			fullname = name_string;
-			fullname.append("L");
+			//fullname.append("L");
 			ckt1->type = "GLOBAL";
 			Circuit * ckt2 = new Circuit(fullname);
 			ckt_top->ckt1 = ckt1;

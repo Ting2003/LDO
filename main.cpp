@@ -61,8 +61,11 @@ int main(int argc, char * argv[]){
 		Circuit * ckt1 = cktlist[i]->ckt1;
 		Circuit * ckt2 = cktlist[i]->ckt2;
 		//ckt2->print_netlist();
-		ckt2->solve(tran);	
-		ckt1->solve_DC(tran);
+		ckt2->solve(tran);
+		cktlist[i]->link_ckt1();
+		// change vol into cur for global
+		cktlist[i]->assign_gcur();	
+		ckt1->solve_DC_mstep();
 		// then solve ckt1
 		//cktlist[i].assign_g_cur();	
 		// functions for transient solve

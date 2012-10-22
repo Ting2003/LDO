@@ -4,12 +4,14 @@
 
 Node_TR_PRINT::Node_TR_PRINT(){
 	value.clear();
+	value_cur.clear();
 	node = NULL;
         flag = -1;
 }
 
 Node_TR_PRINT::~Node_TR_PRINT(){
 	value.clear();
+	value_cur.clear();
 	node = NULL;
 	flag = -1;
 }

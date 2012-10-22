@@ -24,16 +24,10 @@ public:
 	Circuit* ckt2;
         CKT_TOP(string name);
 	~CKT_TOP();
+	void assign_gcur();
+	void link_ckt1();
 
 	string name;
 	vector<Net *> boundary_net;
-	// stores interface global nodes
-	vector<Node*> node_global;
-	// stores all current values of interface global nodes
-	vector<double> cur_global;
-	// stores interface local nodes
-	vector<Node*> node_local;
-	// stores all voltage values of interface local nodes
-	vector<double> vol_local;
 };
 #endif

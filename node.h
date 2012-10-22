@@ -37,6 +37,7 @@ public:
 	friend ostream & operator << (ostream & os, const Node & node);
 	friend class Circuit;
 	friend class Parser;
+	friend class CKT_TOP;
 
 	////////////////////////////////////////////////////////////
 	// member variables

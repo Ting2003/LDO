@@ -416,9 +416,9 @@ void Circuit::solve_LU_core(Tran &tran){
       time += tran.step_t;
    }
    save_ckt_nodes_to_tr(tran);
-   print_ckt_nodes(tran);
+   //print_ckt_nodes(tran);
    //release_tr_nodes(tran);
-   release_ckt_nodes();
+   //release_ckt_nodes();
    cholmod_free_dense(&b, cm);
    cholmod_free_dense(&bnew, cm);
    cholmod_free_factor(&L, cm);
@@ -470,7 +470,7 @@ void Circuit::copy_node_voltages(double * x, size_t &size, bool from){
 
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
-void Circuit::stamp_by_set(Matrix & A, double * b, Tran &tran){
+void Circuit::stamp_by_set_mstep(Matrix & A, double * b){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -482,10 +482,13 @@ void Circuit::stamp_by_set(Matrix & A, double * b, Tran &tran){
 			}
 			break;
 		case CURRENT:
-			for(size_t i=0;i<ns.size();i++){
+			/*for(size_t i=0;i<ns.size();i++){
 				//cout<<"net: "<<*ns[i]<<endl;
-				stamp_current(b, ns[i], tran);
-			}
+				stamp_current_mstep(b, ns[i]);
+			}*/
+			break;
+		case CAPACITANCE:
+		case INDUCTANCE:
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
@@ -498,6 +501,7 @@ void Circuit::stamp_by_set(Matrix & A, double * b, Tran &tran){
 			}
 			break;
 		default:
+			clog<<"type: "<<type<<endl;
 			report_exit("Unknwon net type\n");
 			break;
 		}
@@ -549,6 +553,19 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 			break;
 		}
 	}
+}
+
+// stamp current into right hand side
+void Circuit::stamp_current_mstep(double *bp, int step){
+	Node *nd;
+	size_t id;
+	for(size_t i=0;i<ckt_nodes.size();i++){
+		nd = ckt_nodes[i].node->rep;
+		if(!nd->is_ground() && nd->isS()!=X){
+			id = nd->rid;
+			bp[id] += -ckt_nodes[i].value_cur[step];
+		}	
+	}	
 }
 
 // stamp transient current values into rhs
@@ -1072,30 +1089,6 @@ void Circuit::modify_rhs_l_tr(Net *net, double *rhs, double *x){
 		 rhs[l] += -Ieq; // VDD circuit
 		//clog<<*nl<<" "<<rhs[l]<<endl;
 	}
-}
-
-// stamp a current source with transient step
-void Circuit::stamp_current(double * b, Net * net, Tran &tran){
-	//cout<<"net: "<<*net<<endl;
-	/*Node * nk = net->ab[0]->rep;
-	Node * nl = net->ab[1]->rep;
-
-	if( !nk->is_ground() && nk->isS()!=X){
-		// use map to locate new current value
-		size_t id = map_cur[nk];
-		net->value = tran.nodes[id]->value[step];
-		size_t k = nk->rid;
-		b[k] += -net->value;
-		//cout<<"b: "<<k<<" "<<-net->value<<endl;
-	}
-	if( !nl->is_ground() && nl->isS() !=X){// &&
-		// use map to locate new current value
-		size_t id = map_cur[nl];
-		net->value = tran.nodes[id]->value[step];
-		size_t l = nl->rid;
-		b[l] +=  net->value;
-		//cout<<"b: "<<l<<" "<<-net->value<<endl;
-	}*/
 }
 
 // stamp a current source
@@ -3375,7 +3368,7 @@ void Circuit::print_netlist(){
 }
 
 // solve multiple DC steps with different current
-void Circuit::solve_DC(Tran &tran){
+void Circuit::solve_DC_mstep(){
    /*replist.clear();
    for(size_t i=0;i<nodelist.size()-1;i++){
 	nodelist[i]->rep = nodelist[i];
@@ -3393,29 +3386,64 @@ void Circuit::solve_DC(Tran &tran){
    bp = static_cast<double *> (b->x);
 
    Matrix A;
-   stamp_by_set(A, bp, tran);
+   /*for(int type=0;type<NUM_NET_TYPE;type++){
+	NetPtrVector & ns = net_set[type];
+	for(int i=0;i<ns.size();i++){
+		clog<<"i, net: "<<type<<" "<<*ns[i]<<endl;
+	}
+   }*/
+
+   // first stamp the things except current
+   stamp_by_set_mstep(A, bp);
    make_A_symmetric(bp);
    A.set_row(n);
-   //cout<<endl<<A<<endl;
-   //cout<<"replist size: "<<n<<endl;
-   //for(size_t i=0;i<n;i++)
-	//cout<<"i, bp: "<<i<<" "<<bp[i]<<endl;
-   Algebra::solve_CK(A, L, x, b, cm);
+   cm->final_super = false;
+   cm->final_asis = false; 
+   Algebra::CK_decomp(A, L, cm);
+   //Algebra::solve_CK(A, L, x, b, cm);
    A.clear();
-   //return;
-   xp = static_cast<double *> (x->x);
-   for(size_t i=0;i<n;i++)
-	replist[i]->value = xp[i];
-
-   for(size_t i=0;i<nodelist.size();i++){
-	nodelist[i]->value = nodelist[i]->rep->value;
+  
+   int num_step = 0;
+   if(ckt_nodes.size()!=0)
+	num_step = ckt_nodes[0].value_cur.size();
+   for(int step=0; step<num_step; step++){ 
+	   stamp_current_mstep(bp, step);
+	   x = cholmod_solve(CHOLMOD_A, L, b, cm);
+	   //return;
+	   xp = static_cast<double *> (x->x);
+	   // save the node values into ckt_nodes
+	   for(size_t i=0;i<ckt_nodes.size();i++){
+		   Node *nd = ckt_nodes[i].node;	
+		   size_t id = nd->rid;
+		   ckt_nodes[i].value.push_back(xp[id]); 
+	   }
    }
-   cout<<nodelist<<endl;
 
-   double max_IRdrop = locate_maxIRdrop();
-			
-   clog<<"max IRdrop is: "<<max_IRdrop<<endl;	
-   double special_IRdrop = locate_special_maxIRdrop();
-   clog<<"special IRdrop is: "<<special_IRdrop<<endl;
-   clog<<endl;
+   print_ckt_nodes_vol();  
+   // free resources
+   cholmod_free_factor(&L, cm);
+   cholmod_free_dense(&x, cm);
+   cholmod_finish(&c);
+}
+
+void Circuit::print_ckt_nodes_vol(){
+   // print out the values
+   for(size_t i=0;i<ckt_nodes.size();i++){
+	Node *nd = ckt_nodes[i].node;
+	cout<<endl<<*nd<<endl;	
+	for(size_t j=0;j<ckt_nodes[i].value.size();j++){
+	   cout<< ckt_nodes[i].value[j]<<" "<<endl; 
+	}
+   }
+}
+
+void Circuit::print_ckt_nodes_cur(){
+   // print out the values
+   for(size_t i=0;i<ckt_nodes.size();i++){
+	Node *nd = ckt_nodes[i].node;
+	cout<<endl<<*nd<<endl;	
+	for(size_t j=0;j<ckt_nodes[i].value_cur.size();j++){
+	   cout<< ckt_nodes[i].value_cur[j]<<" "<<endl; 
+	}
+   }
 }
