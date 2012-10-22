@@ -85,7 +85,7 @@ public:
 	void solve(Tran &tran);
 
 	void solve_DC();
-	
+	void solve_DC(Tran &tran);
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
 	friend class Parser;
@@ -172,8 +172,10 @@ private:
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
+	void stamp_by_set(Matrix & A, double * b, Tran &tran);
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
+	void stamp_current(double * b, Net * net, Tran &tran);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
 	void stamp_VDD_tr(double *b, Net * net);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);

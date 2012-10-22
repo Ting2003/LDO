@@ -19,11 +19,12 @@
 using namespace std;
 
 // store the pointer to circuits
-Parser::Parser(vector<CKT_TOP> * ckts):n_layer(0), p_ckts(ckts){
+Parser::Parser(vector<CKT_TOP*> * ckts, map<Circuit*, CKT_TOP*> *map_top):n_layer(0), p_ckts(ckts){
 }
 
 // Trick: do not descruct to speed up
 Parser::~Parser(){
+	map_ckt_top.clear();
 	//for(size_t i=0;i<(*p_ckts).size();i++) delete (*p_ckts)[i];
 }
 
@@ -147,10 +148,21 @@ void Parser::insert_net_node(char * line, int *count){
 	}
 	Circuit *ckt_ptr_g;
 	Circuit *ckt_ptr_l;
+	CKT_TOP *ckt_top;
 	Node *nd_ptr_g;
-	Node *nd_ptr_l;	
+	Node *nd_ptr_l;
+
+	if(ckt[0]!=NULL)
+		ckt_top = map_ckt_top[ckt[0]];
+	else
+		ckt_top = map_ckt_top[ckt[1]];
+	
 	// if the two nodes belongs to different ckt
 	if(ckt[0]!=NULL && ckt[1]!=NULL && nd_ptr[0]->get_layer()!=nd_ptr[1]->get_layer()){
+		// create boundary Net
+		net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
+		ckt_top->boundary_net.push_back(net);
+
 		if(ckt[0]->type == "GLOBAL"){
 			ckt_ptr_g = ckt[0];
 			ckt_ptr_l = ckt[1];
@@ -366,6 +378,7 @@ int Parser::create_circuits(){
 
 	CKT_TOP * p_last_circuit=NULL;
 	pair <int, Circuit*> layer_ckt_pair;
+	pair <Circuit*, CKT_TOP*> map_ckt_pair;
 	// now read filename.info to create circuits (they are SORTED)
 	while( fscanf(fp, "%s %d %s", name, &layer, GL) != EOF ){
 		string name_string(name);
@@ -387,7 +400,14 @@ int Parser::create_circuits(){
 			ckt_top->ckt2 = ckt2;
 			
 			ckt2->type = "LOCAL";
-			(*p_ckts).push_back(*ckt_top);
+			// build up 2 map ckt tops
+			map_ckt_pair.first = ckt1;
+			map_ckt_pair.second = ckt_top;
+			map_ckt_top.insert(map_ckt_pair);
+			map_ckt_pair.first = ckt2;
+			map_ckt_top.insert(map_ckt_pair);
+
+			(*p_ckts).push_back(ckt_top);
 			++n_circuit;
 			prev_ckt_name = name_string;
 			p_last_circuit = ckt_top;

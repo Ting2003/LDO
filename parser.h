@@ -21,7 +21,7 @@ using std::vector;
 class Parser{
 public:
 	// supply Circuit objects
-	Parser(vector<CKT_TOP> * ckts);
+	Parser(vector<CKT_TOP*> * ckts, map<Circuit*, CKT_TOP*> *map_top);
 	~Parser();
 
 	// parser a input file and construct the circuit
@@ -44,7 +44,8 @@ private:
 	char * filename;		  // input file name
 	int n_layer;			  // total number of layers
 	map<int, Circuit*> layer_map_ckt;	  // which circuit a layer belong
-	vector<CKT_TOP> * p_ckts;	  // pointer to circkt list
+	vector<CKT_TOP*> * p_ckts;	  // pointer to circkt list
+	map<Circuit*, CKT_TOP*> map_ckt_top;
 };
 
 // Trick: try to modify the net
