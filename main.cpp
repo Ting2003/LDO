@@ -62,9 +62,7 @@ int main(int argc, char * argv[]){
 		Circuit * ckt2 = cktlist[i]->ckt2;
 		//ckt2->print_netlist();
 		ckt2->solve(tran);
-		for(size_t j=0;j<cktlist[i]->boundary_net.size();j++){
-			clog<<"bnet: "<<*cktlist[i]->boundary_net[j]<<endl;
-		}
+		
 		//ckt1->solve_DC(tran);
 		// then solve ckt1
 		//cktlist[i].assign_g_cur();	

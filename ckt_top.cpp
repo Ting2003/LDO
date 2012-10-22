@@ -7,6 +7,7 @@ CKT_TOP::CKT_TOP(string _name){
 }
 
 CKT_TOP::~CKT_TOP(){
+	boundary_net.clear();
 }
 
 /*
