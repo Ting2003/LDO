@@ -9,13 +9,19 @@ using namespace std;
 
 // define class for print out
 class Node_TR_PRINT{
-  public:
+private:
+	bool LDO_flag;
+public:
 	Node_TR_PRINT();
 	~Node_TR_PRINT();
 	string name;
 	Node * node;
 	int flag;
 	vector<double> value;
+	
+	void enable_LDO();
+	void disable_LDO();
+	bool isLDO();
 };
 
 class Tran{

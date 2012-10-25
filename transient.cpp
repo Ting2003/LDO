@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 Node_TR_PRINT::Node_TR_PRINT(){
+	LDO_flag = false;
 	value.clear();
 	node = NULL;
         flag = -1;
@@ -11,7 +12,6 @@ Node_TR_PRINT::Node_TR_PRINT(){
 Node_TR_PRINT::~Node_TR_PRINT(){
 	value.clear();
 	node = NULL;
-	flag = -1;
 }
 
 Tran::Tran(){
@@ -22,6 +22,18 @@ Tran::Tran(){
 }
 Tran::~Tran(){
 	nodes.clear();
+}
+
+void inline Node_TR_PRINT::enable_LDO(){
+	LDO_flag = true;
+} 
+
+void inline Node_TR_PRINT::disable_LDO(){
+	LDO_flag = false;
+}
+
+bool inline Node_TR_PRINT::isLDO(){
+	return LDO_flag;
 }
 
 // print out transient solutions

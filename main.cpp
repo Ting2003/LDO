@@ -68,9 +68,10 @@ int main(int argc, char * argv[]){
 	for(i=0;i<chip.cktlist.size();i++){
 		Circuit * ckt = chip.cktlist[i];
 		// functions for transient solve
-		//ckt->solve(tran);
+		ckt->solve(tran);
 		
-		ckt->solve_DC();	
+		//ckt->solve_DC();
+		clog<<"after solve DC. "<<endl;	
 		ckt->relocate_pads_graph();
 		delete ckt;
 	}
