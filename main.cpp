@@ -65,14 +65,15 @@ int main(int argc, char * argv[]){
 	// do the job
 	size_t i=0;
 //#pragma omp parallel for private(i)	
-	/*for(i=0;i<cktlist.size();i++){
-		Circuit * ckt = cktlist[i];
+	for(i=0;i<chip.cktlist.size();i++){
+		Circuit * ckt = chip.cktlist[i];
 		// functions for transient solve
-		ckt->solve(tran);
-
-		//ckt->solve_DC();	
+		//ckt->solve(tran);
+		
+		ckt->solve_DC();	
+		ckt->relocate_pads_graph();
 		delete ckt;
-	}*/
+	}
 	//tran.print_tr_nodes();
 
 	close_logfile();
