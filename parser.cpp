@@ -284,8 +284,8 @@ int Parser::create_circuits(){
 	FILE * fp;		// used for popen/pclose
 	int status;		// return status of popen/pclose
 	const char grep[]="grep 'layer' ";
-	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3";
-	char cmd[MAX_BUF], name[MAX_BUF]="";
+	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3,4";
+	char cmd[MAX_BUF], name[MAX_BUF]="", GL[MAX_BUF]= "";
 	string prev_ckt_name("");
 	int layer, n_circuit=0;
 
@@ -295,8 +295,9 @@ int Parser::create_circuits(){
 
 	Circuit * p_last_circuit=NULL;
 	// now read filename.info to create circuits (they are SORTED)
-	while( fscanf(fp, "%s %d", name, &layer) != EOF ){
+	while( fscanf(fp, "%s %d %s", name, &layer, GL) != EOF ){
 		string name_string(name);
+		string GL_string(GL);
 		//cout<<name_string<<":"<<layer<<endl;
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
@@ -310,6 +311,10 @@ int Parser::create_circuits(){
 		}
 
 		p_last_circuit->layers.push_back(layer);
+		if(GL_string == "GLOBAL")
+			p_last_circuit->global_layers.push_back(layer);
+		if(GL_string == "LOCAL")
+			p_last_circuit->local_layers.push_back(layer);
 
 		// note that initial size may not be accurate
 		if( layer > (int)layer_in_ckt.size()-1 ) 
