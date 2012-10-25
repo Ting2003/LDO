@@ -339,12 +339,16 @@ void Circuit::solve_LU_core(Tran &tran){
    map_node.clear();
    x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    xp = static_cast<double *> (x->x);
+   //for(size_t i=0;i<n;i++)
+	//replist[i]->value = xp[i];
+    
    save_ckt_nodes(xp);
    time += tran.step_t;
    // maintain the old current values
    worst_cur_new = worst_cur;
    double IRdrop_old = locate_maxIRdrop(xp, n);
-   double IRdrop_new = 0; 
+   double IRdrop_new = 0;
+   int iter=1;
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
 	for(size_t i=0;i<n;i++)
@@ -359,6 +363,7 @@ void Circuit::solve_LU_core(Tran &tran){
       xp = static_cast<double *> (x->x); 
       // then locate max_IRdrop
       IRdrop_new = locate_maxIRdrop(xp, n);
+      iter++;
       // update the saved worst_cur
       if(IRdrop_new > IRdrop_old){
 	worst_cur = worst_cur_new;
@@ -368,6 +373,7 @@ void Circuit::solve_LU_core(Tran &tran){
       save_ckt_nodes(xp);
       time += tran.step_t;
    }
+   
    save_ckt_nodes_to_tr(tran);
    print_ckt_nodes(tran);
    // release_resource();
@@ -1014,14 +1020,14 @@ void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -net->value;//current;
-		worst_cur[k] += -net->value;
+		worst_cur[k] = -net->value;
 		//clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=X) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  net->value;// current;
-		worst_cur[l] += net->value;
+		worst_cur[l] = net->value;
 		//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
@@ -2031,8 +2037,8 @@ void Circuit::save_ckt_nodes_to_tr(Tran &tran){
 
 double Circuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
-	for(size_t i=0;i<nodelist.size()-1;i++){
-		double IR_drop = VDD - nodelist[i]->value;		
+	for(size_t i=0;i<replist.size();i++){
+		double IR_drop = VDD - replist[i]->value;		
 		if(IR_drop > max_IRdrop)
 			max_IRdrop = IR_drop;
 	}
