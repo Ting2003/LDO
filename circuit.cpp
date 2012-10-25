@@ -299,7 +299,14 @@ void Circuit::solve_LU_core(Tran &tran){
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
    xp = static_cast<double *> (x->x);
-    
+   for(size_t i=0;i<n;i++)
+	replist[i]->value = xp[i];
+
+   for(size_t i=0;i<nodelist.size();i++){
+	nodelist[i]->value = nodelist[i]->rep->value;
+   }
+   //cout<<nodelist<<endl;
+
    // A is already being cleared   
    size_t i=0;
    for(i=0;i<replist.size();i++)
@@ -314,35 +321,13 @@ void Circuit::solve_LU_core(Tran &tran){
    stamp_by_set_tr(A, bp, tran);
    make_A_symmetric(bp);
    stamp_current_tr(bp, time);
-
+ 
    Algebra::CK_decomp(A, L, cm);
    Lp = static_cast<int *>(L->p);
    Lx = static_cast<double*> (L->x);
    Li = static_cast<int*>(L->i) ;
    Lnz = static_cast<int *>(L->nz); 
    A.clear();
-//#if 0 
-   /*********** the following 2 parts can be implemented with pthreads ***/
-   // build id_map immediately after transient factorization
-   id_map = new int [n];
-   cholmod_build_id_map(CHOLMOD_A, L, cm, id_map);
-   
-   temp = new double [n];
-   // then substitute all the nodes rid
-   for(size_t i=0;i<n;i++){
-	   int id = id_map[i];
-	   replist[id]->rid = i;
-	   temp[i] = bp[i];
-   }
-   for(size_t i=0;i<n;i++)
-	   bp[i] = temp[id_map[i]];
-   for(size_t i=0;i<n;i++)
-	   temp[i] = xp[i];
-   for(size_t i=0;i<n;i++)
-	   xp[i] = temp[id_map[i]];
-   delete [] temp;
-   delete [] id_map;
-   /*****************************************/ 
    for(size_t i=0;i<n;i++){
 	bnewp[i] = bp[i];
    }
@@ -350,41 +335,9 @@ void Circuit::solve_LU_core(Tran &tran){
    // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
-   for(size_t i=0;i<n;i++){
-	   if(bnewp[i] !=0){
-		   pg.node_set_b.push_back(i);
-	  }
-   }
-
-   // push back all nodes in output list
-   vector<size_t>::iterator it;
-   size_t id;
-   for(size_t i=0;i<tran.nodes.size();i++){
-	  //tran.nodes[i].node = get_node(tran.nodes[i].name);
-	  
-	   if(get_node(tran.nodes[i].name) == NULL){
-		 continue;
-	   }
-	   if(!tran.nodes[i].node->rep->is_ground()){
-		   id = tran.nodes[i].node->rep->rid;
-		   it = find(pg.node_set_x.begin(), pg.node_set_x.end(), 
-				   id);
-		   if(it == pg.node_set_x.end()){
-			   pg.node_set_x.push_back(id);
-		   }
-	   }
-   }
-
    map_node.clear();
-   // get path_b, path_x, len_path_b, len_path_x
-   build_path_graph();
-
-   s_col_FFS = new int [len_path_b];
-   s_col_FBS = new int [len_path_x];
-   find_super();
-   solve_eq_sp(xp);
- 
-   //save_tr_nodes(tran, xp);
+   x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+   xp = static_cast<double *> (x->x);
    save_ckt_nodes(xp);
    time += tran.step_t;
    // then start other iterations
@@ -393,29 +346,25 @@ void Circuit::solve_LU_core(Tran &tran){
 		bnewp[i] = bp[i];
       // only stamps if net current changes
       // set bp into last state
-      //stamp_current_tr(bnewp, tran, time);
       stamp_current_tr_1(bp, bnewp, time);
      // get the new bnewp
       modify_rhs_tr(bnewp, xp); 
 	
-      solve_eq_sp(xp); 
+      x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+      xp = static_cast<double *> (x->x);
 
-      //save_tr_nodes(tran, xp);
       save_ckt_nodes(xp);
       time += tran.step_t;
    }
    save_ckt_nodes_to_tr(tran);
    print_ckt_nodes(tran);
-   //release_tr_nodes(tran);
+   // release_resource();
    release_ckt_nodes();
    cholmod_free_dense(&b, cm);
    cholmod_free_dense(&bnew, cm);
    cholmod_free_factor(&L, cm);
    cholmod_free_dense(&x, cm);
-   cholmod_finish(&c);
-   
-   delete [] s_col_FFS;
-   delete [] s_col_FBS;
+   cholmod_finish(&c);   
 }
 
 // solve the node voltages using direct LU
@@ -821,14 +770,7 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	//i_t = (b->value - a->value) / r->value;
 	i_t = (x[id_b] - x[id_a]) / r->value;
 	//#if 0
-	pg.node_set_x.push_back(k);
-
-	if(!nl->is_ground()) {
-		pg.node_set_x.push_back(l);
-	}
-	else if(!b->is_ground()){
-		pg.node_set_x.push_back(id_b);
-	}
+	
 	if(nk->is_ground())
 	 temp = net->value *(-x[l]);
         else if(nl->is_ground()){
@@ -946,8 +888,6 @@ void Circuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x){
         //clog<<*nk<<" "<<k<<endl;
         //clog<<*b<<" "<<id_b<<endl;
 //#if 0
-        pg.node_set_x.push_back(k);
-        pg.node_set_x.push_back(id_b);
 //#endif
 	Ieq  = i_t + temp;
 	//clog<<"Ieq: "<<Ieq<<endl;

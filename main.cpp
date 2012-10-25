@@ -71,7 +71,7 @@ int main(int argc, char * argv[]){
 		ckt->solve(tran);
 		
 		//ckt->solve_DC();
-		clog<<"after solve DC. "<<endl;	
+		clog<<"after solve tr. "<<endl;	
 		ckt->relocate_pads_graph();
 		delete ckt;
 	}
