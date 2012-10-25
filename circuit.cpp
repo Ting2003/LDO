@@ -54,6 +54,7 @@ Circuit::Circuit(string _name):name(_name),
 Circuit::~Circuit(){
 	pad_set.clear();
 	special_nodes.clear();
+	worst_cur.clear();
 	map_node_pt.clear();
 	for(size_t i=0;i<nodelist.size();i++) 
 		delete nodelist[i];
@@ -340,6 +341,10 @@ void Circuit::solve_LU_core(Tran &tran){
    xp = static_cast<double *> (x->x);
    save_ckt_nodes(xp);
    time += tran.step_t;
+   // maintain the old current values
+   worst_cur_new = worst_cur;
+   double IRdrop_old = locate_maxIRdrop(xp, n);
+   double IRdrop_new = 0; 
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
 	for(size_t i=0;i<n;i++)
@@ -351,7 +356,14 @@ void Circuit::solve_LU_core(Tran &tran){
       modify_rhs_tr(bnewp, xp); 
 	
       x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
-      xp = static_cast<double *> (x->x);
+      xp = static_cast<double *> (x->x); 
+      // then locate max_IRdrop
+      IRdrop_new = locate_maxIRdrop(xp, n);
+      // update the saved worst_cur
+      if(IRdrop_new > IRdrop_old){
+	worst_cur = worst_cur_new;
+	IRdrop_old = IRdrop_new;		
+      }
 
       save_ckt_nodes(xp);
       time += tran.step_t;
@@ -370,6 +382,11 @@ void Circuit::solve_LU_core(Tran &tran){
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
+	// initialize worst_cur vector
+	worst_cur.resize(replist.size());
+	for(size_t i=0;i<replist.size();i++){
+		worst_cur[i] = 0;	
+	}
 	solve_LU_core(tran);
 	//solve_LU_core_all(tran);
 }
@@ -781,9 +798,11 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	Ieq  = (i_t + temp);
 	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
+		 worst_cur[k] += Ieq;
 	}
 	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] += -Ieq; 
+		 worst_cur[l] += -Ieq;
 	}
 }
 
@@ -818,9 +837,11 @@ void Circuit::modify_rhs_c_tr(Net *net, double * rhs, double *x){
 	double Ieq  = i_t + temp;
 	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
+		 worst_cur_new[k] += Ieq;
 	}
 	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] -= Ieq; 
+		 worst_cur_new[l] += -Ieq;
 	}
 }
 
@@ -993,12 +1014,14 @@ void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -net->value;//current;
+		worst_cur[k] += -net->value;
 		//clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=X) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  net->value;// current;
+		worst_cur[l] += net->value;
 		//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
@@ -1024,6 +1047,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			//clog<<"time, k, b bef: "<<time<<" "<<k<<" "<<b[k]<<endl;
 			b[k] += -diff;//current;
 			bp[k] = b[k];
+			worst_cur_new[k] = -diff;
 			//clog<<"time, k, b: "<<time <<" "<<k<<" "<<b[k]<<endl;
 		}
 		if( !nl->is_ground() && nl->isS()!=X) {
@@ -1032,6 +1056,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 			b[l] +=  diff;// current;
 			bp[l] = b[l];
+			worst_cur_new[l] = diff;
 			//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 		}
 	}
@@ -2008,6 +2033,16 @@ double Circuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	for(size_t i=0;i<nodelist.size()-1;i++){
 		double IR_drop = VDD - nodelist[i]->value;		
+		if(IR_drop > max_IRdrop)
+			max_IRdrop = IR_drop;
+	}
+	return max_IRdrop;
+}
+
+double Circuit::locate_maxIRdrop(double *x, size_t n){
+	max_IRdrop = 0;
+	for(size_t i=0;i<n;i++){
+		double IR_drop = VDD - x[i];		
 		if(IR_drop > max_IRdrop)
 			max_IRdrop = IR_drop;
 	}

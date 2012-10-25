@@ -92,6 +92,7 @@ public:
 
 	////// new functions for pad /////
 	double locate_maxIRdrop();
+	double locate_maxIRdrop(double *x, size_t n);
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
@@ -103,6 +104,10 @@ public:
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
 	vector<Node*> special_nodes;
+	// size = replist
+	// record -current that has the worst IR drop values
+	vector<double> worst_cur;
+	vector<double> worst_cur_new;
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node_pt;
 
