@@ -256,6 +256,8 @@ private:
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
 	vector<int> layers;
+	vector<int> global_layers;
+	vector<int> local_layers;
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;
