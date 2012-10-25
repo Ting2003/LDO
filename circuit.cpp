@@ -166,8 +166,6 @@ void Circuit::print(){
 // 3. find node in which block, update count
 // 4. get representative lists
 void Circuit::solve_init(){
-	// add two more nets to LDO nodes
-	add_net_LDO();
         sort_nodes();
 	size_t size = nodelist.size()-1; // exclude ground node!!
 	Node *p=NULL;
@@ -3206,9 +3204,4 @@ void Circuit::get_pad_tr_cur(Tran &tran){
 		}
 		time += tran.step_t;
 	}
-}
-
-// add voltage and resistor net for LDO
-void Circuit::add_net_LDO(){
-	
 }

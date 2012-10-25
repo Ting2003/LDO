@@ -11,8 +11,6 @@ public:
 	friend class Parser;
 	vector<Circuit *>cktlist;
 	vector<LDO*> ldolist;
-
-	void add_net_LDO();
 };
 
 #endif

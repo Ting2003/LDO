@@ -387,13 +387,30 @@ void Parser::parse_ldo(char *filename){
 		// produce an extra voltage net and resistor net for LDO
 		// first create the X node
 		sA_X = *nd_ptr[0];
+		sstream.str("");
 		sstream<<"_X_"<<sA_X.name;
 		sA_X.name = sstream.str();
-		sA_X.enableX();
-		sA_X.value = VDD_G;
-		sA_X.rep = sA;
-		int net_type = VOLTAGE;
-		Net *net = new Net(net_type, )
+		if(ckt->get_node(sA_X.name)==NULL){
+			Node *sA_Xptr = new Node(sA_X);
+			sA_Xptr->rep = sA_Xptr;
+			sA_Xptr->flag = X;
+			sA_Xptr->value = VDD_G;
+			ckt->add_node(sA_Xptr);
+			// start to add net
+			Net *net;
+			double value = 0;
+			// then add net
+			net = new Net(RESISTOR, value, nd_ptr[0], sA_Xptr);
+			ckt->add_net(net);	
+			// updating the neighboring net	
+			sA_Xptr->nbr[BOTTOM] = net;
+			nd_ptr[0]->nbr[TOP] = net;
+
+			net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
+			ckt->add_net(net);
+			// update the neighboring net
+			sA_Xptr->nbr[TOP] = net;
+		}
 	}
 	fclose(f);
 }
