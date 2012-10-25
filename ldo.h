@@ -4,8 +4,8 @@
 
 class LDO{
 private:
-	LDO();	
 public:
+	LDO();	
 	Node *A, *B, *C, *D, *E;
 	Node *in; // the input pin
 	Node *out; // the output pin

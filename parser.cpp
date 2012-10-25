@@ -328,6 +328,56 @@ int Parser::create_circuits(){
 	return n_circuit;
 }
 
+// parse ldo file
+void Parser::parse_ldo(char *filename){
+	FILE * f;
+	f = fopen(filename, "r");
+	if( f == NULL ) 
+		report_exit("Input file not exist!\n");
+		
+	char line[MAX_BUF];
+	// 4 corner node of the LDO module 
+	char sA[MAX_BUF];
+	char sB[MAX_BUF];
+	char sC[MAX_BUF];
+	char sD[MAX_BUF];
+	static Node nd[4];
+	Node * nd_ptr[4];
+	string l;
+	int layer, ckt_id;
+	layer = nd[0].get_layer();
+	ckt_id = layer_in_ckt[layer];
+	Circuit *ckt = p_chip->cktlist[ckt_id];
+	LDO single_ldo;
+	while( fgets(line, MAX_BUF, f) != NULL ){
+		// skip the * line
+		if(line[0] == '*')
+			continue;
+		sscanf(line, "%s %s %s %s", sA, sB, 
+			sC, sD);
+		extract_node(sA, nd[0]);
+		extract_node(sB, nd[1]);
+		extract_node(sC, nd[2]);
+		extract_node(sD, nd[3]);
+		for(int i=0;i<4;i++){
+			nd_ptr[i] = ckt->get_node(nd[i].name);
+			if(nd_ptr[i]==NULL)
+				report_exit("LDO node error!");	
+		}
+		single_ldo.A = nd_ptr[0];
+		single_ldo.B = nd_ptr[1];
+		single_ldo.C = nd_ptr[2];
+		single_ldo.D = nd_ptr[3];
+		// assign the in and out
+		single_ldo.in = nd_ptr[0];
+		single_ldo.out = nd_ptr[0];
+		// compute the width and height
+		single_ldo.width = single_ldo.B->pt.x - single_ldo.A->pt.x;
+		single_ldo.height = single_ldo.D->pt.y - single_ldo.A->pt.y;
+	}
+	fclose(f);
+}
+
 // parse the file
 // Note: the file will be parsed twice
 // the first time is to find the layer information
