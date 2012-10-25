@@ -2157,7 +2157,7 @@ void Circuit::assign_pad_set(vector<Node*>&pad_set_old){
 		//clog<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
 	}
 }
-
+// special nodes includes nodes in local grids (including X node for LDO)
 void Circuit::mark_special_nodes(){
 	special_nodes.clear();
 	/*int type = CURRENT;
@@ -2171,7 +2171,14 @@ void Circuit::mark_special_nodes(){
 			nd = net->ab[1];
 		special_nodes.push_back(nd);
 	}*/
+	//int z;
+	//vector<int>::iterator it;
 	for(size_t i=0;i<replist.size();i++){
+		/*z = replist[i]->pt.z;
+		it = find(local_layers.begin(), local_layers.end(), z);
+		if(it == local_layers.end())
+			continue;*/
+		// only consider local grid nodes
 		if(replist[i]->isS()!=X)
 			special_nodes.push_back(replist[i]);
 	}
