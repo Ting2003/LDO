@@ -20,6 +20,7 @@ public:
 	Node * node;
 	// record the controlled nodes and weighting
 	map<Node*, double> control_nodes;
+	// stores the neighboring pads for a pad
 	vector<Pad*> nbrs;
 	// sorted ref drop values of control nodes
 	vector<double> drop_vec;

@@ -377,7 +377,7 @@ void Circuit::solve_LU_core(Tran &tran){
    // clear new temp worst current
    worst_cur_new.clear(); 
    save_ckt_nodes_to_tr(tran);
-   print_ckt_nodes(tran);
+   //print_ckt_nodes(tran);
    // release_resource();
    release_ckt_nodes();
    cholmod_free_dense(&b, cm);
@@ -3009,7 +3009,7 @@ void Circuit::build_graph(){
 		flag_nbr = false;
 		pad = pad_set[i];
 		pad_nbr = find_nbr_pad(pad);
-		//cout<<"pad, nbr: "<<*pad->node<<" "<<*pad_nbr->node<<endl;
+		// cout<<"pad, nbr: "<<*pad->node<<" "<<*pad_nbr->node<<endl;
 		for(size_t j=0;j<pad_nbr->nbrs.size();j++){
 			if(pad_nbr->nbrs[j]->node->name== pad->node->name)
 				flag_pad = true;
@@ -3105,6 +3105,9 @@ Pad * Circuit::find_nbr_pad(Pad *pad){
 	size_t min_index=0;
 	for(size_t i=0;i<pad_set.size();i++){
 		nbr = pad_set[i];
+		// need to make sure they are in same layer
+		if(nbr->node->pt.z != pad->node->pt.z)
+			continue;
 		if(nbr->node->name == pad->node->name)
 			continue;
 		distance = get_distance(nbr->node, pad->node);
