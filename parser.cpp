@@ -348,7 +348,7 @@ void Parser::parse_ldo(char *filename){
 	layer = nd[0].get_layer();
 	ckt_id = layer_in_ckt[layer];
 	Circuit *ckt = p_chip->cktlist[ckt_id];
-	LDO single_ldo;
+	LDO *ldo_ptr;
 	while( fgets(line, MAX_BUF, f) != NULL ){
 		// skip the * line
 		if(line[0] == '*')
@@ -364,16 +364,18 @@ void Parser::parse_ldo(char *filename){
 			if(nd_ptr[i]==NULL)
 				report_exit("LDO node error!");	
 		}
-		single_ldo.A = nd_ptr[0];
-		single_ldo.B = nd_ptr[1];
-		single_ldo.C = nd_ptr[2];
-		single_ldo.D = nd_ptr[3];
+		ldo_ptr = new LDO();
+		ldo_ptr->A = nd_ptr[0];
+		ldo_ptr->B = nd_ptr[1];
+		ldo_ptr->C = nd_ptr[2];
+		ldo_ptr->D = nd_ptr[3];
 		// assign the in and out
-		single_ldo.in = nd_ptr[0];
-		single_ldo.out = nd_ptr[0];
+		ldo_ptr->in = nd_ptr[0];
+		ldo_ptr->out = nd_ptr[0];
 		// compute the width and height
-		single_ldo.width = single_ldo.B->pt.x - single_ldo.A->pt.x;
-		single_ldo.height = single_ldo.D->pt.y - single_ldo.A->pt.y;
+		ldo_ptr->width = ldo_ptr->B->pt.x - ldo_ptr->A->pt.x;
+		ldo_ptr->height = ldo_ptr->D->pt.y - ldo_ptr->A->pt.y;
+		p_chip->ldolist.push_back(ldo_ptr);
 	}
 	fclose(f);
 }
