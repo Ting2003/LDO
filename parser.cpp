@@ -19,7 +19,7 @@
 using namespace std;
 
 // store the pointer to circuits
-Parser::Parser(vector<Circuit*> * ckts):n_layer(0), p_ckts(ckts){
+Parser::Parser(Chip *chip):n_layer(0), p_chip(chip){
 	layer_in_ckt=vector<int>(MAX_LAYER);
 }
 
@@ -93,7 +93,8 @@ void Parser::insert_net_node(char * line, int *count){
 		layer = nd[0].get_layer();
 
 	ckt_id = layer_in_ckt[layer];
-	Circuit * ckt = (*p_ckts)[ckt_id];
+	Circuit *ckt = p_chip->cktlist[ckt_id];
+	// Circuit * ckt = (*p_ckts)[ckt_id];
 	for(int i=0;i<2;i++){
 		if ( (nd_ptr[i] = ckt->get_node(nd[i].name) ) == NULL ){
 			// create new node and insert
@@ -301,7 +302,8 @@ int Parser::create_circuits(){
 		if( prev_ckt_name == "" ||
 		    name_string != prev_ckt_name ){
 			Circuit * circuit = new Circuit(name_string);
-			(*p_ckts).push_back(circuit);
+			//(*p_ckts).push_back(circuit);
+			p_chip->cktlist.push_back(circuit);
 			++n_circuit;
 			prev_ckt_name = name_string;
 			p_last_circuit = circuit;

@@ -12,15 +12,17 @@
 
 #include <vector>
 #include "global.h"
-#include "circuit.h"
+//#include "circuit.h"
+#include "chip.h"
 #include "transient.h"
+//using namespace std;
 using std::vector;
 
 // given an input file, parse it and store corresponding result into Circuit
 class Parser{
 public:
 	// supply Circuit objects
-	Parser(vector<Circuit*> * ckts);
+	Parser(Chip * chip);
 	~Parser();
 
 	// parser a input file and construct the circuit
@@ -42,7 +44,8 @@ private:
 	char * filename;		  // input file name
 	int n_layer;			  // total number of layers
 	vector<int> layer_in_ckt;	  // which circuit a layer belong
-	vector<Circuit*> * p_ckts;	  // pointer to circkt list
+	//vector<Circuit*> * p_ckts;	  // pointer to circkt list
+	Chip *p_chip;
 };
 
 // Trick: try to modify the net

@@ -88,7 +88,7 @@ public:
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
-	friend class Parser;
+	 friend class Parser;
 
 	////// new functions for pad /////
 	double locate_maxIRdrop();
