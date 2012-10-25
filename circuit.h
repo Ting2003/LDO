@@ -109,7 +109,9 @@ public:
 	vector<double> worst_cur;
 	vector<double> worst_cur_new;
 	// mapping from name to Node object pointer
+	// two map node_pt lists: global and local
 	unordered_map<string, Node*> map_node_pt;
+	unordered_map<string, Node*> map_node_pt_l;
 
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);

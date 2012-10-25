@@ -56,6 +56,7 @@ Circuit::~Circuit(){
 	special_nodes.clear();
 	worst_cur.clear();
 	map_node_pt.clear();
+	map_node_pt_l.clear();
 	for(size_t i=0;i<nodelist.size();i++) 
 		delete nodelist[i];
 	for(int type=0;type<NUM_NET_TYPE;type++){
@@ -2077,7 +2078,7 @@ void Circuit::relocate_pads_graph(){
 	assign_pad_set(pad_set_old);
 	// store a original copy of the pad set
 	
-	// build up the map for nodes in PAD layer
+	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
 	
 	vector<double> ref_drop_vec;
@@ -2394,27 +2395,42 @@ Node * Circuit::pad_projection(Pad *pad, Node *nd){
 	return NULL;
 }
 
+// two map node point lists:
+// one for global pads, the other for local pads
 void Circuit::build_map_node_pt(){
 	if(pad_set.size()==0)
 		clog<<"no pad on grid. ERROR"<<endl;
-	// ref layer
-	int ref_layer = pad_set[0]->node->get_layer();
+	int ref_layer_g;
+	int ref_layer_l;
+	// ref layer for global pads
+	if(global_layers.size()!=0)
+		ref_layer_g = global_layers[0];
+	if(local_layers.size()!=0)
+		ref_layer_l = local_layers[0];
 
 	Node *nd;
 	pair<string, Node*> pt_pair;
 	for(size_t i=0;i<nodelist.size();i++){
 		nd = nodelist[i];
-		if(nd->get_layer()!=ref_layer)
-			continue;
 		if(nd->isS()==Z || nd->isS() ==X)
 			continue;
 		stringstream sstream;
-		sstream<<ref_layer<<"_"<<nd->pt.x<<
-			"_"<<nd->pt.y;
-		pt_pair.first = sstream.str();
-		//cout<<"string: "<<pt_pair.first<<endl;
-		pt_pair.second = nd;
-		map_node_pt.insert(pt_pair);
+		if(nd->get_layer()==ref_layer_g){
+			sstream.str("");	
+			sstream<<ref_layer_g<<"_"<<
+				nd->pt.x<<"_"<<nd->pt.y;
+			pt_pair.first = sstream.str();
+			pt_pair.second = nd;
+			map_node_pt.insert(pt_pair);
+		} else if(nd->get_layer() == 
+			ref_layer_l){
+			sstream.str("");	
+			sstream<<ref_layer_g<<"_"<<
+				nd->pt.x<<"_"<<nd->pt.y;
+			pt_pair.first = sstream.str();
+			pt_pair.second = nd;
+			map_node_pt_l.insert(pt_pair);
+		}
 	}
 }
 
@@ -2976,7 +2992,7 @@ double Circuit::resolve_direct(){
 	return max_IR;
 }
 
-// build graph for pad nodes
+// build graph for local and global pad nodes
 void Circuit::build_graph(){
 	Pad *pad;
 	Pad *pad_nbr;
