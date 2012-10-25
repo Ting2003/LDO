@@ -346,6 +346,8 @@ void Parser::parse_ldo(char *filename){
 	char sB[MAX_BUF];
 	char sC[MAX_BUF];
 	char sD[MAX_BUF];
+	stringstream sstream;
+	Node sA_X; // the X node on top of sA
 	static Node nd[4];
 	Node * nd_ptr[4];
 	string l;
@@ -381,6 +383,17 @@ void Parser::parse_ldo(char *filename){
 		ldo_ptr->width = ldo_ptr->B->pt.x - ldo_ptr->A->pt.x;
 		ldo_ptr->height = ldo_ptr->D->pt.y - ldo_ptr->A->pt.y;
 		p_chip->ldolist.push_back(ldo_ptr);
+
+		// produce an extra voltage net and resistor net for LDO
+		// first create the X node
+		sA_X = *nd_ptr[0];
+		sstream<<"_X_"<<sA_X.name;
+		sA_X.name = sstream.str();
+		sA_X.enableX();
+		sA_X.value = VDD_G;
+		sA_X.rep = sA;
+		int net_type = VOLTAGE;
+		Net *net = new Net(net_type, )
 	}
 	fclose(f);
 }

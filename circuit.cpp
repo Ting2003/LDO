@@ -166,6 +166,8 @@ void Circuit::print(){
 // 3. find node in which block, update count
 // 4. get representative lists
 void Circuit::solve_init(){
+	// add two more nets to LDO nodes
+	add_net_LDO();
         sort_nodes();
 	size_t size = nodelist.size()-1; // exclude ground node!!
 	Node *p=NULL;
@@ -373,7 +375,8 @@ void Circuit::solve_LU_core(Tran &tran){
       save_ckt_nodes(xp);
       time += tran.step_t;
    }
-   
+   // clear new temp worst current
+   worst_cur_new.clear(); 
    save_ckt_nodes_to_tr(tran);
    print_ckt_nodes(tran);
    // release_resource();
@@ -3205,3 +3208,7 @@ void Circuit::get_pad_tr_cur(Tran &tran){
 	}
 }
 
+// add voltage and resistor net for LDO
+void Circuit::add_net_LDO(){
+	
+}
