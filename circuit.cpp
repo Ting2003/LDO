@@ -3147,8 +3147,8 @@ void Circuit::build_pad_set(){
 			pad_set.push_back(pad_ptr);
 		}
 	}
-	//for(size_t j=0;j<pad_set.size();j++)
-		//cout<<"pad: "<<*pad_set[j]->node<<endl;
+	// for(size_t j=0;j<pad_set.size();j++)
+		// cout<<"pad: "<<*pad_set[j]->node<<endl;
 }
 
 void Circuit::print_pad_map(){
