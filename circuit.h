@@ -143,7 +143,7 @@ public:
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(vector<double> ref_drop_vec);
 	int locate_max_drop_pad(vector<double> vec);
-	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
+	void calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g, double &avg_drop_l);
 	double calc_avg_ref(vector<double> ref_drop_vec);
 	double locate_ref(size_t i);
 	void dynamic_update_violate_ref(vector<double> & ref_drop_vec);

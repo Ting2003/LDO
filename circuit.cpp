@@ -2143,26 +2143,10 @@ void Circuit::assign_pad_set(vector<Node*>&pad_set_old){
 // special nodes includes nodes in local grids (including X node for LDO)
 void Circuit::mark_special_nodes(){
 	special_nodes.clear();
-	/*int type = CURRENT;
-	Net *net;
-	Node *nd;
-	// push back all current nodes
-	for(size_t i=0;i<net_set[type].size();i++){
-		net = net_set[type][i];
-		nd = net->ab[0];
-		if(nd->is_ground())
-			nd = net->ab[1];
-		special_nodes.push_back(nd);
-	}*/
-	//int z;
-	//vector<int>::iterator it;
+	
 	for(size_t i=0;i<replist.size();i++){
-		/*z = replist[i]->pt.z;
-		it = find(local_layers.begin(), local_layers.end(), z);
-		if(it == local_layers.end())
-			continue;*/
-		// only consider local grid nodes
-		if(replist[i]->isS()!=X)
+		// only consider non X and cap node
+		if(replist[i]->isS()!=X && replist[i]->isS() != Z)
 			special_nodes.push_back(replist[i]);
 	}
 }
@@ -2864,7 +2848,10 @@ double Circuit::locate_ref(size_t i){
 
 void Circuit::dynamic_update_violate_ref(vector<double> & ref_drop_vec){
 	//for(size_t j=0;j<2;j++){
-	double avg_drop = calc_avg_ref_drop(ref_drop_vec);
+	double avg_drop_g = 0;
+	double avg_drop_l = 0;
+	calc_avg_ref_drop(ref_drop_vec, avg_drop_g, avg_drop_l);
+
 	Pad *pad_ptr;
 	Node *pad;
 	//cout<<"j: "<<j<<endl;
@@ -2901,7 +2888,7 @@ bool Circuit::print_flag(Node *pad){
 	return flag;
 }
 
-double Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
+void Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g, double &avg_drop_l){
 	Node *pad;
 	Pad *pad_ptr;
 	double max_drop, min_drop;
@@ -3035,6 +3022,7 @@ void Circuit::build_graph(){
 	}*/
 }
 
+// extract controlling nodes for both local and global pads
 void Circuit::extract_pads(int pad_number){
 	vector<Node*> pair_first;
 	vector<double> pair_second;
@@ -3052,6 +3040,9 @@ void Circuit::extract_pads(int pad_number){
 		// search for closest pads
 		for(size_t j=0;j<pad_set.size();j++){
 			Node *ptr = pad_set[j]->node;
+			// make sure they are in same layer
+			if(ptr->get_layer() != nd->get_layer())
+				continue;
 			distance = get_distance(ptr, nd);
 
 			if(count < pad_number){
@@ -3178,11 +3169,14 @@ void Circuit::print_pad_map(){
 	for(size_t i=0;i<pad_set.size();i++){
 		nd = pad_set[i]->node;
 		pad = pad_set[i];
-		if(nd->name == "n0_477_17"){// ||
+		int count = 0;
+		if(nd->get_layer() == 4){// ||
 		   //nd->name == "n0_255_59" ||
 		   //nd->name == "n0_30_74"){
-		for(it = pad->control_nodes.begin();it != pad->control_nodes.end();it++){
-			printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
+		   clog<<"control_nodes size: "<<pad->control_nodes.size()<<endl;
+		for(it = pad->control_nodes.begin();it != pad->control_nodes.end() && count++<10;it++){
+			clog<<*it->first<<endl;
+			//printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
 		}
 		}
 	}
