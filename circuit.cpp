@@ -52,10 +52,11 @@ Circuit::Circuit(string _name):name(_name),
 
 // Trick: do not release memory to increase runtime
 Circuit::~Circuit(){
-	pad_set.clear();
+	pad_set_g.clear();
+	pad_set_l.clear();
 	special_nodes.clear();
 	worst_cur.clear();
-	map_node_pt.clear();
+	map_node_pt_g.clear();
 	map_node_pt_l.clear();
 	for(size_t i=0;i<nodelist.size();i++) 
 		delete nodelist[i];
@@ -2071,48 +2072,62 @@ double Circuit::locate_special_maxIRdrop(){
 }
 
 void Circuit::relocate_pads_graph(){
-	vector<Node*> pad_set_old;
-	double dist = 0;
+	vector<Node*> pad_set_old_g;
+	vector<Node*> pad_set_old_l;
+	double dist_g = 0;
+	double dist_l = 0;
 	//double new_dist = 0;
-	pad_set_old.resize(pad_set.size());
-	assign_pad_set(pad_set_old);
+	pad_set_old_g.resize(pad_set_g.size());
+	pad_set_old_l.resize(pad_set_l.size());
+	assign_pad_set(pad_set_g, pad_set_old_g);
+	assign_pad_set(pad_set_l, pad_set_old_l);
 	// store a original copy of the pad set
 	
 	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
 	
-	vector<double> ref_drop_vec;
+	vector<double> ref_drop_vec_g;
+	vector<double> ref_drop_vec_l;
 	//print_pad_set();
 	for(size_t i=0;i<12;i++){
 		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
-		origin_pad_set.resize(pad_set.size());
-		assign_pad_set(origin_pad_set);
+		origin_pad_set_g.resize(pad_set_g.size());
+		origin_pad_set_l.resize(pad_set_l.size());
+		assign_pad_set(pad_set_g, origin_pad_set_g);
+		assign_pad_set(pad_set_l, origin_pad_set_l);
 		// build pad connection graph
 		build_graph();
 		// find control nodes for each pad
 		extract_pads(pad_number);
 		// find the tune spot for control nodes	
-		update_pad_control_nodes(ref_drop_vec, i);
+		update_pad_control_nodes(ref_drop_vec_g, i);
 		//print_all_control_nodes();	
-		if(i>=6)
-			dynamic_update_violate_ref(ref_drop_vec);
+		//if(i>=6)
+			//dynamic_update_violate_ref(ref_drop_vec);
 		// find new point for all pads	
-		dist = update_pad_pos_all(ref_drop_vec);
+		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
+		
+		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_g);
 		// move the low 10% pads into high 10% 
 		// pad area 
-		if(i==0)
-			extract_min_max_pads(ref_drop_vec);
+		if(i==0){
+			extract_min_max_pads(pad_set_g, ref_drop_vec_g);
+			extract_min_max_pads(pad_set_l, ref_drop_vec_l);
+		}
 		// update the old pad set value
-		assign_pad_set(pad_set_old);
+		assign_pad_set(pad_set_g, pad_set_old_g);
+		assign_pad_set(pad_set_l, pad_set_old_l);
 		
-		move_violate_pads(ref_drop_vec);
+		move_violate_pads(pad_set_g, ref_drop_vec_g);
+		move_violate_pads(pad_set_l, ref_drop_vec_l);
 		
 		// actual move pads into the new spots
 		//project_pads();
 
 		// move pads according to graph contraints
-		graph_move_pads(ref_drop_vec);	
+		graph_move_pads(pad_set_g, ref_drop_vec_g);	
+		graph_move_pads(pad_set_l, ref_drop_vec_l);
 		
 		clear_flags();
 		// actual move pads into the new spots
@@ -2125,15 +2140,18 @@ void Circuit::relocate_pads_graph(){
 		//solve_GS();
 		//clog<<"max_IRS is: "<<max_IRS<<endl<<endl;
 	}
-	ref_drop_vec.clear();
+	ref_drop_vec_g.clear();
+	ref_drop_vec_l.clear();
 	map_node_pt.clear();
-	origin_pad_set.clear();
-	pad_set_old.clear();
+	origin_pad_set_g.clear();
+	origin_pad_set_l.clear();
+	pad_set_old_g.clear();
+	pad_set_old_l.clear();
 	//print_pad_set();
 	cout<<nodelist<<endl;
 }
 
-void Circuit::assign_pad_set(vector<Node*>&pad_set_old){
+void Circuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
 	//clog<<"assign pad set."<<endl;
 	for(size_t i=0;i<pad_set_old.size();i++){
 		pad_set_old[i] = pad_set[i]->node;
@@ -2151,7 +2169,7 @@ void Circuit::mark_special_nodes(){
 	}
 }
 
-double Circuit::update_pad_pos_all(vector<double> ref_drop_vec){
+double Circuit::update_pad_pos_all(vector<Pad*> &pad_set, vector<double> ref_drop_vec){
 	double total_dist = 0;
 	double dist = 0;
 	for(size_t i=0;i<pad_set.size();i++){
@@ -2166,7 +2184,7 @@ double Circuit::update_pad_pos_all(vector<double> ref_drop_vec){
 	return total_dist;
 }
 
-void Circuit::modify_newxy(){
+void Circuit::modify_newxy(vector<Pad*> &pad_set){
 	Pad *pad;
 	Node *nd;
 	double delta_x;
@@ -2405,7 +2423,7 @@ void Circuit::build_map_node_pt(){
 				nd->pt.x<<"_"<<nd->pt.y;
 			pt_pair.first = sstream.str();
 			pt_pair.second = nd;
-			map_node_pt.insert(pt_pair);
+			map_node_pt_g.insert(pt_pair);
 		} else if(nd->get_layer() == 
 			ref_layer_l){
 			sstream.str("");	
@@ -2548,13 +2566,17 @@ void Circuit::print_pad_set(){
 }
 
 void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
-	Node *nd;
+	/*Node *nd;
 	Pad *pad;
-	size_t max_index = 0;
-	double max = 0;
+	size_t max_index_g = 0;
+	double max_g = 0;
+	size_t max_index_l = 0;
+	double max_l = 0;
 
-	vector<Node*> min_pads;
-	vector<Node*> max_pads;
+	vector<Node*> min_pads_g;
+	vector<Node*> max_pads_g;
+	vector<Node*> min_pads_l;
+	vector<Node*> max_pads_l;
 	vector<bool >temp_flag;
 
 	map<Node *, double>::iterator it;
@@ -2563,19 +2585,34 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 		temp_flag[i] = false;
 	size_t id_minpad = 0;
 	double drop = 0;
-	double avg_ref = calc_avg_ref(ref_drop_vec);
-	double avg_drop = VDD - avg_ref;
+	double avg_ref_g = 0;
+	double avg_ref_l = 0;
+	calc_avg_ref(ref_drop_vec, avg_ref_g, avg_ref_l);
+	double avg_drop_g = VDD - avg_ref_g;
+	double avg_drop_l = VDD_G - avg_ref_l;
 	
 	for(size_t i=0;i<pad_set.size();i++){
 		pad = pad_set[i];
 		nd = pad->node;
-		drop = VDD - ref_drop_vec[i];
-		if(drop>max){
-			max = drop;
-			max_index = i;
+		if(nd->get_layer()==global_layers[0]){	
+			drop = VDD - ref_drop_vec[i];
+			if(drop>max_g){
+				max_g = drop;
+				max_index_g = i;
+			}
+			if(drop < 0.7*avg_drop_g){
+				min_pads_g.push_back(nd);	
+			}
 		}
-		if(drop < 0.7*avg_drop){
-			min_pads.push_back(nd);	
+		else{
+			drop = VDD_G - ref_drop_vec[i];
+			if(drop>max_l){
+				max_l = drop;
+				max_index_l = i;
+			}
+			if(drop < 0.7*avg_drop_l){
+				min_pads_l.push_back(nd);
+			}
 		}	
 	}
 	double max_id;
@@ -2640,7 +2677,7 @@ void Circuit::extract_min_max_pads_new(vector<double> ref_drop_vec){
 	}
 	// next step is to insert the min pads into max pads area
 	min_pads.clear();
-	max_pads.clear();
+	max_pads.clear();*/
 	
 }
 
@@ -2850,6 +2887,7 @@ void Circuit::dynamic_update_violate_ref(vector<double> & ref_drop_vec){
 	//for(size_t j=0;j<2;j++){
 	double avg_drop_g = 0;
 	double avg_drop_l = 0;
+	double avg_drop = 0;
 	calc_avg_ref_drop(ref_drop_vec, avg_drop_g, avg_drop_l);
 
 	Pad *pad_ptr;
@@ -2861,6 +2899,11 @@ void Circuit::dynamic_update_violate_ref(vector<double> & ref_drop_vec){
 		pad_ptr = pad_set[i];
 		pad = pad_ptr->node;
 
+		if(pad->get_layer() == global_layers[0])
+			avg_drop = avg_drop_g;
+		else
+			avg_drop = avg_drop_l;
+ 
 		if(pad_ptr->data >= 2*avg_drop){
 			pad_ptr->violate_flag = true;
 			double ratio_new = pad_ptr->ratio * 2;
@@ -2894,15 +2937,19 @@ void Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g
 	double max_drop, min_drop;
 	//double sum_max = 0;
 	//double sum_min = 0;
-	double sum_diff = 0;
-	size_t count = 0;
+	double sum_diff_g = 0;
+	double sum_diff_l = 0;
+	size_t count_g = 0;
+	size_t count_l = 0;
 	double ref_drop_value = 0;
 
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
-
-		count ++;	
+		if(pad_set[i]->node->get_layer()==global_layers[0])
+			count_g ++;
+		else
+			count_l ++;	
 		ref_drop_value = ref_drop_vec[i];
 		map<Node *, double>::iterator it;
 		pad_ptr = pad_set[i];
@@ -2923,29 +2970,43 @@ void Circuit::calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g
 				min_drop = it->second;
 		}
 		pad_ptr->data = max_drop - min_drop;
-		sum_diff += pad_ptr->data;
+		
+		if(pad_set[i]->node->get_layer()==global_layers[0])
+			sum_diff_g += pad_ptr->data;
+		else
+			sum_diff_l += pad_ptr->data;
 	}
-	double avg_drop = sum_diff / count;
-	return avg_drop;
+	avg_drop_g = sum_diff_g / count_g;
+	avg_drop_l = sum_diff_l / count_l;
 }
 
-double Circuit::calc_avg_ref(vector<double> ref_drop_vec){
+void Circuit::calc_avg_ref(vector<double> ref_drop_vec,
+	double &avg_ref_g, double &avg_ref_l){
 	//Node *pad;
 	//Pad *pad_ptr;
-	double sum_ref = 0;
-	size_t count = 0;
+	double sum_ref_g = 0;
+	double sum_ref_l = 0;
+	size_t count_g = 0;
+	size_t count_l = 0;
 	double ref_drop_value = 0;
 
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
 
-		count ++;	
+		if(pad_set[i]->node->get_layer()==global_layers[0])
+			count_g ++;
+		else
+			count_l ++;	
 		ref_drop_value = ref_drop_vec[i];
-		sum_ref += ref_drop_value;
+		
+		if(pad_set[i]->node->get_layer()==global_layers[0])
+			sum_ref_g += ref_drop_value;
+		else
+			sum_ref_l += ref_drop_value;
 	}
-	double avg_ref = sum_ref / count;
-	return avg_ref;
+	avg_ref_g = sum_ref_g / count_g;
+	avg_ref_l = sum_ref_l / count_l;
 }
 
 void Circuit::clear_flags(){
@@ -3154,11 +3215,18 @@ void Circuit::build_pad_set(){
 		if(nodelist[i]->isS()==X){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
-			pad_set.push_back(pad_ptr);
+			if(nodelist[i]->get_layer()== global_layers[0])
+				pad_set_g.push_back(pad_ptr);
+			else
+				pad_set_l.push_back(pad_ptr);
 		}
 	}
-	// for(size_t j=0;j<pad_set.size();j++)
-		// cout<<"pad: "<<*pad_set[j]->node<<endl;
+	for(size_t j=0;j<pad_set_g.size();j++)
+		 cout<<"pad: "<<*pad_set_g[j]->node<<endl;
+
+	for(size_t j=0;j<pad_set_l.size();j++)
+		 cout<<"pad: "<<*pad_set_l[j]->node<<endl;
+
 }
 
 void Circuit::print_pad_map(){

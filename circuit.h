@@ -101,8 +101,10 @@ public:
 	////// new member for pad //////
 	
 	double max_IRdrop;
-	vector<Pad*> pad_set;
-	vector<Node*> origin_pad_set;
+	vector<Pad*> pad_set_g;
+	vector<Pad*> pad_set_l;
+	vector<Node*> origin_pad_set_g;
+	vector<Node*> origin_pad_set_l;
 	vector<Node*> special_nodes;
 	// size = replist
 	// record -current that has the worst IR drop values
@@ -110,7 +112,7 @@ public:
 	vector<double> worst_cur_new;
 	// mapping from name to Node object pointer
 	// two map node_pt lists: global and local
-	unordered_map<string, Node*> map_node_pt;
+	unordered_map<string, Node*> map_node_pt_g;
 	unordered_map<string, Node*> map_node_pt_l;
 
 	////// new functions for pad /////
@@ -118,7 +120,7 @@ public:
 	void print_pad_map();
 	void clear_flags();
 	double update_pad_pos(double ref_drop_value, size_t i);
-	double update_pad_pos_all(vector<double> ref_drop_vec);
+	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
 	void round_data(double &data);
 	Node * pad_projection(Pad *pad, Node *nd);
 	void project_pads();
@@ -128,28 +130,28 @@ public:
 	void relocate_pads();
 	void relocate_pads_graph();
 	void restore_pad_set(vector<Node*>&pad_set_old);
-	void assign_pad_set(vector<Node*>&pad_set_old);
+	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets();
 	void print_pad_set();
 	void extract_pads(int pad_number);
 	void print_matlab();
 	void clear_pad_control_nodes();
 	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
-	void extract_min_max_pads(vector<double> ref_drop_vec);
-	void extract_min_max_pads_new(vector<double> ref_drop_vec);
+	void extract_min_max_pads(vector<Pad*> & pad_set, vector<double> ref_drop_vec);
+	void extract_min_max_pads_new(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 
 	void build_graph();
 	Pad *find_nbr_pad(Pad *pad);
 	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(vector<double> ref_drop_vec);
+	void graph_move_pads(vector<Pad *> &pad_set, vector<double> ref_drop_vec);
 	int locate_max_drop_pad(vector<double> vec);
 	void calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g, double &avg_drop_l);
-	double calc_avg_ref(vector<double> ref_drop_vec);
+	void calc_avg_ref(vector<double> ref_drop_vec, double &avg_ref_g, double &avg_ref_l);
 	double locate_ref(size_t i);
 	void dynamic_update_violate_ref(vector<double> & ref_drop_vec);
 	bool print_flag(Node *nd);
-	void move_violate_pads(vector<double> ref_drop_vec);
-	void modify_newxy();
+	void move_violate_pads(vector<Pad *> &pad_set, vector<double> ref_drop_vec);
+	void modify_newxy(vector<Pad*> &pad_set);
 	double resolve_direct();
 	void resolve_queue(vector<Node *> origin_pad_set);
 	void solve_queue(vector<Node *> pad_set_old);
@@ -313,18 +315,17 @@ inline bool Circuit::has_node(string name) const{
 	return false;
 }
 
-inline bool Circuit::has_node_pt(string pt_name) const{
+inline bool Circuit::has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const{
 	if( map_node_pt.find(pt_name) != map_node_pt.end() ) return true;
 	return false;
 }
 
 // get a node by pt
-inline Node * Circuit::get_node_pt(string pt_name){
+inline Node * Circuit::get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name){
 	unordered_map<string, Node*>::const_iterator it = map_node_pt.find(pt_name);
 	if( it != map_node_pt.end() ) return it->second;
 	else return NULL;
 }
-
 
 // get a node by name
 inline Node * Circuit::get_node(string name){
