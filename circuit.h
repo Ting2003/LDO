@@ -76,7 +76,7 @@ public:
 	// sort nodes according to predefined order
 	void sort_nodes();
         
-        void make_A_symmetric(double *bp);
+        void make_A_symmetric(double *bp, bool flag);
 	void make_A_symmetric_tr(double *b, double *x, Tran &tran);
 	//void make_A_symmetric_block();
       //void make_A_symmetric_block_tr(Tran &tran);
@@ -181,7 +181,7 @@ private:
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
-	void stamp_VDD_tr(double *b, Net * net);
+	void stamp_VDD_tr(double *b, Net * net, bool flag);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);
 

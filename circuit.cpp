@@ -228,7 +228,7 @@ void Circuit::solve(Tran &tran){
 	// cout<<nodelist<<endl;
 	double max_IRdrop = locate_maxIRdrop_tr(tran);
 			
-	clog<<"max IRdrop for tr is: "<<max_IRdrop<<endl;	
+	//clog<<"max IRdrop for tr is: "<<max_IRdrop<<endl;	
 	clog<<endl;
 
 }
@@ -257,7 +257,8 @@ void Circuit::solve_DC(){
 
    Matrix A;
    stamp_by_set(A, bp);
-   make_A_symmetric(bp);
+   bool flag_cur = false;
+   make_A_symmetric(bp, flag_cur);
    A.set_row(n);
    //cout<<endl<<A<<endl;
    //cout<<"replist size: "<<n<<endl;
@@ -297,7 +298,9 @@ void Circuit::solve_LU_core(Tran &tran){
 
    Matrix A;
    stamp_by_set(A, bp);
-   make_A_symmetric(bp);
+   bool flag_cur = false;
+   make_A_symmetric(bp, flag_cur);
+   
    A.set_row(n);
    Algebra::solve_CK(A, L, x, b, cm);
    //return;
@@ -317,12 +320,13 @@ void Circuit::solve_LU_core(Tran &tran){
    link_ckt_nodes(tran);
 
    bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
-   bnewp = static_cast<double *>(bnew->x);
- 
+   bnewp = static_cast<double *>(bnew->x); 
+   
    double time = 0;
    //int iter = 0;
    stamp_by_set_tr(A, bp, tran);
-   make_A_symmetric(bp);
+   flag_cur = false; 
+   make_A_symmetric(bp, flag_cur);
    stamp_current_tr(bp, time);
  
    Algebra::CK_decomp(A, L, cm);
@@ -334,8 +338,7 @@ void Circuit::solve_LU_core(Tran &tran){
    for(size_t i=0;i<n;i++){
 	bnewp[i] = bp[i];
    }
-  
-   // set_eq_induc(tran);
+      // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
    map_node.clear();
@@ -347,20 +350,24 @@ void Circuit::solve_LU_core(Tran &tran){
    save_ckt_nodes(xp);
    time += tran.step_t;
    // maintain the old current values
-   worst_cur_new = worst_cur;
-   double IRdrop_old = locate_maxIRdrop(xp, n);
+   double IRdrop_old = locate_maxIRdrop(xp, n); 
+   vector<double> worst_cur_orig;
+   worst_cur_orig = worst_cur;
    double IRdrop_new = 0;
    int iter=1;
+   vector<double> temp_b;
+   temp_b.resize(n);
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
 	for(size_t i=0;i<n;i++)
 		bnewp[i] = bp[i];
-      // only stamps if net current changes
+	
+      worst_cur_new = worst_cur_orig; 
       // set bp into last state
       stamp_current_tr_1(bp, bnewp, time);
+      worst_cur_orig = worst_cur_new; 
      // get the new bnewp
       modify_rhs_tr(bnewp, xp); 
-	
       x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
       xp = static_cast<double *> (x->x); 
       // then locate max_IRdrop
@@ -369,17 +376,51 @@ void Circuit::solve_LU_core(Tran &tran){
       // update the saved worst_cur
       if(IRdrop_new > IRdrop_old){
 	worst_cur = worst_cur_new;
-	IRdrop_old = IRdrop_new;		
+	for(size_t i=0;i<n;i++)
+		temp_b[i] = bnewp[i];
+	
+	IRdrop_old = IRdrop_new;
       }
 
       save_ckt_nodes(xp);
       time += tran.step_t;
    }
    // clear new temp worst current
-   worst_cur_new.clear(); 
+   worst_cur_new.clear();
+   worst_cur_orig.clear(); 
    save_ckt_nodes_to_tr(tran);
    //print_ckt_nodes(tran);
    // release_resource();
+   //
+
+   // solve_DC with worst_cur
+   for(size_t i=0;i<n;i++){
+	bnewp[i] = worst_cur[i];
+   }
+   int type = VOLTAGE;
+   flag_cur = true;
+   NetPtrVector & ns = net_set[type];
+   for(size_t i=0;i<ns.size();i++){
+	if( fzero(ns[i]->value)  && 
+	!ns[i]->ab[0]->is_ground() &&
+	!ns[i]->ab[1]->is_ground() )
+		continue; // it's a 0v via
+	stamp_VDD_tr(bnewp, ns[i], flag_cur);
+   }
+   flag_cur = true;
+   make_A_symmetric(bnewp, flag_cur);
+   
+   x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+   xp = static_cast<double *> (x->x);
+   for(size_t i=0;i<n;i++)
+	replist[i]->value = xp[i];
+   for(size_t i=0;i<nodelist.size()-1;i++)
+	nodelist[i]->value = nodelist[i]->rep->value;
+
+   double IRdrop_final = locate_maxIRdrop();
+   clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
+   //cout<<nodelist<<endl;
+
    release_ckt_nodes();
    cholmod_free_dense(&b, cm);
    cholmod_free_dense(&bnew, cm);
@@ -392,12 +433,11 @@ void Circuit::solve_LU_core(Tran &tran){
 void Circuit::solve_LU(Tran &tran){
         solve_init();
 	// initialize worst_cur vector
-	worst_cur.resize(replist.size());
-	for(size_t i=0;i<replist.size();i++){
+   	worst_cur.resize(replist.size());
+   	for(size_t i=0;i<replist.size();i++){
 		worst_cur[i] = 0;	
-	}
+   	}
 	solve_LU_core(tran);
-	//solve_LU_core_all(tran);
 }
 
 // given vector x that obtained from LU, set the value to the corresponding
@@ -528,7 +568,8 @@ void Circuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 				    !ns[i]->ab[0]->is_ground() &&
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
-				stamp_VDD_tr(b, ns[i]);
+				bool flag = false;
+				stamp_VDD_tr(b, ns[i], flag);
 			}
 			break;
 		case CAPACITANCE:
@@ -807,11 +848,9 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	Ieq  = (i_t + temp);
 	if(!nk->is_ground()&& nk->isS()!=X){
 		 rhs[k] += Ieq;	// for VDD circuit
-		 worst_cur[k] += Ieq;
 	}
 	if(!nl->is_ground()&& nl->isS()!=X){
 		 rhs[l] += -Ieq; 
-		 worst_cur[l] += -Ieq;
 	}
 }
 
@@ -1023,14 +1062,14 @@ void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -net->value;//current;
-		worst_cur[k] = -net->value;
+		worst_cur[k] += -net->value;
 		//clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=X) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  net->value;// current;
-		worst_cur[l] = net->value;
+		worst_cur[l] += net->value;
 		//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
@@ -1056,7 +1095,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			//clog<<"time, k, b bef: "<<time<<" "<<k<<" "<<b[k]<<endl;
 			b[k] += -diff;//current;
 			bp[k] = b[k];
-			worst_cur_new[k] = -diff;
+			worst_cur_new[k] += -diff;
 			//clog<<"time, k, b: "<<time <<" "<<k<<" "<<b[k]<<endl;
 		}
 		if( !nl->is_ground() && nl->isS()!=X) {
@@ -1065,7 +1104,7 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 			b[l] +=  diff;// current;
 			bp[l] = b[l];
-			worst_cur_new[l] = diff;
+			worst_cur_new[l] += diff;
 			//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 		}
 	}
@@ -1095,7 +1134,7 @@ void Circuit::stamp_VDD(Matrix & A, double * b, Net * net){
 }
 
 // stamp a voltage source
-void Circuit::stamp_VDD_tr(double * b, Net * net){
+void Circuit::stamp_VDD_tr(double * b, Net * net, bool flag){
 	// find the non-ground node
 	//clog<<"net: "<<*net<<endl;
 	Node * X = net->ab[0];
@@ -1108,10 +1147,14 @@ void Circuit::stamp_VDD_tr(double * b, Net * net){
 		// this node connects to a VDD and a current
 		assert( feqn(1.0, b[id]) ); // the current should be stamped
 		b[id] = net->value;	    // modify it
+		if(flag ==  true)
+			worst_cur[id] = net->value;
 		//clog<<"b: ="<<id<<" "<<net->value<<endl;
 	}
 	else{
 		b[id] += net->value;
+		if(flag == true)
+			worst_cur[id] += net->value;
 		//clog<<"b: +"<<id<<" "<<net->value<<endl;
 	}
 }
@@ -1210,7 +1253,7 @@ void Circuit:: release_ckt_nodes(){
    }
 }
 
-void Circuit::make_A_symmetric(double *b){
+void Circuit::make_A_symmetric(double *b, bool flag){
 	int type = RESISTOR;
 	NetList & ns = net_set[type];
 	NetList::iterator it;
@@ -1234,6 +1277,8 @@ void Circuit::make_A_symmetric(double *b){
            double G = 1.0 / (*it)->value;
            
            b[id] += p->value * G;
+	   if(flag == true)
+	   	worst_cur[id] += p->value * G;
         }
 }
 
@@ -2261,7 +2306,7 @@ double Circuit::update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, siz
 			round_data(pad_newy);
 
 			//if(pad->name == "n0_67_159")
-				//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
+			// clog<<"pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
 
 			if((pad_ptr->node->pt.x > 300 || pad_ptr->node->pt.y > 150) && (pad_newx <= 300 && pad_newy <= 150)){
 				//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
@@ -2698,7 +2743,7 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 		}
 	}
 
-	//cout<<"min, max: "<<min<<" "<<max<<endl;
+	clog<<"min, max: "<<min<<" "<<max<<endl;
 	for(size_t j=0;j<ref_drop_vec.size();j++){
 		// skip if a pad has no control nodes
 		if(pad_set[j]->control_nodes.size()==0)
@@ -2745,12 +2790,12 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 		}
 
 	}
-	/*for(size_t j=0;j<min_pads.size();j++){
+	for(size_t j=0;j<min_pads.size();j++){
 		cout<<"min_pads: "<<*min_pads[j]<<endl;
 	}
 	for(size_t j=0;j<max_pads.size();j++){
 		cout<<"max_pads: "<<*max_pads[j]<<endl;
-	}*/
+	}
 
 	min_pads.clear();
 	max_pads.clear();
@@ -2854,6 +2899,7 @@ double Circuit::locate_ref(vector<Pad*> &pad_set, size_t i){
 			it++){
 		nd = it->first;
 		// cout<<"control: "<<*nd<<endl;
+		// need to be generated with worst_cur
 		weight = nd->value;
 		if(weight <0)
 			weight *=10;
@@ -3185,11 +3231,11 @@ void Circuit::build_pad_set(){
 				pad_set_l.push_back(pad_ptr);
 		}
 	}
-	for(size_t j=0;j<pad_set_g.size();j++)
+	/*for(size_t j=0;j<pad_set_g.size();j++)
 		 cout<<"pad: "<<*pad_set_g[j]->node<<endl;
 
 	for(size_t j=0;j<pad_set_l.size();j++)
-		 cout<<"pad: "<<*pad_set_l[j]->node<<endl;
+		 cout<<"pad: "<<*pad_set_l[j]->node<<endl;*/
 
 }
 
