@@ -274,7 +274,7 @@ void Circuit::solve_DC(){
    for(size_t i=0;i<nodelist.size();i++){
 	nodelist[i]->value = nodelist[i]->rep->value;
    }
-   cout<<nodelist<<endl;
+   // cout<<nodelist<<endl;
 
    double max_IRdrop = locate_maxIRdrop();
 			
@@ -2130,7 +2130,7 @@ void Circuit::relocate_pads_graph(){
 	//print_pad_set();
 	for(size_t i=0;i<12;i++){
 		clog<<"iter for pad move. "<<i<<endl;
-		/*int pad_number = 1;
+		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
 		origin_pad_set_l.resize(pad_set_l.size());
 		assign_pad_set(pad_set_g, origin_pad_set_g);
@@ -2173,7 +2173,7 @@ void Circuit::relocate_pads_graph(){
 		graph_move_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
 		
 		clear_flags(pad_set_g);
-		clear_flags(pad_set_l);*/
+		clear_flags(pad_set_l);
 		// actual move pads into the new spots
 		// project_pads();
 		
@@ -2544,7 +2544,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		if(rm_node == add_node || add_node->isS()==X)
 			continue;
 
-		//cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
+		cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
 			//cout<<"id, net: "<<net->id<<" "<<*net<<endl;
@@ -2851,7 +2851,7 @@ void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<P
 			pad_nbr = pad_ptr->nbrs[i];
 			if(pad_nbr->fix_flag == false){
 				pad_nbr->fix_flag = true;
-				cout<<"pad_nbr: "<<*pad_nbr->node<<endl;
+				//cout<<"pad_nbr: "<<*pad_nbr->node<<endl;
 			}
 		}
 
@@ -3040,9 +3040,9 @@ double Circuit::resolve_direct(){
 	size_t n = replist.size();
 	//cout<<endl;
 	//cout<<"============ a new round ======"<<endl;
-	/*rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
+	rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
 	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);	
-	Net *net;	*/
+	Net *net;	
 
 	// recreate the right hand side
 	for(size_t i=0;i<n;i++){
@@ -3061,9 +3061,6 @@ double Circuit::resolve_direct(){
 	flag_cur = true;
 	make_A_symmetric(bnewp, flag_cur);
 
-	for(size_t i=0;i<n;i++){
-		cout<<"i, bnwp: "<<i<<" "<<bnewp[i]<<endl;
-	}
 	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
 	xp = static_cast<double *> (x->x);
 	for(size_t i=0;i<n;i++)
