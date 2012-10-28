@@ -118,11 +118,11 @@ public:
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
 	void print_pad_map();
-	void clear_flags();
+	void clear_flags(vector<Pad*> &pad_set);
 	double update_pad_pos(double ref_drop_value, size_t i);
 	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
 	void round_data(double &data);
-	Node * pad_projection(Pad *pad, Node *nd);
+	Node * pad_projection(vector<Pad*> &pad_set, Pad *pad, Node *nd);
 	void project_pads();
 	bool has_node_pt(string pt_name) const;
 	Node * get_node_pt(string pt_name);
@@ -136,19 +136,19 @@ public:
 	void extract_pads(vector<Pad*> &pad_set, int pad_number);
 	void print_matlab();
 	void clear_pad_control_nodes();
-	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
-	void extract_min_max_pads(vector<Pad*> & pad_set, vector<double> ref_drop_vec);
-	void extract_min_max_pads_new(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
+	void update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_vec, size_t iter);
+	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec);
+	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 
 	void build_graph(vector<Pad*> &pad_set);
 	Pad *find_nbr_pad(Pad *pad);
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(vector<Pad *> &pad_set, vector<double> ref_drop_vec);
 	int locate_max_drop_pad(vector<double> vec);
-	void calc_avg_ref_drop(vector<double> &ref_drop_vec, double &avg_drop_g, double &avg_drop_l);
-	void calc_avg_ref(vector<double> ref_drop_vec, double &avg_ref_g, double &avg_ref_l);
+	double calc_avg_ref_drop(vector<Pad*> &pad_set, vector<double> &ref_drop_vec);
+	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(size_t i);
-	void dynamic_update_violate_ref(vector<double> & ref_drop_vec);
+	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec);
 	bool print_flag(Node *nd);
 	void move_violate_pads(vector<Pad *> &pad_set, vector<double> ref_drop_vec);
 	void modify_newxy(vector<Pad*> &pad_set);
