@@ -386,11 +386,10 @@ void Circuit::solve_LU_core(Tran &tran){
       time += tran.step_t;
    }
    // clear new temp worst current
-   worst_cur_new.clear();
+   worst_cur_new = worst_cur;
    worst_cur_orig.clear(); 
    save_ckt_nodes_to_tr(tran);
    //print_ckt_nodes(tran);
-   // release_resource();
    //
 
    // solve_DC with worst_cur
@@ -419,14 +418,9 @@ void Circuit::solve_LU_core(Tran &tran){
 
    double IRdrop_final = locate_maxIRdrop();
    clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
+   // recover worst_cur into original state
+   worst_cur = worst_cur_new;
    //cout<<nodelist<<endl;
-
-   release_ckt_nodes();
-   cholmod_free_dense(&b, cm);
-   cholmod_free_dense(&bnew, cm);
-   cholmod_free_factor(&L, cm);
-   cholmod_free_dense(&x, cm);
-   cholmod_finish(&c);   
 }
 
 // solve the node voltages using direct LU
@@ -2136,7 +2130,7 @@ void Circuit::relocate_pads_graph(){
 	//print_pad_set();
 	for(size_t i=0;i<12;i++){
 		clog<<"iter for pad move. "<<i<<endl;
-		int pad_number = 1;
+		/*int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
 		origin_pad_set_l.resize(pad_set_l.size());
 		assign_pad_set(pad_set_g, origin_pad_set_g);
@@ -2179,7 +2173,7 @@ void Circuit::relocate_pads_graph(){
 		graph_move_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
 		
 		clear_flags(pad_set_g);
-		clear_flags(pad_set_l);
+		clear_flags(pad_set_l);*/
 		// actual move pads into the new spots
 		// project_pads();
 		
@@ -2198,6 +2192,8 @@ void Circuit::relocate_pads_graph(){
 	origin_pad_set_l.clear();
 	pad_set_old_g.clear();
 	pad_set_old_l.clear();
+	// terminate cm and xp,bp and so on
+   	release_resource();
 	//print_pad_set();
 	cout<<nodelist<<endl;
 }
@@ -2395,13 +2391,17 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(map_node_pt, pt_name)){
 		nd_new = get_node_pt(map_node_pt, pt_name);
-		 //cout<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
+		nd_new = nd_new->rep;
+		// clog<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
-			nd->disableX();
-			nd->value = 0;
-			//nd_new->enableX();
-			//nd_new->value = VDD;
+			sstream.str("");
+			sstream<<"_X_"<<nd_new->name;
+			nd->pt.x = pad->newx;
+			nd->pt.y = pad->newy;
+			nd->name = sstream.str();
+			nd_new = nd;
+			//clog<<"nd: "<<*nd<<" "<<nd->pt.x<<" "<<nd->pt.y<<endl;
 			return nd_new;
 		}
 	}
@@ -2424,13 +2424,17 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 			pt_name = sstream.str();
 			if(has_node_pt(map_node_pt, pt_name)){
 				nd_new = get_node_pt(map_node_pt, pt_name);
+				nd_new = nd_new->rep;
 
 				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 				if(nd_new->isS()!=X){
-					nd->disableX();
-					nd->value = 0;
-					//nd_new->enableX();
-					//nd_new->value = VDD;
+					sstream.str("");
+					sstream<<"_X_"<<nd_new->name;
+					nd->pt.x = pad->newx;
+					nd->pt.y = pad->newy;
+					nd->name = sstream.str();
+					nd_new = nd;
+
 					return_flag = true;
 					break;
 				}
@@ -2442,8 +2446,9 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 	while(!q.empty()){
 		q.pop();
 	}
-	if(return_flag == true)
+	if(return_flag == true){
 		return nd_new;
+	}
 	clog<<"no point for new pad. return. "<<endl;
 	return NULL;
 }
@@ -2478,7 +2483,7 @@ void Circuit::build_map_node_pt(){
 		} else if(nd->get_layer() == 
 			ref_layer_l){
 			sstream.str("");	
-			sstream<<ref_layer_g<<"_"<<
+			sstream<<ref_layer_l<<"_"<<
 				nd->pt.x<<"_"<<nd->pt.y;
 			pt_pair.first = sstream.str();
 			pt_pair.second = nd;
@@ -2743,15 +2748,15 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 		}
 	}
 
-	clog<<"min, max: "<<min<<" "<<max<<endl;
 	for(size_t j=0;j<ref_drop_vec.size();j++){
 		// skip if a pad has no control nodes
 		if(pad_set[j]->control_nodes.size()==0)
 			continue;
-		if(VDD - ref_drop_vec[j]<= max*0.5){
+		if(VDD - ref_drop_vec[j]<= max*0.2){
 			min_pads.push_back(pad_set[j]->node);
 		}
-		if(VDD-ref_drop_vec[j]>=max*0.8){
+		// disable this function
+		if(VDD-ref_drop_vec[j]>max*1.0){
 			max_pads.push_back(pad_set[j]->node);
 		}
 	}
@@ -2790,12 +2795,12 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 		}
 
 	}
-	for(size_t j=0;j<min_pads.size();j++){
+	/*for(size_t j=0;j<min_pads.size();j++){
 		cout<<"min_pads: "<<*min_pads[j]<<endl;
 	}
 	for(size_t j=0;j<max_pads.size();j++){
 		cout<<"max_pads: "<<*max_pads[j]<<endl;
-	}
+	}*/
 
 	min_pads.clear();
 	max_pads.clear();
@@ -2814,7 +2819,7 @@ void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector
 		// if violate, move this pad
 		if(pad_ptr->violate_flag == true){
 			new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad);
-			//cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+			// clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 			pad_ptr->node = new_pad;
 			pad_ptr->control_nodes.clear();
 			pad_ptr->visit_flag = true;
@@ -2825,17 +2830,16 @@ void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector
 void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, vector<double> ref_drop_vec){
 	Node *new_pad;
 	int id=0;
-	//for(size_t i=0;i<5;i++){
+	// for(size_t i=0;i<5;i++){
 	do{
 		id = locate_max_drop_pad(pad_set, ref_drop_vec);
 		if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		//clog<<endl<<"pad: "<<*pad<<endl;
 		new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad);
-		
-		//cout<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		if(pad->name != new_pad->name)	
+			clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		//bool flag = print_flag(pad);
 		//if(flag == true || new_pad->name == "n0_86_30" || new_pad->name =="n0_477_17" || pad->name == "n0_477_17")
@@ -2847,7 +2851,7 @@ void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<P
 			pad_nbr = pad_ptr->nbrs[i];
 			if(pad_nbr->fix_flag == false){
 				pad_nbr->fix_flag = true;
-				//clog<<"pad_nbr: "<<*pad_nbr->node<<endl;
+				cout<<"pad_nbr: "<<*pad_nbr->node<<endl;
 			}
 		}
 
@@ -3033,17 +3037,44 @@ void Circuit::clear_flags(vector<Pad*> &pad_set){
 double Circuit::resolve_direct(){
 	clock_t t1, t2;
 	t1 = clock();
+	size_t n = replist.size();
 	//cout<<endl;
 	//cout<<"============ a new round ======"<<endl;
-	rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
+	/*rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
 	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);	
-	Net *net;	
+	Net *net;	*/
 
-	solve_DC();
+	// recreate the right hand side
+	for(size_t i=0;i<n;i++){
+		bnewp[i] = worst_cur[i];
+	}
+	int type = VOLTAGE;
+	bool flag_cur = true;
+	NetPtrVector & ns = net_set[type];
+	for(size_t i=0;i<ns.size();i++){
+		if( fzero(ns[i]->value)  && 
+			!ns[i]->ab[0]->is_ground() &&
+			!ns[i]->ab[1]->is_ground() )
+		continue; // it's a 0v via
+		stamp_VDD_tr(bnewp, ns[i], flag_cur);
+	}
+	flag_cur = true;
+	make_A_symmetric(bnewp, flag_cur);
+
+	for(size_t i=0;i<n;i++){
+		cout<<"i, bnwp: "<<i<<" "<<bnewp[i]<<endl;
+	}
+	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+	xp = static_cast<double *> (x->x);
+	for(size_t i=0;i<n;i++)
+		replist[i]->value = xp[i];
+	for(size_t i=0;i<nodelist.size()-1;i++)
+		nodelist[i]->value = nodelist[i]->rep->value;
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
 	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
+	worst_cur = worst_cur_new;
 	t2 = clock();
 	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 	return max_IR;
@@ -3295,4 +3326,13 @@ void Circuit::get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran){
 		}
 		time += tran.step_t;
 	}
+}
+
+void Circuit::release_resource(){
+   release_ckt_nodes();
+   cholmod_free_dense(&b, cm);
+   cholmod_free_dense(&bnew, cm);
+   cholmod_free_factor(&L, cm);
+   cholmod_free_dense(&x, cm);
+   cholmod_finish(&c); 
 }

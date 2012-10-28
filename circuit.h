@@ -118,6 +118,7 @@ public:
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
 	void print_pad_map(vector<Pad*> &pad_set);
+	void release_resource();
 	void clear_flags(vector<Pad*> &pad_set);
 	double update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, size_t i);
 	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
