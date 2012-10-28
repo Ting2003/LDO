@@ -133,14 +133,14 @@ public:
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets();
 	void print_pad_set();
-	void extract_pads(int pad_number);
+	void extract_pads(vector<Pad*> &pad_set, int pad_number);
 	void print_matlab();
 	void clear_pad_control_nodes();
 	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
 	void extract_min_max_pads(vector<Pad*> & pad_set, vector<double> ref_drop_vec);
 	void extract_min_max_pads_new(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 
-	void build_graph();
+	void build_graph(vector<Pad*> &pad_set);
 	Pad *find_nbr_pad(Pad *pad);
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(vector<Pad *> &pad_set, vector<double> ref_drop_vec);

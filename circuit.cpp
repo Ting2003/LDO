@@ -2097,9 +2097,11 @@ void Circuit::relocate_pads_graph(){
 		assign_pad_set(pad_set_g, origin_pad_set_g);
 		assign_pad_set(pad_set_l, origin_pad_set_l);
 		// build pad connection graph
-		build_graph();
+		build_graph(pad_set_g);
+		build_graph(pad_set_l);
 		// find control nodes for each pad
-		extract_pads(pad_number);
+		extract_pads(pad_set_g, pad_number);
+		extract_pads(pad_set_l, pad_number);
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(ref_drop_vec_g, i);
 		//print_all_control_nodes();	
@@ -3041,7 +3043,7 @@ double Circuit::resolve_direct(){
 }
 
 // build graph for local and global pad nodes
-void Circuit::build_graph(){
+void Circuit::build_graph(vector<Pad*> &pad_set){
 	Pad *pad;
 	Pad *pad_nbr;
 	bool flag_pad = false;
@@ -3084,7 +3086,7 @@ void Circuit::build_graph(){
 }
 
 // extract controlling nodes for both local and global pads
-void Circuit::extract_pads(int pad_number){
+void Circuit::extract_pads(vector<Pad*> &pad_set, int pad_number){
 	vector<Node*> pair_first;
 	vector<double> pair_second;
 	pair<Node*, double> pair_nd;
