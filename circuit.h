@@ -131,7 +131,7 @@ public:
 	void relocate_pads_graph();
 	void restore_pad_set(vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
-	void rebuild_voltage_nets();
+	void rebuild_voltage_nets(vector<Pad*> &origin_pad_set);
 	void print_pad_set();
 	void extract_pads(vector<Pad*> &pad_set, int pad_number);
 	void print_matlab();

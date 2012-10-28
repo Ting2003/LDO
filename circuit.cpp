@@ -2147,7 +2147,8 @@ void Circuit::relocate_pads_graph(){
 	}
 	ref_drop_vec_g.clear();
 	ref_drop_vec_l.clear();
-	map_node_pt.clear();
+	map_node_pt_g.clear();
+	map_node_pt_l.clear();
 	origin_pad_set_g.clear();
 	origin_pad_set_l.clear();
 	pad_set_old_g.clear();
@@ -2463,7 +2464,7 @@ void Circuit::restore_pad_set(vector<Node*>&pad_set_old){
 }
 
 // modify voltage net set with rm_node and add_node
-void Circuit::rebuild_voltage_nets(){
+void Circuit::rebuild_voltage_nets(vector<Pad*> &origin_pad_set){
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
@@ -2988,7 +2989,8 @@ double Circuit::resolve_direct(){
 	t1 = clock();
 	//cout<<endl;
 	//cout<<"============ a new round ======"<<endl;
-	rebuild_voltage_nets();	
+	rebuild_voltage_nets(origin_pad_set_g);
+	rebuild_voltage_nets(origin_pad_set_l);	
 	Net *net;	
 
 	solve_DC();
