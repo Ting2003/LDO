@@ -2217,7 +2217,7 @@ void Circuit::relocate_pads_graph(Tran &tran){
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
 	//print_pad_set();
-	for(size_t i=0;i<1;i++){
+	for(size_t i=0;i<11;i++){
 		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
@@ -2644,7 +2644,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 			na = net->ab[1];
 		}	
 		na->rep = na;
-		clog<<"na, rep: "<<*na<<" "<<*na->rep<<endl;
+		//clog<<"na, rep: "<<*na<<" "<<*na->rep<<endl;
 		//rm_node = pad_set_old[i];
 		add_node = pad_set[i]->node;
 		if(rm_node == add_node || add_node->isS()==X)
@@ -2694,7 +2694,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 
 		add_net = new Net(VOLTAGE, VDD, add_node_new, 
 				nodelist[nodelist.size()-1]);
-		clog<<"add_net: "<<*add_net<<" "<<index_rm_net<<endl;
+		// clog<<"add_net: "<<*add_net<<" "<<index_rm_net<<endl;
 		add_net->id = index_rm_net;
 
 		net_set[type][index_rm_net] = add_net;
@@ -2706,7 +2706,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 			// Need to move the via net
 			via_net = add_node->nbr[TOP];
 			if(via_net != NULL){
-				clog<<"via net old: "<<*via_net<<endl;
+				//clog<<"via net old: "<<*via_net<<endl;
 				// need to locate the top node
 				sstream.str("");
 				sstream<<"n"<<global_layers[0]<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y;
@@ -2714,7 +2714,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 					Node *nd = get_node_pt(map_node_pt_g, sstream.str());
 					via_net->ab[0] = na;
 					via_net->ab[1] = nd;
-					clog<<"via net new: "<<*via_net<<endl;
+					//clog<<"via net new: "<<*via_net<<endl;
 				}
 			}
 		}
