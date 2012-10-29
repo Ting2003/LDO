@@ -200,7 +200,7 @@ void Circuit::solve_init(){
 		}
 		else
 			p->rid = p->rep->rid;
-		// cout<<"p, p->rep, rid: "<<p->name<<" "<<p->rep->name<<" "<<p->rid<<endl;
+		 //cout<<"p, p->rep, rid: "<<p->name<<" "<<p->rep->name<<" "<<p->rid<<endl;
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
@@ -226,7 +226,9 @@ void Circuit::count_merge_nodes(){
 }
 
 void Circuit::solve(Tran &tran){
+	clog<<"before solve Lu. "<<endl;
 	solve_LU(tran);
+	clog<<"after solve Lu. "<<endl;
 	// cout<<nodelist<<endl;
 	double max_IRdrop = locate_maxIRdrop_tr(tran);
 			
@@ -431,6 +433,7 @@ void Circuit::solve_LU_core(Tran &tran){
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
+	clog<<"after solve init. "<<endl;
 	// initialize worst_cur vector
    	worst_cur.resize(replist.size());
    	for(size_t i=0;i<replist.size();i++){
@@ -2634,7 +2637,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 
 		add_net = new Net(VOLTAGE, VDD, add_node_new, 
 				nodelist[nodelist.size()-1]);
-		// clog<<"add_net: "<<*add_net<<endl;
+		clog<<"add_net: "<<*add_net<<endl;
 		add_net->id = index_rm_net;
 
 		net_set[type][index_rm_net] = add_net;
@@ -2642,7 +2645,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		double value = resistor_net->value;
 		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
 		
-		// clog<<"add_net resistor: "<<*add_resistor_net<<endl;
+		clog<<"add_net resistor: "<<*add_resistor_net<<endl;
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
@@ -2657,9 +2660,11 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node<<" "<<*add_node_new<<endl;
 		nodelist[rm_node->id] = add_node_new;
 	}
-	for(size_t i=0;i<rm_net.size();i++){
+        clog<<"before delete rm_net. "<<endl;
+	rm_net.clear();
+	/*for(size_t i=0;i<rm_net.size();i++){
 		delete rm_net[i];
-	}
+	}*/
 	origin_pad_set.clear();
 	//free(rm_node);
 }
@@ -3084,9 +3089,10 @@ double Circuit::resolve_direct(){
 	t1 = clock();
 	size_t n = replist.size();
 	//cout<<endl;
-	//cout<<"============ a new round ======"<<endl;
+	clog<<"============ a new round ======"<<endl;
 	rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
-	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);	
+	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
+	clog<<"========== finish net building. ==="<<endl;	
 	Net *net;	
 
 	// need to repeat solve_init and stamp matrix, decomp matrix process
