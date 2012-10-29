@@ -292,7 +292,6 @@ void Circuit::solve_DC(){
 void Circuit::solve_LU_core(Tran &tran){
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node   
- 
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
@@ -436,7 +435,14 @@ void Circuit::solve_LU_core(Tran &tran){
    // recover worst_cur into original state
    //worst_cur = worst_cur_new;
 
-   release_resource();
+   release_ckt_nodes();
+   cholmod_free_dense(&b, cm);
+   cholmod_free_dense(&bnew, cm);
+   cholmod_free_factor(&L, cm);
+   cholmod_free_dense(&x, cm);
+   cholmod_finish(&c); 
+
+   //release_resource();
    //cout<<nodelist<<endl;
 }
 
@@ -3415,7 +3421,8 @@ void Circuit::release_resource(){
 void Circuit::pad_solve_DC(Tran &tran){
    solve_init();
    size_t n = replist.size();	// replist dosn't contain ground node
-   if( n == 0 ) return;		// No node    
+   if( n == 0 ) return;		// No node   
+    
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
@@ -3427,8 +3434,6 @@ void Circuit::pad_solve_DC(Tran &tran){
    stamp_by_set_pad(A, tran);
    //cout<<A<<endl;
    A.set_row(n);
-   Algebra::CK_decomp(A, L, cm);
-   A.clear();
 
    // recreate the right hand side
    stamp_worst_cur(bnewp);
@@ -3445,16 +3450,13 @@ void Circuit::pad_solve_DC(Tran &tran){
    }
    make_A_symmetric(bnewp, flag_cur);
 
-   x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+   Algebra::solve_CK(A, L, x, bnew, cm);
+   A.clear();
    xp = static_cast<double *> (x->x);
-   clog<<"after solve. "<<endl;
    for(size_t i=0;i<n;i++)
 	replist[i]->value = xp[i];
    for(size_t i=0;i<nodelist.size()-1;i++)
 	nodelist[i]->value = nodelist[i]->rep->value;
-   double IRdrop_final = locate_maxIRdrop();
-   clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
-
    release_resource();
 }
 
