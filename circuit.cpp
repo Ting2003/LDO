@@ -330,15 +330,16 @@ void Circuit::solve_LU_core(Tran &tran){
    double time = 0;
    //int iter = 0;
    stamp_by_set_tr(A, bp, tran);
+   // cout<<A<<endl;
    flag_cur = false; 
    make_A_symmetric(bp, flag_cur);
    stamp_current_tr(bp, time);
  
    Algebra::CK_decomp(A, L, cm);
-   Lp = static_cast<int *>(L->p);
+   /*Lp = static_cast<int *>(L->p);
    Lx = static_cast<double*> (L->x);
    Li = static_cast<int*>(L->i) ;
-   Lnz = static_cast<int *>(L->nz); 
+   Lnz = static_cast<int *>(L->nz); */
    A.clear();
    for(size_t i=0;i<n;i++){
 	bnewp[i] = bp[i];
@@ -396,13 +397,23 @@ void Circuit::solve_LU_core(Tran &tran){
    save_ckt_nodes_to_tr(tran);
    //print_ckt_nodes(tran);
    //
+   
+   // assigning worst cur into net values
+   assign_net_worst_cur();
+   // stamp current sources
+   stamp_worst_cur(bnewp); 
 
    // solve_DC with worst_cur
-   for(size_t i=0;i<n;i++){
+   /*for(size_t i=0;i<n;i++){
+	//cout<<"i, bnewp, worst_cur: "<<i<<" "<<bnewp[i]<<" "<<worst_cur[i]<<endl;
 	bnewp[i] = worst_cur[i];
-   }
+   }*/
+   
+   worst_cur.clear();
+   worst_cur_new.clear();
+
    int type = VOLTAGE;
-   flag_cur = true;
+   flag_cur = false;
    NetPtrVector & ns = net_set[type];
    for(size_t i=0;i<ns.size();i++){
 	if( fzero(ns[i]->value)  && 
@@ -411,7 +422,6 @@ void Circuit::solve_LU_core(Tran &tran){
 		continue; // it's a 0v via
 	stamp_VDD_tr(bnewp, ns[i], flag_cur);
    }
-   flag_cur = true;
    make_A_symmetric(bnewp, flag_cur);
    
    x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
@@ -424,7 +434,7 @@ void Circuit::solve_LU_core(Tran &tran){
    double IRdrop_final = locate_maxIRdrop();
    clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
    // recover worst_cur into original state
-   worst_cur = worst_cur_new;
+   //worst_cur = worst_cur_new;
 
    release_resource();
    //cout<<nodelist<<endl;
@@ -475,7 +485,7 @@ void Circuit::copy_node_voltages(double * x, size_t &size, bool from){
 
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
-void Circuit::stamp_by_set_pad(Matrix & A){
+void Circuit::stamp_by_set_pad(Matrix & A, Tran &tran){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -488,9 +498,17 @@ void Circuit::stamp_by_set_pad(Matrix & A){
 				stamp_resistor(A, ns[i]);
 			}
 			break;
-		case CURRENT:	
-		case VOLTAGE:	
+		case VOLTAGE:
+			for(size_t i=0;i<ns.size();i++){
+				stamp_VDD_pad(A, ns[i]);
+			}
+			break;	
+		case CURRENT:
+			break;	
 		case CAPACITANCE:
+			for(size_t i=0;i<ns.size();i++)
+				stamp_capacitance_tr(A, ns[i], tran);
+			break;
 		case INDUCTANCE:	
 				break;
 		default:
@@ -643,7 +661,7 @@ void Circuit::modify_rhs_tr(double * b, double *x){
 }
 
 void Circuit::stamp_resistor(Matrix & A, Net * net){
-	//clog<<"net: "<<*net<<endl;
+	//cout<<"net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -802,7 +820,7 @@ void Circuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 
 // stamp capacitance Geq = 2C/delta_t
 void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
-	//cout<<"net: "<<*net<<endl;
+	// cout<<"net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -825,10 +843,10 @@ void Circuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 
 	if( nl->isS() !=X && !nl->is_ground()) {
 		A.push_back(l,l, Geq);
-		//cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
+		// cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground()&& l > k){
 			A.push_back(l,k,-Geq);
-			//cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			// cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
@@ -866,9 +884,9 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 	//#if 0
 	
 	if(nk->is_ground())
-	 temp = net->value *(-x[l]);
+	 temp = net->Geq *(-x[l]);
         else if(nl->is_ground()){
-	 temp = net->value *x[k];
+	 temp = net->Geq *x[k];
         }
         else
 	 temp = net->value *(x[k]-x[l]);
@@ -885,7 +903,7 @@ void Circuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x){
 // Ieq = i(t) + 2*C / delta_t *v(t)
 void Circuit::modify_rhs_c_tr(Net *net, double * rhs, double *x){
 	double temp = 0;
-	//clog<<"c net: "<<*net<<endl;
+	// clog<<"c net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
         
@@ -903,11 +921,11 @@ void Circuit::modify_rhs_c_tr(Net *net, double * rhs, double *x){
 	double i_t = (x[id_b] - x[id_a]) / r->value;
 	
 	if(nk->is_ground())
-	 temp = net->value *(-x[l]);
+	 temp = net->Geq *(-x[l]);
         else if(nl->is_ground())
-	 temp = net->value *x[k];
+	 temp = net->Geq *x[k];
         else
-	 temp = net->value *(x[k]-x[l]);
+	 temp = net->Geq *(x[k]-x[l]);
 	
 	double Ieq  = i_t + temp;
 	if(!nk->is_ground()&& nk->isS()!=X){
@@ -929,7 +947,7 @@ void Circuit::set_eq_induc(Tran &tran){
 void Circuit::set_eq_capac(Tran &tran){
 	NetPtrVector &ns = net_set[CAPACITANCE];
 	for(size_t i=0;i<ns.size();i++)
-		ns[i]->value = 2*ns[i]->value/tran.step_t;
+		ns[i]->Geq = 2*ns[i]->value/tran.step_t;
 }
 
 // add Ieq into rhs
@@ -1081,6 +1099,24 @@ void Circuit::stamp_current(double * b, Net * net){
 	}
 }
 
+// stamp a current source
+void Circuit::stamp_current_pad(double * b, Net * net){
+	//cout<<"net: "<<*net<<endl;
+	Node * nk = net->ab[0]->rep;
+	Node * nl = net->ab[1]->rep;
+
+	if( !nk->is_ground() && nk->isS()!=X){// && 
+		size_t k = nk->rid;
+		b[k] = -net->value_cur;
+		//cout<<"b: "<<k<<" "<<-net->value<<endl;
+	}
+	if( !nl->is_ground() && nl->isS() !=X){// &&
+		size_t l = nl->rid;
+		b[l] =  net->value_cur;
+		//cout<<"b: "<<l<<" "<<-net->value<<endl;
+	}
+}
+
 void Circuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	current_tr(net, time);
 	Node * nk = net->ab[0]->rep;
@@ -1135,6 +1171,17 @@ void Circuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, double &
 			//clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 		}
 	}
+}
+
+// stamp a voltage source
+void Circuit::stamp_VDD_pad(Matrix & A, Net * net){
+	// find the non-ground node
+	//clog<<"net: "<<*net<<endl;
+	Node * X = net->ab[0];
+	if( X->is_ground() ) X = net->ab[1];
+	size_t id = X->rep->rid;
+	A.push_back(id, id, 1.0);
+	//clog<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;
 }
 
 // stamp a voltage source
@@ -2143,7 +2190,7 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph(){
+void Circuit::relocate_pads_graph(Tran &tran){
 	vector<Node*> pad_set_old_g;
 	vector<Node*> pad_set_old_l;
 	double dist_g = 0;
@@ -2162,7 +2209,7 @@ void Circuit::relocate_pads_graph(){
 	vector<double> ref_drop_vec_l;
 	//print_pad_set();
 	for(size_t i=0;i<1;i++){
-		clog<<"iter for pad move. "<<i<<endl;
+		/*clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
 		origin_pad_set_l.resize(pad_set_l.size());
@@ -2213,8 +2260,8 @@ void Circuit::relocate_pads_graph(){
 		clear_flags(pad_set_l);
 		// actual move pads into the new spots
 		// project_pads();
-		
-		double max_IR = resolve_direct();
+		*/
+		double max_IR = resolve_direct(tran);
 		if(max_IR ==0)
 			break;
 		//resolve_queue(origin_pad_set);
@@ -3084,20 +3131,20 @@ void Circuit::clear_flags(vector<Pad*> &pad_set){
 	}
 }
 
-double Circuit::resolve_direct(){
+double Circuit::resolve_direct(Tran &tran){
 	clock_t t1, t2;
 	t1 = clock();
 	size_t n = replist.size();
 	//cout<<endl;
-	clog<<"============ a new round ======"<<endl;
+	/*clog<<"============ a new round ======"<<endl;
 	rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
 	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
 	clog<<"========== finish net building. ==="<<endl;	
-	Net *net;	
+	Net *net;	*/
 
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	clog<<"entering pad resolve dc. "<<endl;
-	pad_solve_DC();
+	pad_solve_DC(tran);
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -3365,35 +3412,29 @@ void Circuit::release_resource(){
    cholmod_finish(&c); 
 }
 
-void Circuit::pad_solve_DC(){
+void Circuit::pad_solve_DC(Tran &tran){
    solve_init();
-   clog<<"after solve_init. "<<endl;
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node    
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
-   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
+   bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
+   bnewp = static_cast<double *>(bnew->x); 
 
    Matrix A;
-   stamp_by_set_pad(A);
-   clog<<"after stamp pad nets. "<<endl; 
+   stamp_by_set_pad(A, tran);
+   //cout<<A<<endl;
    A.set_row(n);
    Algebra::CK_decomp(A, L, cm);
-   Lp = static_cast<int *>(L->p);
-   Lx = static_cast<double*> (L->x);
-   Li = static_cast<int*>(L->i) ;
-   Lnz = static_cast<int *>(L->nz); 
    A.clear();
 
    // recreate the right hand side
-   for(size_t i=0;i<n;i++){
-	bnewp[i] = worst_cur[i];
-   }
+   stamp_worst_cur(bnewp);
+  
    int type = VOLTAGE;
-   bool flag_cur = true;
+   bool flag_cur = false;
    NetPtrVector & ns = net_set[type];
    for(size_t i=0;i<ns.size();i++){
 	if( fzero(ns[i]->value)  && 
@@ -3402,14 +3443,72 @@ void Circuit::pad_solve_DC(){
 	continue; // it's a 0v via
 	stamp_VDD_tr(bnewp, ns[i], flag_cur);
    }
-   flag_cur = true;
    make_A_symmetric(bnewp, flag_cur);
 
    x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    xp = static_cast<double *> (x->x);
+   clog<<"after solve. "<<endl;
    for(size_t i=0;i<n;i++)
 	replist[i]->value = xp[i];
    for(size_t i=0;i<nodelist.size()-1;i++)
 	nodelist[i]->value = nodelist[i]->rep->value;
+   double IRdrop_final = locate_maxIRdrop();
+   clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
+
    release_resource();
+}
+
+void Circuit::assign_net_worst_cur(){
+    Net *net;
+    Node *na;
+    size_t id;
+    for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+	switch(type){
+	case RESISTOR:
+	case VOLTAGE:
+	case INDUCTANCE:
+			break;
+	case CURRENT:
+    			for(size_t i=0;i<ns.size();i++){
+				net = ns[i];
+				na = net->ab[0];
+				if(na->is_ground())
+					na = net->ab[1];	
+				id = na->rid;
+				net->value_cur = -worst_cur[id];
+    			}
+			break;
+	case CAPACITANCE:
+			for(size_t i=0;i<ns.size();i++){
+				net = ns[i];
+				//net->type = CURRENT;
+				na = net->ab[0];
+				if(na->is_ground())
+					na = net->ab[1];	
+				id = na->rid;
+				net->value_cur = -worst_cur[id];
+    			}
+			break;
+	default:
+			report_exit("Unknwon net type\n");
+			break;
+		}
+	}
+}
+
+void Circuit::stamp_worst_cur(double *bnewp){
+   for(size_t i=0;i<replist.size();i++){
+	bnewp[i] = 0;
+	//bnewp[i] = worst_cur[i];
+   }
+   int type = CURRENT;
+   NetPtrVector & ns = net_set[type];
+   for(size_t i=0;i<ns.size();i++)
+	stamp_current_pad(bnewp, ns[i]);
+   type = CAPACITANCE;
+   NetPtrVector & ns1 = net_set[type];
+   for(size_t i=0;i<ns1.size();i++)
+	stamp_current_pad(bnewp, ns1[i]);
+
 }

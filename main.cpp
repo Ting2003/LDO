@@ -73,7 +73,7 @@ int main(int argc, char * argv[]){
 		
 		//ckt->solve_DC();
 		clog<<"after solve tr. "<<endl;	
-		ckt->relocate_pads_graph();
+		ckt->relocate_pads_graph(tran);
 		delete ckt;
 	}
 	//tran.print_tr_nodes();

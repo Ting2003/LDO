@@ -85,7 +85,7 @@ public:
 	void solve(Tran &tran);
 
 	void solve_DC();
-	void pad_solve_DC();
+	void pad_solve_DC(Tran &tran);
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
@@ -130,7 +130,7 @@ public:
 	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
 	void build_map_node_pt();
 	void relocate_pads();
-	void relocate_pads_graph();
+	void relocate_pads_graph(Tran &tran);
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
@@ -154,7 +154,7 @@ public:
 	bool print_flag(Node *nd);
 	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec);
 	void modify_newxy(vector<Pad*> &pad_set);
-	double resolve_direct();
+	double resolve_direct(Tran &tran);
 	void resolve_queue(vector<Node *> origin_pad_set);
 	void solve_queue(vector<Node *> pad_set_old);
 	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
@@ -180,10 +180,14 @@ private:
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
-	void stamp_by_set_pad(Matrix & A);
+	void stamp_by_set_pad(Matrix & A, Tran &tran);
+	void assign_net_worst_cur();
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
+	void stamp_current_pad(double * b, Net * net);
+	void stamp_worst_cur(double *bnewp);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
+	void stamp_VDD_pad(Matrix & A, Net * net);
 	void stamp_VDD_tr(double *b, Net * net, bool flag);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);

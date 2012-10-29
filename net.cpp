@@ -9,6 +9,8 @@ using namespace std;
 //type(t), name(n), value(v){
 Net::Net(NET_TYPE t, double v, Node * a, Node * b):
 	type(t),value(v){
+	Geq = 0;
+	value_cur = 0;
 	ab[0]=a;
 	ab[1]=b;
 	id = -1;
