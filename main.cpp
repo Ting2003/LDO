@@ -64,6 +64,7 @@ int main(int argc, char * argv[]){
 
 	// do the job
 	size_t i=0;
+	clog<<"start to solve. "<<endl;
 //#pragma omp parallel for private(i)	
 	for(i=0;i<chip.cktlist.size();i++){
 		Circuit * ckt = chip.cktlist[i];

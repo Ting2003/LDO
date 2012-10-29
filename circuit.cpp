@@ -168,6 +168,7 @@ void Circuit::print(){
 // 3. find node in which block, update count
 // 4. get representative lists
 void Circuit::solve_init(){
+	replist.clear();
         sort_nodes();
 	size_t size = nodelist.size()-1; // exclude ground node!!
 	Node *p=NULL;
@@ -187,7 +188,8 @@ void Circuit::solve_init(){
 			assert( net->ab[1] != p );
 			p->rep = net->ab[1]->rep;
 		} // else the representative is itself
-
+		//if(p->isS()==X && p->name != p->rep->name)
+		//if(p->name == "_X_n6_50_0" || p->name == "n6_50_0")
 		//cout<<"p, p->rep: "<<*p<<" "<<*p->rep<<endl;
 		// push the representatives into list
 		if( p->rep == p ) {
@@ -198,7 +200,7 @@ void Circuit::solve_init(){
 		}
 		else
 			p->rid = p->rep->rid;
-		//cout<<"p->rep, rid: "<<*p->rep<<" "<<p->rid<<endl;
+		// cout<<"p, p->rep, rid: "<<p->name<<" "<<p->rep->name<<" "<<p->rid<<endl;
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
@@ -287,7 +289,8 @@ void Circuit::solve_DC(){
 // stamp the matrix and solve
 void Circuit::solve_LU_core(Tran &tran){
    size_t n = replist.size();	// replist dosn't contain ground node
-   if( n == 0 ) return;		// No node    
+   if( n == 0 ) return;		// No node   
+ 
    cm = &c;
    cholmod_start(cm);
    cm->print = 5;
@@ -420,6 +423,8 @@ void Circuit::solve_LU_core(Tran &tran){
    clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
    // recover worst_cur into original state
    worst_cur = worst_cur_new;
+
+   release_resource();
    //cout<<nodelist<<endl;
 }
 
@@ -465,7 +470,32 @@ void Circuit::copy_node_voltages(double * x, size_t &size, bool from){
 	}
 }
 
-
+// stamp the net in each set, 
+// *NOTE* at the same time insert the net into boundary netlist
+void Circuit::stamp_by_set_pad(Matrix & A){
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		switch(type){
+		case RESISTOR:
+			for(size_t i=0;i<ns.size();i++){
+				if(fzero(ns[i]->value))
+					continue;
+				//cout<<"net: "<<*ns[i]<<endl;
+				//assert( fzero(ns[i]->value) == false );
+				stamp_resistor(A, ns[i]);
+			}
+			break;
+		case CURRENT:	
+		case VOLTAGE:	
+		case CAPACITANCE:
+		case INDUCTANCE:	
+				break;
+		default:
+			report_exit("Unknwon net type\n");
+			break;
+		}
+	}
+}
 
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
@@ -2128,7 +2158,7 @@ void Circuit::relocate_pads_graph(){
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
 	//print_pad_set();
-	for(size_t i=0;i<12;i++){
+	for(size_t i=0;i<1;i++){
 		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
@@ -2164,7 +2194,11 @@ void Circuit::relocate_pads_graph(){
 		
 		move_violate_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g);
 		move_violate_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
-		
+		for(size_t k=0;k<pad_set_g.size();k++){
+			Node * pad = pad_set_g[k]->node;
+			//if(pad->name == "_X_n6_200_150")
+				//clog<<"pad, new: "<<*pad<<" "<<pad_set_g[k]->newx<<" "<<pad_set_g[k]->newy<<endl;
+		}
 		// actual move pads into the new spots
 		//project_pads();
 
@@ -2195,7 +2229,7 @@ void Circuit::relocate_pads_graph(){
 	// terminate cm and xp,bp and so on
    	release_resource();
 	//print_pad_set();
-	cout<<nodelist<<endl;
+	//cout<<nodelist<<endl;
 }
 
 void Circuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
@@ -2266,62 +2300,62 @@ double Circuit::update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, siz
 	double pad_newy;
 	map<Node *, double>::iterator it;
 
-		double sum_weight = 0;
-		double weighted_x =0;
-		double weighted_y =0;
-		pad_ptr = pad_set[i];
-		pad = pad_ptr->node;
-		for(it = pad_ptr->control_nodes.begin();
-		    it != pad_ptr->control_nodes.end();
-		    it++){
-			if(it->second > ref_drop_value)
-				continue;
-		 	  
-			/*if((pad_set[i]->node->name == "n0_30_74" ||
-			    pad_set[i]->node->name == "n0_135_104"||
-			    pad_set[i]->node->name == "n0_255_59")){
-				//clog<<"data: "<<pad_set[i]->data<<endl;
-			  //cout<<"control node: "<<*it->first<<" "<<it->second<<endl;
-			 printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
-			
-			}*/
-			nd = it->first;
-			weight = 1.0/it->second;
-			weighted_x += weight * nd->pt.x;
-			weighted_y += weight * nd->pt.y;
-			sum_weight += weight; 	
-		}
-		
-		if(sum_weight !=0){
-			pad_newx = weighted_x / sum_weight;
-			pad_newy = weighted_y / sum_weight;
+	double sum_weight = 0;
+	double weighted_x =0;
+	double weighted_y =0;
+	pad_ptr = pad_set[i];
+	pad = pad_ptr->node;
+	for(it = pad_ptr->control_nodes.begin();
+			it != pad_ptr->control_nodes.end();
+			it++){
+		if(it->second > ref_drop_value)
+			continue;
 
-			// pad_newx = (pad_newx - pad->pt.x)/2+pad->pt.x;
-			//pad_newy = (pad_newy - pad->pt.y)/2+pad->pt.y;
-			round_data(pad_newx);
-			round_data(pad_newy);
+		/*if((pad_set[i]->node->name == "n0_30_74" ||
+		  pad_set[i]->node->name == "n0_135_104"||
+		  pad_set[i]->node->name == "n0_255_59")){
+		//clog<<"data: "<<pad_set[i]->data<<endl;
+		//cout<<"control node: "<<*it->first<<" "<<it->second<<endl;
+		printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
 
-			//if(pad->name == "n0_67_159")
-			// clog<<"pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
+		}*/
+		nd = it->first;
+		weight = 1.0/it->second;
+		weighted_x += weight * nd->pt.x;
+		weighted_y += weight * nd->pt.y;
+		sum_weight += weight; 	
+	}
 
-			if((pad_ptr->node->pt.x > 300 || pad_ptr->node->pt.y > 150) && (pad_newx <= 300 && pad_newy <= 150)){
-				//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
-				pad_ptr->control_nodes.clear();
-				pad_ptr->visit_flag = true;
-				
-			}else{
-				
+	if(sum_weight !=0){
+		pad_newx = weighted_x / sum_weight;
+		pad_newy = weighted_y / sum_weight;
 
-				pad_ptr->newx = pad_newx;
-				pad_ptr->newy = pad_newy;
-			}
+		// pad_newx = (pad_newx - pad->pt.x)/2+pad->pt.x;
+		//pad_newy = (pad_newy - pad->pt.y)/2+pad->pt.y;
+		round_data(pad_newx);
+		round_data(pad_newy);
+
+
+		if((pad_ptr->node->pt.x > 300 || pad_ptr->node->pt.y > 150) && (pad_newx <= 300 && pad_newy <= 150)){
+			//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
+			pad_ptr->control_nodes.clear();
+			pad_ptr->visit_flag = true;
+
 		}else{
-			pad_ptr->newx = pad->pt.x;
-			pad_ptr->newy = pad->pt.y;
+
+
+			pad_ptr->newx = pad_newx;
+			pad_ptr->newy = pad_newy;
 		}
- 
-		double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
-		//total_dist += temp;
+	}else{
+		pad_ptr->newx = pad->pt.x;
+		pad_ptr->newy = pad->pt.y;
+	}
+
+	if(pad->name == "_X_n6_0_0")
+		clog<<"pad, new: "<<*pad_ptr->node<<" "<<pad_ptr->newx<<" "<<pad_ptr->newy<<endl;
+	double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
+	//total_dist += temp;
 	//}
 
 	//clog<<"dist: "<<total_dist<<endl<<endl;
@@ -2385,29 +2419,32 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 
 	sstream<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	pt_name = sstream.str();
-	// clog<<"pt_name: "<<pt_name<<endl;
+	 //clog<<"pt_name: "<<pt_name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(map_node_pt, pt_name)){
 		nd_new = get_node_pt(map_node_pt, pt_name);
 		nd_new = nd_new->rep;
-		// clog<<"has new node: "<<*nd_new<<" "<<nd_new->isS()<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
-			sstream.str("");
+			/*sstream.str("");
 			sstream<<"_X_"<<nd_new->name;
-			nd->pt.x = pad->newx;
-			nd->pt.y = pad->newy;
-			nd->name = sstream.str();
-			nd_new = nd;
-			//clog<<"nd: "<<*nd<<" "<<nd->pt.x<<" "<<nd->pt.y<<endl;
+			Node *nd_new_X = new Node(*nd);
+			nd_new_X->pt.x = pad->newx;
+			nd_new_X->pt.y = pad->newy;
+			nd_new_X->name = sstream.str();*/
+			nd->disableX();
+			nd->value = 0;
+			//if(nd_new_X->name == "_X_n6_199_150")
+			//clog<<"nd: "<<*nd<<" "<<*nd_new<<" "<<*nd_new_X<<endl;
 			return nd_new;
 		}
 	}
 	bool return_flag = false;
 	// else start to search for node
 	q.push(pt);
+	Node *nd_new_X;
 	// if not, expand it to neighboring area
 	while(!q.empty()&& return_flag == false){
 		pt_cur = q.front();
@@ -2428,12 +2465,14 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 
 				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 				if(nd_new->isS()!=X){
-					sstream.str("");
+					/*sstream.str("");
 					sstream<<"_X_"<<nd_new->name;
-					nd->pt.x = pad->newx;
-					nd->pt.y = pad->newy;
-					nd->name = sstream.str();
-					nd_new = nd;
+					Node *nd_new_X = new Node(*nd);
+					nd_new_X->pt.x = pad->newx;
+					nd_new_X->pt.y = pad->newy;
+					nd_new_X->name = sstream.str();*/
+					nd->disableX();
+					nd->value = 0;
 
 					return_flag = true;
 					break;
@@ -2532,19 +2571,27 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 	vector<Net*> rm_net;
 
 	/*for(size_t i=0;i<origin_pad_set.size();i++){
-		cout<<"add: "<<*pad_set[i]->node<<endl;
+		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
 	}*/
-	
+	int count = 0;
+	Node *na;	
 	// delete all origin pad set
 	// and build nets of new pad set
 	for(size_t i=0;i<origin_pad_set.size();i++){
 		rm_node = origin_pad_set[i];
+		// reset the rep of bottom node of rm pad
+		Net *net = rm_node->nbr[BOTTOM];
+		na = net->ab[0];
+		if(na->name == rm_node->name){
+			na = net->ab[1];
+		}	
+		na->rep = na;
 		//rm_node = pad_set_old[i];
 		add_node = pad_set[i]->node;
 		if(rm_node == add_node || add_node->isS()==X)
 			continue;
-
-		cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
+		count++;
+		//cout<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
 			//cout<<"id, net: "<<net->id<<" "<<*net<<endl;
@@ -2578,6 +2625,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		add_node_new = new Node(*add_node);
 		add_node_new->enableX();
 		add_node_new->value = VDD;
+		add_node_new->rep = add_node_new;
 
 		sstream.str("");
 		// modify add_node_new with _X_xxxx
@@ -2586,12 +2634,15 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 
 		add_net = new Net(VOLTAGE, VDD, add_node_new, 
 				nodelist[nodelist.size()-1]);
+		// clog<<"add_net: "<<*add_net<<endl;
 		add_net->id = index_rm_net;
 
 		net_set[type][index_rm_net] = add_net;
 
 		double value = resistor_net->value;
 		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
+		
+		// clog<<"add_net resistor: "<<*add_resistor_net<<endl;
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
@@ -2606,7 +2657,6 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node<<" "<<*add_node_new<<endl;
 		nodelist[rm_node->id] = add_node_new;
 	}
-
 	for(size_t i=0;i<rm_net.size();i++){
 		delete rm_net[i];
 	}
@@ -2838,14 +2888,9 @@ void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<P
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
 		new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad);
-		if(pad->name != new_pad->name)	
-			clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		 // if(pad->name == "_X_n6_200_150")
+		 // clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
-		//bool flag = print_flag(pad);
-		//if(flag == true || new_pad->name == "n0_86_30" || new_pad->name =="n0_477_17" || pad->name == "n0_477_17")
-			//clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
-
-		//clog<<"new_pad: "<<*new_pad<<endl;
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
 			pad_nbr = pad_ptr->nbrs[i];
@@ -2854,7 +2899,7 @@ void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<P
 				//cout<<"pad_nbr: "<<*pad_nbr->node<<endl;
 			}
 		}
-
+		// assign later, after creating X node
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();
 	}while(id != -1);
@@ -3044,29 +3089,9 @@ double Circuit::resolve_direct(){
 	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);	
 	Net *net;	
 
-	// recreate the right hand side
-	for(size_t i=0;i<n;i++){
-		bnewp[i] = worst_cur[i];
-	}
-	int type = VOLTAGE;
-	bool flag_cur = true;
-	NetPtrVector & ns = net_set[type];
-	for(size_t i=0;i<ns.size();i++){
-		if( fzero(ns[i]->value)  && 
-			!ns[i]->ab[0]->is_ground() &&
-			!ns[i]->ab[1]->is_ground() )
-		continue; // it's a 0v via
-		stamp_VDD_tr(bnewp, ns[i], flag_cur);
-	}
-	flag_cur = true;
-	make_A_symmetric(bnewp, flag_cur);
-
-	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
-	xp = static_cast<double *> (x->x);
-	for(size_t i=0;i<n;i++)
-		replist[i]->value = xp[i];
-	for(size_t i=0;i<nodelist.size()-1;i++)
-		nodelist[i]->value = nodelist[i]->rep->value;
+	// need to repeat solve_init and stamp matrix, decomp matrix process
+	clog<<"entering pad resolve dc. "<<endl;
+	pad_solve_DC();
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -3332,4 +3357,53 @@ void Circuit::release_resource(){
    cholmod_free_factor(&L, cm);
    cholmod_free_dense(&x, cm);
    cholmod_finish(&c); 
+}
+
+void Circuit::pad_solve_DC(){
+   solve_init();
+   clog<<"after solve_init. "<<endl;
+   size_t n = replist.size();	// replist dosn't contain ground node
+   if( n == 0 ) return;		// No node    
+   cm = &c;
+   cholmod_start(cm);
+   cm->print = 5;
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+
+   Matrix A;
+   stamp_by_set_pad(A);
+   clog<<"after stamp pad nets. "<<endl; 
+   A.set_row(n);
+   Algebra::CK_decomp(A, L, cm);
+   Lp = static_cast<int *>(L->p);
+   Lx = static_cast<double*> (L->x);
+   Li = static_cast<int*>(L->i) ;
+   Lnz = static_cast<int *>(L->nz); 
+   A.clear();
+
+   // recreate the right hand side
+   for(size_t i=0;i<n;i++){
+	bnewp[i] = worst_cur[i];
+   }
+   int type = VOLTAGE;
+   bool flag_cur = true;
+   NetPtrVector & ns = net_set[type];
+   for(size_t i=0;i<ns.size();i++){
+	if( fzero(ns[i]->value)  && 
+		!ns[i]->ab[0]->is_ground() &&
+		!ns[i]->ab[1]->is_ground() )
+	continue; // it's a 0v via
+	stamp_VDD_tr(bnewp, ns[i], flag_cur);
+   }
+   flag_cur = true;
+   make_A_symmetric(bnewp, flag_cur);
+
+   x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
+   xp = static_cast<double *> (x->x);
+   for(size_t i=0;i<n;i++)
+	replist[i]->value = xp[i];
+   for(size_t i=0;i<nodelist.size()-1;i++)
+	nodelist[i]->value = nodelist[i]->rep->value;
+   release_resource();
 }
