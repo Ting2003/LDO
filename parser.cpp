@@ -334,7 +334,7 @@ int Parser::create_circuits(){
 }
 
 // parse ldo file
-void Parser::parse_ldo(char *filename){
+void Parser::parse_ldo(char *filename, int *count){
 	FILE * f;
 	f = fopen(filename, "r");
 	if( f == NULL ) 
@@ -401,12 +401,14 @@ void Parser::parse_ldo(char *filename){
 			double value = 0;
 			// then add net
 			net = new Net(RESISTOR, value, nd_ptr[0], sA_Xptr);
+			net->id = count[RESISTOR]++;
 			ckt->add_net(net);	
 			// updating the neighboring net	
 			sA_Xptr->nbr[BOTTOM] = net;
 			nd_ptr[0]->nbr[TOP] = net;
 
 			net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
+			net->id = count[VOLTAGE]++;
 			ckt->add_net(net);
 			// update the neighboring net
 			sA_Xptr->nbr[TOP] = net;
@@ -419,7 +421,7 @@ void Parser::parse_ldo(char *filename){
 // Note: the file will be parsed twice
 // the first time is to find the layer information
 // and the second time is to create nodes
-void Parser::parse(char * filename, Tran & tran){
+void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
 	//filename = "../data/netlist_2M.txt";
 	this->filename = filename;
 	int count[6];
@@ -465,7 +467,7 @@ void Parser::parse(char * filename, Tran & tran){
 		}
 	}
 	fclose(f);
-
+	parse_ldo(filename_ldo, count);
 	// release map_node resource
 	/*for(size_t i=0;i<(*p_ckts).size();i++){
 		Circuit * ckt = (*p_ckts)[i];

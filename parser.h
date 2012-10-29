@@ -26,8 +26,8 @@ public:
 	~Parser();
 
 	// parser a input file and construct the circuit
-	void parse(char * filename, Tran &tran);
-	void parse_ldo(char *filename);
+	void parse(char * filename, char *filename_ldo, Tran &tran);
+	void parse_ldo(char *filename, int *count);
 
 	int get_num_layers() const;
 

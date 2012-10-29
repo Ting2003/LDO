@@ -58,8 +58,8 @@ int main(int argc, char * argv[]){
 	Chip chip;
 	//vector<Circuit *> cktlist;
 	Parser parser(&chip);
-	parser.parse(input, tran);
-	parser.parse_ldo(input_ldo);
+	parser.parse(input, input_ldo, tran);
+	//parser.parse_ldo(input_ldo);
 	// clog<<"finish parsing circuit. "<<endl;
 
 	// do the job
@@ -72,9 +72,8 @@ int main(int argc, char * argv[]){
 		ckt->solve(tran);
 		
 		//ckt->solve_DC();
-		clog<<"after solve tr. "<<endl;	
 		ckt->relocate_pads_graph(tran);
-		delete ckt;
+		//delete ckt;
 	}
 	//tran.print_tr_nodes();
 
