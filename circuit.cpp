@@ -2491,7 +2491,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 		nd_new = get_node_pt(map_node_pt, pt_name);
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
-		//if(nd_new->isS()!=X){
+		if(nd_new->isS()!=X){
 		nd->disableX();
 		nd->value = 0;
 		// need to adjust the local pads
@@ -2517,6 +2517,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 			}	
 		}else
 			return nd_new;
+		}
 	}
 	bool return_flag = false;
 	// else start to search for node
