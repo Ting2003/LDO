@@ -2498,20 +2498,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 			nd->value = 0;
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
-				double x = nd_new->pt.x;
-				double y = nd_new->pt.y;
-				
-				// clog<<"x, w, gx: "<<x<<" "<<ldo->width<<" "<<gx<<endl;
-				// clog<<"y, h, gy: "<<y<<" "<<ldo->height<<" "<<gy<<endl;
-				if(x + ldo->width <= gx &&
-			   	y + ldo->height <= gy){
-					ldo->A = nd_new;
-					return nd_new;
-				}
-				else{// search for a available pos
-					Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
-					return nb;
-				}		
+				return project_local_pad(nd, nd_new, ldo, map_node_pt);
 			}else
 				return nd_new;
 		}
@@ -3631,4 +3618,21 @@ Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string
 	}
 	clog<<"no point for new pad. return. "<<endl;
 	return NULL;
+}
+
+Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+	double x = nd_new->pt.x;
+	double y = nd_new->pt.y;
+				
+	// clog<<"x, w: "<<x<<" "<<ldo->width<<endl;
+	// clog<<"y, h: "<<y<<" "<<ldo->height<<endl;
+	if(x + ldo->width <= gx &&
+	  y + ldo->height <= gy){
+		ldo->A = nd_new;
+		return nd_new;
+	}
+	else{// search for a available pos
+		Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
+		return nb;
+	}
 }
