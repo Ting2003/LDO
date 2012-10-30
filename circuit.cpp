@@ -2491,7 +2491,8 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 	// and if it is occupied by pad or not
 	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(map_node_pt, pt_name)){
-		nd_new = get_node_pt(map_node_pt, pt_name);
+		nd_new = get_node_pt(map_node_pt, 
+			pt_name);
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){

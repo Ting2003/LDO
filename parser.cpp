@@ -353,16 +353,14 @@ void Parser::parse_ldo(char *filename, int *count){
 	char line[MAX_BUF];
 	// 4 corner node of the LDO module 
 	char sA[MAX_BUF];
-	char sB[MAX_BUF];
-	char sC[MAX_BUF];
-	char sD[MAX_BUF];
 	stringstream sstream;
 	Node sA_X; // the X node on top of sA
-	static Node nd[4];
-	Node * nd_ptr[4];
+	static Node nd;
+	Node * nd_ptr;
+	int width, height, degree;
 	string l;
 	int layer, ckt_id;
-	layer = nd[0].get_layer();
+	layer = nd.get_layer();
 	ckt_id = layer_in_ckt[layer];
 	Circuit *ckt = p_chip->cktlist[ckt_id];
 	LDO *ldo_ptr;
@@ -370,33 +368,26 @@ void Parser::parse_ldo(char *filename, int *count){
 		// skip the * line
 		if(line[0] == '*')
 			continue;
-		sscanf(line, "%s %s %s %s", sA, sB, 
-			sC, sD);
-		extract_node(sA, nd[0]);
-		extract_node(sB, nd[1]);
-		extract_node(sC, nd[2]);
-		extract_node(sD, nd[3]);
-		for(int i=0;i<4;i++){
-			nd_ptr[i] = ckt->get_node(nd[i].name);
-			if(nd_ptr[i]==NULL)
-				report_exit("LDO node error!");	
-		}
+		sscanf(line, "%s %d %d %d", sA, &width, &height, &degree);
+		extract_node(sA, nd);
+		nd_ptr = ckt->get_node(nd.name);
+		if(nd_ptr==NULL)
+			report_exit("LDO node error!");	
+		
 		ldo_ptr = new LDO();
-		ldo_ptr->A = nd_ptr[0];
-		ldo_ptr->B = nd_ptr[1];
-		ldo_ptr->C = nd_ptr[2];
-		ldo_ptr->D = nd_ptr[3];
+		ldo_ptr->A = nd_ptr;
 		// assign the in and out
-		ldo_ptr->in = nd_ptr[0];
-		ldo_ptr->out = nd_ptr[0];
+		ldo_ptr->in = nd_ptr;
+		ldo_ptr->out = nd_ptr;
 		// compute the width and height
-		ldo_ptr->width = ldo_ptr->B->pt.x - ldo_ptr->A->pt.x;
-		ldo_ptr->height = ldo_ptr->D->pt.y - ldo_ptr->A->pt.y;
+		ldo_ptr->width = width;
+		ldo_ptr->height = height;
+		ldo_ptr->degree = degree;
 		p_chip->ldolist.push_back(ldo_ptr);
 
 		// produce an extra voltage net and resistor net for LDO
 		// first create the X node
-		sA_X = *nd_ptr[0];
+		sA_X = *nd_ptr;
 		sstream.str("");
 		sstream<<"_X_"<<sA_X.name;
 		sA_X.name = sstream.str();
@@ -410,12 +401,12 @@ void Parser::parse_ldo(char *filename, int *count){
 			Net *net;
 			double value = 0;
 			// then add net
-			net = new Net(RESISTOR, value, nd_ptr[0], sA_Xptr);
+			net = new Net(RESISTOR, value, nd_ptr, sA_Xptr);
 			net->id = count[RESISTOR]++;
 			ckt->add_net(net);	
 			// updating the neighboring net	
 			sA_Xptr->nbr[BOTTOM] = net;
-			nd_ptr[0]->nbr[TOP] = net;
+			nd_ptr->nbr[TOP] = net;
 
 			net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
 			net->id = count[VOLTAGE]++;
