@@ -2453,24 +2453,26 @@ void Circuit::round_data(double &data){
 
 // expand from (x,y) to nearest node in grid
 // fits for non-uniform grid
-Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd){
+Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, 
+	vector<Pad*> &pad_set, Pad *pad, Node *nd){
 	//Node *nd;
-	queue<Point> q;
-	Point pt;
-	Point pt_cur;
 	Node *na;
 	stringstream sstream;
 	string pt_name;
 	Node *nd_new=NULL;
+   	Point pt;
 	//int gap - 10;
-	double dx[4] = {30, 0, -30, 0};
-	double dy[4] = {0, 30, 0, -30};
 
 	Net *net = nd->nbr[BOTTOM];
 	na = net->ab[0];
 	if(na->name == nd->name)
 		na = net->ab[1];
-	
+	LDO *ldo = NULL;
+	for(size_t i=0;i<ldolist.size();i++){
+		if(ldolist[i]->A->name == na->name){
+			ldo = ldolist[i];
+		}
+	}
 	//nd = pad->node;
 	pt.z = nd->get_layer();
 	pt.x = pad->newx;
@@ -2492,76 +2494,30 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
-		nd->disableX();
-		nd->value = 0;
-		// need to adjust the local pads
-		if(nd_new->get_layer() == local_layers[0]){
-			double x = nd_new->pt.x;
-			double y = nd_new->pt.y;
-			LDO *ldo = NULL;
-			for(size_t i=0;i<ldolist.size();i++){
-				if(ldolist[i]->A->name == na->name){
-					ldo = ldolist[i];
+			nd->disableX();
+			nd->value = 0;
+			// need to adjust the local pads
+			if(nd_new->get_layer() == local_layers[0]){
+				double x = nd_new->pt.x;
+				double y = nd_new->pt.y;
+				
+				// clog<<"x, w, gx: "<<x<<" "<<ldo->width<<" "<<gx<<endl;
+				// clog<<"y, h, gy: "<<y<<" "<<ldo->height<<" "<<gy<<endl;
+				if(x + ldo->width <= gx &&
+			   	y + ldo->height <= gy){
+					ldo->A = nd_new;
+					return nd_new;
 				}
-			}
-			// clog<<"x, w, gx: "<<x<<" "<<ldo->width<<" "<<gx<<endl;
-			// clog<<"y, h, gy: "<<y<<" "<<ldo->height<<" "<<gy<<endl;
-			if(x + ldo->width <= gx &&
-			   y + ldo->height <= gy){
-				ldo->A = nd_new;
+				else{// search for a available pos
+					Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
+					return nb;
+				}		
+			}else
 				return nd_new;
-			}
-			else{// search for a available pos
-				Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
-				return nb;
-			}	
-		}else
-			return nd_new;
 		}
 	}
-	bool return_flag = false;
-	// else start to search for node
-	q.push(pt);
-	Node *nd_new_X;
-	// if not, expand it to neighboring area
-	while(!q.empty()&& return_flag == false){
-		pt_cur = q.front();
-		Point pt_nbr = pt_cur;
-		//expand_pad_pos(q, pt_cur);	
-		for(size_t i=0;i<4;i++){
-			pt_nbr.x = pt_cur.x + dx[i];
-			pt_nbr.y = pt_cur.y + dy[i];
-			stringstream sstream;
-			string pt_name;
-			sstream <<"n"<<pt_nbr.z<<"_"<<
-				pt_nbr.x<<"_"<<
-				pt_nbr.y;
-			pt_name = sstream.str();
-			if(has_node_pt(map_node_pt, pt_name)){
-				nd_new = get_node_pt(map_node_pt, pt_name);
-				nd_new = nd_new->rep;
-
-				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
-				if(nd_new->isS()!=X){
-					nd->disableX();
-					nd->value = 0;
-
-					return_flag = true;
-					break;
-				}
-			}
-			q.push(pt_nbr);
-		}
-		q.pop();
-	}
-	while(!q.empty()){
-		q.pop();
-	}
-	if(return_flag == true){
-		return nd_new;
-	}
-	clog<<"no point for new pad. return. "<<endl;
-	return NULL;
+	Node *nd_new_X = expand_pad(nd, nd_new, ldo, map_node_pt);
+	return nd_new_X;	
 }
 
 // two map node point lists:
@@ -3620,4 +3576,59 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	}
 	clog<<"ldolist.size: "<<ldolist.size()<<endl;
 	clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
+}
+
+Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+	Node *na;	
+	queue<Point> q;
+	Point pt;
+	Point pt_cur;
+	stringstream sstream;
+	string pt_name;
+	bool return_flag = false;
+	// else start to search for node
+	q.push(pt);
+	Node *nd_new_X;
+	
+	double dx[4] = {30, 0, -30, 0};
+	double dy[4] = {0, 30, 0, -30};
+	// if not, expand it to neighboring area
+	while(!q.empty()&& return_flag == false){
+		pt_cur = q.front();
+		Point pt_nbr = pt_cur;
+		//expand_pad_pos(q, pt_cur);	
+		for(size_t i=0;i<4;i++){
+			pt_nbr.x = pt_cur.x + dx[i];
+			pt_nbr.y = pt_cur.y + dy[i];
+			stringstream sstream;
+			string pt_name;
+			sstream <<"n"<<pt_nbr.z<<"_"<<
+				pt_nbr.x<<"_"<<
+				pt_nbr.y;
+			pt_name = sstream.str();
+			if(has_node_pt(map_node_pt, pt_name)){
+				nd_new = get_node_pt(map_node_pt, pt_name);
+				nd_new = nd_new->rep;
+
+				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
+				if(nd_new->isS()!=X){
+					nd->disableX();
+					nd->value = 0;
+
+					return_flag = true;
+					break;
+				}
+			}
+			q.push(pt_nbr);
+		}
+		q.pop();
+	}
+	while(!q.empty()){
+		q.pop();
+	}
+	if(return_flag == true){
+		return nd_new;
+	}
+	clog<<"no point for new pad. return. "<<endl;
+	return NULL;
 }
