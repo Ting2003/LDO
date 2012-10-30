@@ -36,7 +36,8 @@ vector<LAYER_DIR> Circuit::layer_dir(MAX_LAYER);
 // constructor of Circuit class, name is optional
 Circuit::Circuit(string _name):name(_name),
 	circuit_type(UNKNOWN), VDD(0.0), 
-	lx(0.0), ly(0.0), gx(0.0), gy(0.0){
+	lx(0.0), ly(0.0), 
+	gx(0.0), gy(0.0){
 	// add ground node
 	Node * gnd = new Node(string("0"), Point(-1,-1,-1));
 	gnd->rep = gnd;
@@ -2494,17 +2495,30 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
-			nd->disableX();
-			nd->value = 0;
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
-				return project_local_pad(nd, nd_new, ldo, map_node_pt);
-			}else
+				Node *nb = project_local_pad(nd_new, ldo, map_node_pt);
+				if(nb == NULL)
+					return nd;
+				else{
+					nd->disableX();
+					nd->value = 0;
+					return nb;
+				}
+			}else{
+				nd->disableX();
+				nd->value = 0;
 				return nd_new;
+			}
 		}
 	}
-	Node *nd_new_X = expand_pad(nd, nd_new, ldo, map_node_pt);
-	return nd_new_X;	
+	Node *nd_new_X = expand_pad(nd_new, ldo, map_node_pt);
+	if(nd_new_X != NULL){
+		nd->disableX();
+		nd->value = 0;
+		return nd_new_X;
+	}else
+		return nd;	
 }
 
 // two map node point lists:
@@ -3499,7 +3513,7 @@ void Circuit::stamp_worst_cur(double *bnewp){
 }
 
 // modified the position of ldo pad
-Node * Circuit::modify_ldo_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+Node * Circuit::modify_ldo_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
    bool return_flag = false;
    Node *na;
    queue<Point> q;
@@ -3528,8 +3542,8 @@ Node * Circuit::modify_ldo_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<s
 			nd_new = get_node_pt(map_node_pt, pt_name);
 			nd_new = nd_new->rep;
 			if(nd_new->isS()!=X){
-				nd->disableX();
-				nd->value = 0;
+				//nd->disableX();
+				// nd->value = 0;
 				double x = nd_new->pt.x;
 				double y = nd_new->pt.y;
 				if(x+ldo->width 
@@ -3550,7 +3564,8 @@ Node * Circuit::modify_ldo_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<s
    if(return_flag == true){
 	ldo->A = nd_new;
 	return nd_new;
-   }	
+   }
+   return NULL;	
 }
 
 void Circuit::build_ldolist(vector<LDO*> ldo_vec){
@@ -3565,7 +3580,7 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
 }
 
-Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
 	Node *na;	
 	queue<Point> q;
 	Point pt;
@@ -3577,8 +3592,8 @@ Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string
 	q.push(pt);
 	Node *nd_new_X;
 	
-	double dx[4] = {30, 0, -30, 0};
-	double dy[4] = {0, 30, 0, -30};
+	double dx[4] = {1, 0, -1, 0};
+	double dy[4] = {0, 1, 0, -1};
 	// if not, expand it to neighboring area
 	while(!q.empty()&& return_flag == false){
 		pt_cur = q.front();
@@ -3599,9 +3614,6 @@ Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string
 
 				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 				if(nd_new->isS()!=X){
-					nd->disableX();
-					nd->value = 0;
-
 					return_flag = true;
 					break;
 				}
@@ -3620,19 +3632,19 @@ Node* Circuit::expand_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string
 	return NULL;
 }
 
-Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+// project local pad, including LDO boundary and current conflicts for LDO
+Node * Circuit::project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
 	double x = nd_new->pt.x;
 	double y = nd_new->pt.y;
-				
-	// clog<<"x, w: "<<x<<" "<<ldo->width<<endl;
-	// clog<<"y, h: "<<y<<" "<<ldo->height<<endl;
+	// current conflicts
+	
 	if(x + ldo->width <= gx &&
 	  y + ldo->height <= gy){
 		ldo->A = nd_new;
 		return nd_new;
 	}
 	else{// search for a available pos
-		Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
+		Node *nb = modify_ldo_pad(nd_new, ldo, map_node_pt);	
 		return nb;
 	}
 }
