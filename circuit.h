@@ -31,6 +31,7 @@
 #include "sp_graph_table.h"
 #include "sp_node.h"
 #include "pad.h"
+#include "ldo.h"
 #include <queue>
 
 using namespace std;
@@ -129,8 +130,9 @@ public:
 	bool has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const;
 	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
 	void build_map_node_pt();
+	void build_ldolist(vector<LDO*> ldo_vec);
 	void relocate_pads();
-	void relocate_pads_graph(Tran &tran);
+	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist);
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
@@ -213,6 +215,7 @@ private:
 
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
+	Node * modify_ldo_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);
@@ -268,6 +271,7 @@ private:
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
+	vector<LDO*> ldolist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
@@ -287,6 +291,8 @@ private:
 
 	// circuit name
 	string name;
+	// boundary of the circuit
+	double lx, ly, gx, gy;
 
 	// blocks
 	//BlockInfo block_info;

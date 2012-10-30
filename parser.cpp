@@ -101,6 +101,11 @@ void Parser::insert_net_node(char * line, int *count){
 			nd_ptr[i] = new Node(nd[i]); // copy constructor
 			nd_ptr[i]->rep = nd_ptr[i];  // set rep to be itself
 			ckt->add_node(nd_ptr[i]);
+			//locate_circuit_boundary
+			if(nd_ptr[i]->pt.x > ckt->gx)
+				ckt->gx = nd_ptr[i]->pt.x;
+			if(nd_ptr[i]->pt.y > ckt->gy)
+				ckt->gy = nd_ptr[i]->pt.y;
 			if( nd_ptr[i]->isS()== X)    // determine circuit type
 				ckt->set_type(WB);
 			// find the coordinate max and min	

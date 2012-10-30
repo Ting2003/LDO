@@ -35,7 +35,8 @@ vector<LAYER_DIR> Circuit::layer_dir(MAX_LAYER);
 
 // constructor of Circuit class, name is optional
 Circuit::Circuit(string _name):name(_name),
-	circuit_type(UNKNOWN), VDD(0.0){
+	circuit_type(UNKNOWN), VDD(0.0), 
+	lx(0.0), ly(0.0), gx(0.0), gy(0.0){
 	// add ground node
 	Node * gnd = new Node(string("0"), Point(-1,-1,-1));
 	gnd->rep = gnd;
@@ -55,10 +56,11 @@ Circuit::~Circuit(){
 	pad_set_g.clear();
 	pad_set_l.clear();
 	special_nodes.clear();
-	worst_cur.clear();
+	worst_cur.clear();	
 	map_node_pt_g.clear();
 	map_node_pt_l.clear();
 
+   	map_node.clear();
 	for(size_t i=0;i<nodelist.size();i++) 
 		delete nodelist[i];
 	for(int type=0;type<NUM_NET_TYPE;type++){
@@ -347,7 +349,6 @@ void Circuit::solve_LU_core(Tran &tran){
       // set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
-   map_node.clear();
    x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    xp = static_cast<double *> (x->x);
    //for(size_t i=0;i<n;i++)
@@ -2199,7 +2200,7 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph(Tran &tran){
+void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec){
 	vector<Node*> pad_set_old_g;
 	vector<Node*> pad_set_old_l;
 	double dist_g = 0;
@@ -2213,6 +2214,7 @@ void Circuit::relocate_pads_graph(Tran &tran){
 	
 	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
+	build_ldolist(ldo_vec);
 	
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
@@ -2456,6 +2458,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 	queue<Point> q;
 	Point pt;
 	Point pt_cur;
+	Node *na;
 	stringstream sstream;
 	string pt_name;
 	Node *nd_new=NULL;
@@ -2463,6 +2466,11 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 	double dx[4] = {30, 0, -30, 0};
 	double dy[4] = {0, 30, 0, -30};
 
+	Net *net = nd->nbr[BOTTOM];
+	na = net->ab[0];
+	if(na->name == nd->name)
+		na = net->ab[1];
+	
 	//nd = pad->node;
 	pt.z = nd->get_layer();
 	pt.x = pad->newx;
@@ -2483,19 +2491,32 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 		nd_new = get_node_pt(map_node_pt, pt_name);
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
-		if(nd_new->isS()!=X){
-			/*sstream.str("");
-			sstream<<"_X_"<<nd_new->name;
-			Node *nd_new_X = new Node(*nd);
-			nd_new_X->pt.x = pad->newx;
-			nd_new_X->pt.y = pad->newy;
-			nd_new_X->name = sstream.str();*/
-			nd->disableX();
-			nd->value = 0;
-			//if(nd_new_X->name == "_X_n6_199_150")
-			//clog<<"nd: "<<*nd<<" "<<*nd_new<<" "<<*nd_new_X<<endl;
+		//if(nd_new->isS()!=X){
+		nd->disableX();
+		nd->value = 0;
+		// need to adjust the local pads
+		if(nd_new->get_layer() == local_layers[0]){
+			double x = nd_new->pt.x;
+			double y = nd_new->pt.y;
+			LDO *ldo = NULL;
+			for(size_t i=0;i<ldolist.size();i++){
+				if(ldolist[i]->A->name == na->name){
+					ldo = ldolist[i];
+				}
+			}
+			// clog<<"x, w, gx: "<<x<<" "<<ldo->width<<" "<<gx<<endl;
+			// clog<<"y, h, gy: "<<y<<" "<<ldo->height<<" "<<gy<<endl;
+			if(x + ldo->width <= gx &&
+			   y + ldo->height <= gy){
+				ldo->A = nd_new;
+				return nd_new;
+			}
+			else{// search for a available pos
+				Node *nb = modify_ldo_pad(nd, nd_new, ldo, map_node_pt);
+				return nb;
+			}	
+		}else
 			return nd_new;
-		}
 	}
 	bool return_flag = false;
 	// else start to search for node
@@ -2521,12 +2542,6 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt, vector<
 
 				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 				if(nd_new->isS()!=X){
-					/*sstream.str("");
-					sstream<<"_X_"<<nd_new->name;
-					Node *nd_new_X = new Node(*nd);
-					nd_new_X->pt.x = pad->newx;
-					nd_new_X->pt.y = pad->newy;
-					nd_new_X->name = sstream.str();*/
 					nd->disableX();
 					nd->value = 0;
 
@@ -3537,4 +3552,71 @@ void Circuit::stamp_worst_cur(double *bnewp){
    for(size_t i=0;i<ns1.size();i++)
 	stamp_current_pad(bnewp, ns1[i]);
 
+}
+
+// modified the position of ldo pad
+Node * Circuit::modify_ldo_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+   bool return_flag = false;
+   Node *na;
+   queue<Point> q;
+   Point pt;
+   Point pt_cur;
+   stringstream sstream;
+   string pt_name;
+   double dx[4] = {1, 0, -1, 0};
+   double dy[4] = {0, 1, 0, -1};
+
+   q.push(nd_new->pt);
+   while(!q.empty()&& return_flag == false){
+	pt_cur = q.front();	
+   	Point pt_nbr = pt_cur;
+	//expand_pad_pos(q, pt_cur);	
+	for(size_t i=0;i<4;i++){
+		pt_nbr.x = pt_cur.x + dx[i];
+		pt_nbr.y = pt_cur.y + dy[i];
+		stringstream sstream;
+		string pt_name;
+		sstream <<"n"<<pt_nbr.z<<"_"<<
+			pt_nbr.x<<"_"<<
+			pt_nbr.y;
+		pt_name = sstream.str();
+		if(has_node_pt(map_node_pt, pt_name)){
+			nd_new = get_node_pt(map_node_pt, pt_name);
+			nd_new = nd_new->rep;
+			if(nd_new->isS()!=X){
+				nd->disableX();
+				nd->value = 0;
+				double x = nd_new->pt.x;
+				double y = nd_new->pt.y;
+				if(x+ldo->width 
+					<= gx && y+ldo->height <= gy){
+					return_flag = true;
+					break;
+				}
+				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
+			}
+		}
+		q.push(pt_nbr);
+	}
+	q.pop();
+   }
+   while(!q.empty()){
+	q.pop();
+   }
+   if(return_flag == true){
+	ldo->A = nd_new;
+	return nd_new;
+   }	
+}
+
+void Circuit::build_ldolist(vector<LDO*> ldo_vec){
+	Node *nd;
+	ldolist.clear();
+	for(size_t i=0;i<ldo_vec.size();i++){
+		nd = ldo_vec[i]->A;
+		if(has_node(nd->name))
+			ldolist.push_back(ldo_vec[i]);
+	}
+	clog<<"ldolist.size: "<<ldolist.size()<<endl;
+	clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
 }
