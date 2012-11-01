@@ -3520,61 +3520,35 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 // project local pad, setting ldo into new white space areas
 Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-	/*Node *nd_whi;
+	Node *nd_whi;
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
 	WSPACE *ptr;
+	vector<int> candi_wspace;
 	double dx, dy;	
-	double min_dx, min_dy;
-	double min_dist;
+	double ref_dx, ref_dy;
+	double ref_dist;
 	// if min_id == -1, stay on old wspace
 	double min_id = -1;
 	double ref_id = -1;
 	stringstream sstream;
-	
 	// find the reference distance
-	min_dx = fabs(ref_x - nd->pt.x);
-	min_dy = fabs(ref_y - nd->pt.y);
-	min_dist = sqrt(min_dx * min_dx + min_dy * min_dy);
+	ref_dx = fabs(ref_x - nd->pt.x);
+	ref_dy = fabs(ref_y - nd->pt.y);
+	ref_dist = sqrt(ref_dx * ref_dx + ref_dy * ref_dy);
 
-	// compare the refs to whitespaces
-	for(size_t i=0; i<wspacelist.size();i++){
-		ptr = wspacelist[i];
-		dx = fabs(ref_x - ptr->xl);
-		dy = fabs(ref_y - ptr->yb);
-		double dist = sqrt(dx*dx + dy*dy);
-		if(ptr->na== NULL)
-			clog<<"NULL name: "<<endl;
-		else
-			clog<<"ptr->name: nd: "<<ptr->name<<" "<<nd->name<<endl;
-		if(ptr->na!= NULL && ptr->na->name == nd->name)
-			ref_id = i;
-		if(ptr->flag_occupy == true)
-			continue;
-		if(dist < min_dist){
-			min_dist = dist;
-			min_id = i;
-		}
-	}
-	clog<<"after cycling. "<<endl;
-	if(min_id == -1){
-		clog<<"not move. "<<endl;
-		return nd;
-	}
-	// locate the white space to move
-	clog<<"wspacelist: "<<wspacelist[min_id]->name<<endl;	
-	sstream<<"n"<<nd->pt.z<<"_"<<wspacelist[min_id]->xl<<"_"<<wspacelist[min_id]->yb;
-	clog<<"name: "<<sstream.str()<<endl;	
-	nd_whi = get_node_pt(map_node_pt, sstream.str());
-	if(nd_whi == NULL)
-		return nd;
-	clog<<"new node: "<<*nd_whi<<endl;
-	
-	clog<<"ref_id, min_id, whi_ref, whi_min: "<<ref_id<<" "<<min_id<<" "<<wspacelist[ref_id]->flag_occupy<<" "<<wspacelist[min_id]->flag_occupy<<endl;	
-	wspacelist[ref_id]->flag_occupy = false;
-	wspacelist[min_id]->flag_occupy = true;
-	clog<<"whi_ref, whi_min: "<<wspacelist[ref_id]->flag_occupy<<" "<<wspacelist[min_id]->flag_occupy<<endl;	
-	return nd_whi;	*/
+	// find the nearest whitespaces id: sorted
+	// must closer than ref_dist
+	get_candi_wspace(ref_x, ref_y, ref_dist, 
+		candi_wspace);
+	// if all the wspace are farther away, not move
+	if(candi_wspace.size() == 0) return nd;
+	// see if there is any place for this ldo
+	// no overlap with other ldos
+	Node *nd_place = place_ldo(candi_wspace);
+	// if no place, return;
+	if(nd_place == false)	return nd;
+		return nd_place; 
 }
 
 // change the wspace into a local variable
@@ -3750,4 +3724,82 @@ void Circuit::locate_ldo_region_bound(int a, int b, int &min, int &max){
 	}
 }
 
+// find the candidate white spaces, dist <ref_dist
+void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candiID_wspace){
+	candiID_wspace.clear();
+	double dist;
+	Point *pt;
+	Point *min_pt;
+	double x, y;
+	double dx, dy;
+	double min_dist;
+	WSPACE *wspace_ptr;
+	vector<double> wspace_dist;
+	vector<WSPACE*> temp_wspace;
+	// vector<Point*> wspace_pt;
+	vector<bool> wspace_flag; 
 
+	wspace_dist.resize(wspacelist.size());
+	wspace_flag.resize(wspacelist.size());
+	//wspace_pt.resize(wspacelist.size());
+	for(size_t i=0;i<wspacelist.size();i++){
+		wspace_flag[i] = false;
+		min_dist = 0;
+		min_pt = NULL;
+		wspace_ptr = wspacelist[i];
+		for(size_t j=0;j<wspace_ptr->node.size();j++){	
+			pt = wspace_ptr->node[j];
+			x = pt->x;  y = pt->y;	
+			dx = x - ref_x;
+			dy = y - ref_y;
+			dist = sqrt(dx*dx +dy*dy);
+			if(j==0){
+				min_dist = dist;
+				min_pt = pt;
+			}
+			else if(dist < min_dist){
+				min_dist = dist;
+				min_pt = pt;
+			}
+		}
+		wspace_dist[i] = min_dist;
+		// wspace_pt[i] = min_pt;
+		//clog<<"min_pt: "<<min_pt->x<<" "<<min_pt->y<<endl;
+		if(min_dist < ref_dist){
+			//clog<<"candi: "<<wspacelist[i]->name<<" ";
+			/*for(size_t k=0;k<wspacelist[i]->node.size();k++){
+				clog<<"("<<wspace_ptr->node[k]->x<<","<<wspace_ptr->node[k]->y<<") ";
+			}
+			clog<<endl;*/
+			temp_wspace.push_back(wspace_ptr);
+		}
+	}
+
+	while(candiID_wspace.size()< wspacelist.size()){
+		double min_dist = 0;
+		int count = 0;
+		int min_id = -1;
+		// sort temp_wspace --> candi_wspace
+		for(size_t i=0;i<wspacelist.size();i++){
+			if(wspace_flag[i]) continue;
+			count++;
+			if(count == 1){
+				min_dist = wspace_dist[i];
+				min_id = i;
+			}
+			else if(wspace_dist[i] < min_dist){
+				min_dist = wspace_dist[i];
+				min_id = i;
+			}
+		}
+		// clog<<"min_dist, min_id: "<<min_dist<<" "<<min_id<<endl;
+		candiID_wspace.push_back(min_id);
+		wspace_flag[min_id] = true;
+	}
+	wspace_flag.clear();
+	wspace_dist.clear();
+	temp_wspace.clear();
+}
+
+Node *Circuit::place_ldo(vector<int> &candi_wspace){
+}

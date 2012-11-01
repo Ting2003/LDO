@@ -221,6 +221,8 @@ private:
 	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void initial_occupy_flag();
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
+	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
+	Node *place_ldo(vector<int> &candi_wspace);
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);
