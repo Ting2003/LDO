@@ -364,7 +364,6 @@ void Parser::parse_ldo(char *filename, int *count){
 			break;
 		case 'w':
 		case 'W':
-			clog<<"parse white space. "<<endl;
 			// parse white space
 			parse_wspace(line);
 			break;
