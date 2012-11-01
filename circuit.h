@@ -131,8 +131,9 @@ public:
 	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
 	void build_map_node_pt();
 	void build_ldolist(vector<LDO*> ldo_vec);
+	void build_wspacelist(vector<WSPACE*> wspace_vec);
 	void relocate_pads();
-	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist);
+	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist, vector<WSPACE*> &wspace_vec);
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
@@ -275,6 +276,7 @@ private:
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
 	vector<LDO*> ldolist;
+	vector<WSPACE*> wspacelist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;

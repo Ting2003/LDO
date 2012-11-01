@@ -72,7 +72,7 @@ int main(int argc, char * argv[]){
 		ckt->solve(tran);
 		
 		//ckt->solve_DC();
-		ckt->relocate_pads_graph(tran, chip.ldolist);
+		ckt->relocate_pads_graph(tran, chip.ldolist, chip.wspacelist);
 		//delete ckt;
 	}
 	//tran.print_tr_nodes();

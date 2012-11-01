@@ -2201,7 +2201,7 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec){
+void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPACE*> &wspace_vec){
 	vector<Node*> pad_set_old_g;
 	vector<Node*> pad_set_old_l;
 	double dist_g = 0;
@@ -2216,6 +2216,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec){
 	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
 	build_ldolist(ldo_vec);
+	build_wspacelist(wspace_vec);
 	
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
@@ -3587,6 +3588,13 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	}
 	clog<<"ldolist.size: "<<ldolist.size()<<endl;
 	clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
+}
+
+// change the wspace into a local variable
+// here is simply copy
+void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
+	wspacelist.clear();
+	wspacelist = wspace_vec;
 }
 
 Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
