@@ -59,10 +59,9 @@ int main(int argc, char * argv[]){
 	//vector<Circuit *> cktlist;
 	Parser parser(&chip);
 	parser.parse(input, input_ldo, tran);
-	chip.extract_rec();
+	//chip.extract_rec();
 	//parser.parse_ldo(input_ldo);
 	// clog<<"finish parsing circuit. "<<endl;
-	return 0;
 	// do the job
 	size_t i=0;
 	clog<<"start to solve. "<<endl;

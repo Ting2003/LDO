@@ -13,8 +13,8 @@ public:
 	vector<LDO*> ldolist;
 	vector<WSPACE*> wspacelist;
 
-	void extract_rec();
-	void extract_rec_single(size_t k);
+	//void extract_rec();
+	//void extract_rec_single(size_t k);
 };
 
 #endif

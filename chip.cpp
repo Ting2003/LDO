@@ -6,7 +6,7 @@ Chip::Chip(){
 	ldolist.clear();
 }
 
-void Chip::extract_rec(){
+/*void Chip::extract_rec(){
 	// clog<<"wspacelist.size(): "<<wspacelist.size()<<endl;
 	for(size_t i=0;i<wspacelist.size();i++){
 		extract_rec_single(i);
@@ -69,5 +69,5 @@ void Chip::extract_rec_single(size_t k){
 	}
 	x.clear();
 	y.clear();
-}
+}*/
 

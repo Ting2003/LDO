@@ -473,37 +473,50 @@ void Parser::parse_dot(char *line, Tran &tran){
 }
 
 void Parser::parse_ldo_line(char *line, int *count){
+	LDO *ldo_ptr;
+	int x, y;
+	char *chs;
+	char *saveptr;
 	char sA[MAX_BUF];
+	const char *sep = "() \n";
 	stringstream sstream;
 	Node sA_X; // the X node on top of sA
 	static Node nd;
 	Node * nd_ptr;
-	int width, height, degree;
 	string l;
 	int layer, ckt_id;
 	layer = nd.get_layer();
 	ckt_id = layer_in_ckt[layer];
 	Circuit *ckt = p_chip->cktlist[ckt_id];
-	LDO *ldo_ptr;
-	char name[MAX_BUF];
+	//char name[MAX_BUF];
 
-	sscanf(line, "%s %s %d %d %d", name, sA, &width, &height, &degree);
+	ldo_ptr = new LDO();
+	Point *pt;
+	
+	chs = strtok_r(line, sep, &saveptr);
+	ldo_ptr->name = chs;
+	chs = strtok_r(NULL, sep, &saveptr);
+	string name = chs;
+	strcpy(sA, name.c_str());
+	while(chs != NULL){
+		chs = strtok_r(NULL, sep, &saveptr);	
+		if(chs == NULL)	break;
+		//clog<<"chs: "<<chs<<endl;
+		sscanf(chs, "%d,%d", &x,&y);
+		pt = new Point(x, y, -1);
+		ldo_ptr->node.push_back(pt);
+	}
+	// compute width and height
+	ldo_ptr->width = ldo_ptr->node[2]->x - ldo_ptr->node[0]->x;
+	ldo_ptr->width = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y;
+	p_chip->ldolist.push_back(ldo_ptr);
+
+	// build node and net
 	extract_node(sA, nd);
 	nd_ptr = ckt->get_node(nd.name);
 	if(nd_ptr==NULL)
 		report_exit("LDO node error!");	
-
-	ldo_ptr = new LDO();
-	ldo_ptr->name = name;
 	ldo_ptr->A = nd_ptr;
-	// assign the in and out
-	ldo_ptr->in = nd_ptr;
-	ldo_ptr->out = nd_ptr;
-	// compute the width and height
-	ldo_ptr->width = width;
-	ldo_ptr->height = height;
-	ldo_ptr->degree = degree;
-	p_chip->ldolist.push_back(ldo_ptr);
 
 	// produce an extra voltage net and resistor net for LDO
 	// first create the X node
