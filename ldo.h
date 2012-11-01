@@ -23,7 +23,7 @@ public:
 	RECTANGLE();
 	// record 4 boundary lines
 	string name;
-	double xl, xr, yb, yt;
+	int xl, xr, yb, yt;
 };
 
 class WSPACE{
@@ -31,7 +31,8 @@ private:
 public:
 	WSPACE();
 	string name;
-	vector<Point_2D>
+	vector<Point*> node;
+	vector<RECTANGLE*> rectangle;
 };
 
 #endif

@@ -537,17 +537,26 @@ void Parser::parse_ldo_line(char *line, int *count){
 }
 
 void Parser::parse_wspace(char *line){
-	int xl, xr, yb, yt;
-	char name[MAX_BUF];
 	WSPACE *wspace_ptr;
-
-	sscanf(line, "%s %d %d %d %d", name, &xl, &xr, &yb, &yt);
+	int x, y;
+	char *chs;
+	char *saveptr;
+	const char *sep = "() \n";
+	
 	wspace_ptr = new WSPACE();
-	wspace_ptr->name = name;
-	wspace_ptr->xl = xl;
-	wspace_ptr->xr = xr;
-	wspace_ptr->yb = yb;
-	wspace_ptr->yt = yt;
-	p_chip->wspacelist.push_back(wspace_ptr);	
-	clog<<"name, xl, xr, yb, yt: "<<name<<" "<<xl<<" "<<xr<<" "<<yb<<" "<<yt<<endl;	
+	Point * pt;
+
+	chs = strtok_r(line, sep, &saveptr);
+	//clog<<"chs: "<<chs<<endl;
+	wspace_ptr->name = chs;
+	while(chs != NULL){
+		chs = strtok_r(NULL, sep, &saveptr);	
+		if(chs == NULL)	break;
+		//clog<<"chs: "<<chs<<endl;
+		sscanf(chs, "%d,%d", &x,&y);
+		//clog<<"x, y: "<<x<<" "<<y<<endl;
+		pt = new Point(x, y, -1);
+		pt->x = x;	pt->y = y;
+		wspace_ptr->node.push_back(pt);
+	}
 }

@@ -3520,7 +3520,7 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 // project local pad, setting ldo into new white space areas
 Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-	Node *nd_whi;
+	/*Node *nd_whi;
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
 	WSPACE *ptr;
@@ -3574,7 +3574,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	wspacelist[ref_id]->flag_occupy = false;
 	wspacelist[min_id]->flag_occupy = true;
 	clog<<"whi_ref, whi_min: "<<wspacelist[ref_id]->flag_occupy<<" "<<wspacelist[min_id]->flag_occupy<<endl;	
-	return nd_whi;	
+	return nd_whi;	*/
 }
 
 // change the wspace into a local variable
@@ -3585,7 +3585,7 @@ void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
 }
 
 void Circuit::initial_occupy_flag(){
-	WSPACE *ptr;
+	/*WSPACE *ptr;
 	Node *nd;
 	for(size_t i=0;i<pad_set_l.size();i++){
 		nd = pad_set_l[i]->node;
@@ -3599,7 +3599,7 @@ void Circuit::initial_occupy_flag(){
 				ptr->na = nd;
 			}
 		}
-	}
+	}*/
 	/*for(size_t j=0;j<wspacelist.size();j++){
 		clog<<"space, flag: "<<wspacelist[j]->name<<" "<<wspacelist[j]->flag_occupy<<endl;	
 	}*/
@@ -3749,3 +3749,5 @@ void Circuit::locate_ldo_region_bound(int a, int b, int &min, int &max){
 		max = b;
 	}
 }
+
+

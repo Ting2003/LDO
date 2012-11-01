@@ -219,7 +219,7 @@ private:
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
-	void initial_occupy_flag();	
+	void initial_occupy_flag();
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes();
