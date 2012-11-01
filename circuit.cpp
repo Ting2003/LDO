@@ -3532,10 +3532,18 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	double min_id = -1;
 	double ref_id = -1;
 	stringstream sstream;
+	LDO *ldo_ptr;
 	// find the reference distance
 	ref_dx = fabs(ref_x - nd->pt.x);
 	ref_dy = fabs(ref_y - nd->pt.y);
 	ref_dist = sqrt(ref_dx * ref_dx + ref_dy * ref_dy);
+
+	for(size_t i=0;i<ldolist.size();i++){
+		Node *A = ldolist[i]->A;
+		if(A->pt.x == nd->pt.x && 
+		   A->pt.y == nd->pt.y)
+			ldo_ptr = ldolist[i];
+	}
 
 	// find the nearest whitespaces id: sorted
 	// must closer than ref_dist
@@ -3545,7 +3553,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	if(candi_wspace.size() == 0) return nd;
 	// see if there is any place for this ldo
 	// no overlap with other ldos
-	Node *nd_place = place_ldo(candi_wspace);
+	Node *nd_place = place_ldo(ref_dist, ldo_ptr, candi_wspace);
 	// if no place, return;
 	if(nd_place == false)	return nd;
 		return nd_place; 
@@ -3801,5 +3809,20 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 	temp_wspace.clear();
 }
 
-Node *Circuit::place_ldo(vector<int> &candi_wspace){
+// search for avaliable space for ldo with node nd
+Node *Circuit::place_ldo(double ref_dist, LDO *ldo_ptr, vector<int> &candi_id){
+	int id =0;
+	WSPACE *wspace_ptr;
+	// original point for ldo
+	//Point *pt;
+	int ref_x = ldo_ptr->A->pt.x;
+	int ref_y = ldo_ptr->A->pt.y;
+	
+
+	for(size_t i=0;i<candi_id.size();i++){
+		id = candi_id[i];
+		wspace_ptr = wspacelist[id];
+		// put ldo into this white space	
+			
+	}	
 }
