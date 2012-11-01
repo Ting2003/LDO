@@ -9,6 +9,7 @@ public:
 	string name;	
 	Node*A;
 	// 4 corners
+	// first node is the pin for VDD
 	vector<Point*> node;
 	int width;
 	int height;
@@ -20,6 +21,7 @@ public:
 	WSPACE();
 	string name;
 	vector<Point*> node;
+	vector<int> LDO_id; // index of LDO within wspace
 };
 
 #endif

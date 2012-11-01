@@ -2,5 +2,6 @@
 #define _COMMON_H
 #include "ldo.h"
 // stores common functions
-bool is_in_wspace(double x, double y, WSPACE *wspace);
+bool node_in_wspace(double x, double y, WSPACE *wspace);
+bool ldo_in_wspace(LDO *ldo, WSPACE *wspace);
 #endif

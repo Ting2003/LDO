@@ -2217,7 +2217,8 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 	build_map_node_pt();
 	build_ldolist(ldo_vec);
 	build_wspacelist(wspace_vec);
-	initial_occupy_flag();
+	// assign ldo to white spaces
+	mark_wspace_ldo();
 	
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
@@ -3553,7 +3554,8 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	if(candi_wspace.size() == 0) return nd;
 	// see if there is any place for this ldo
 	// no overlap with other ldos
-	Node *nd_place = place_ldo(ref_dist, ldo_ptr, candi_wspace);
+	clog<<"placing ldo: "<<*nd<<" "<<*nd_new<<endl;
+	Node *nd_place = place_ldo(ref_dist, ref_x, ref_y, ldo_ptr, candi_wspace);
 	// if no place, return;
 	if(nd_place == false)	return nd;
 		return nd_place; 
@@ -3566,25 +3568,20 @@ void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
 	wspacelist = wspace_vec;
 }
 
-void Circuit::initial_occupy_flag(){
-	/*WSPACE *ptr;
-	Node *nd;
-	for(size_t i=0;i<pad_set_l.size();i++){
-		nd = pad_set_l[i]->node;
+void Circuit::mark_wspace_ldo(){
+	LDO *ldo;
+	for(size_t i=0;i<ldolist.size();i++){
+		ldo = ldolist[i];
 		for(size_t j=0;j<wspacelist.size();j++){
-			ptr = wspacelist[j];
-			if(nd->pt.x >= ptr->xl 
-				&& nd->pt.x <= ptr->xr 
-		  		&& nd->pt.y >= ptr->yb 
-		  		&& nd->pt.y <= ptr->yt){
-				ptr->flag_occupy = true;
-				ptr->na = nd;
-			}
+			bool flag = ldo_in_wspace(ldo, wspacelist[j]);
+			//clog<<"ldo in space flag: "<<flag<<endl;	
+			if(flag){
+				wspacelist[j]->LDO_id.push_back(i);
+				clog<<"wspace: "<<wspacelist[j]->name<<" has ldo: "<<ldolist[i]->name<<endl;
+				break;
+			}	
 		}
-	}*/
-	/*for(size_t j=0;j<wspacelist.size();j++){
-		clog<<"space, flag: "<<wspacelist[j]->name<<" "<<wspacelist[j]->flag_occupy<<endl;	
-	}*/
+	}	
 }
 
 void Circuit::build_ldolist(vector<LDO*> ldo_vec){
@@ -3810,19 +3807,23 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 }
 
 // search for avaliable space for ldo with node nd
-Node *Circuit::place_ldo(double ref_dist, LDO *ldo_ptr, vector<int> &candi_id){
+Node *Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO *ldo_ptr, vector<int> &candi_id){
 	int id =0;
 	WSPACE *wspace_ptr;
 	// original point for ldo
-	int ref_x = ldo_ptr->A->pt.x;
-	int ref_y = ldo_ptr->A->pt.y;
+	// int ref_x = ldo_ptr->A->pt.x;
+	// int ref_y = ldo_ptr->A->pt.y;
+	Point *pt, *min_pt;
+	int x, y;
+	int dx, dy;
+	double dist;
 	double min_dist;
 	
 	for(size_t i=0;i<candi_id.size();i++){
 		id = candi_id[i];
 		wspace_ptr = wspacelist[id];
 		// put ldo into this white space	
-		/*for(size_t j=0;j<wspace_ptr->node.size();j++){	
+		for(size_t j=0;j<wspace_ptr->node.size();j++){	
 			pt = wspace_ptr->node[j];
 			x = pt->x;  y = pt->y;	
 			dx = x - ref_x;
@@ -3836,6 +3837,52 @@ Node *Circuit::place_ldo(double ref_dist, LDO *ldo_ptr, vector<int> &candi_id){
 				min_dist = dist;
 				min_pt = pt;
 			}
-		}*/	
-	}	
+		}	
+	}
+	// first create a temp ldo object	
+	LDO ldo_temp;
+	ldo_temp = *ldo_ptr;
+	
+	// set ldo into min_pt
+	ldo_temp.node[0] = min_pt;
+	adjust_ldo_pos(ldo_temp, wspace_ptr);	
+}
+
+// adjust ldo position around min_id, no overlap
+void Circuit::adjust_ldo_pos(LDO &ldo, WSPACE *wspace){
+	int width = ldo.width;
+	int height = ldo.height;
+	int x0 = ldo.node[0]->x;
+	int y0 = ldo.node[0]->y;
+
+	// try all 8 positions first to find a place
+	vector<int> y; // diagonal corner coordinate
+	vector<int> x;
+	
+	if(width == height){
+		y.resize(4);
+		x.resize(4);
+	}else{
+		y.resize(8);
+		x.resize(8);
+	}
+	// case 1
+	x[0] = x0 + width; y[0] = y0 + height;
+	x[1] = x0 - width; y[1] = y0 + height;
+	x[2] = x0 - width; y[2] = y0 - height;
+	x[3] = x0 + width; y[3] = y0 - height;
+
+	if(width != height){
+		// the other 4
+		x[4] = x0 + height; y[4] = y0 + width;
+		x[5] = x0 - height; y[5] = y0 + width;
+		x[6] = x0 - height; y[6] = y0 - width;
+		x[7] = x0 + height; y[7] = y0 - width;
+	}
+
+	// see if there is overlap with this rec
+	/*for(size_t i=0;i<x.size();i++){
+		find_overlap(x0,y0,x[i],y[i], wspace);
+	}*/
+		
 }

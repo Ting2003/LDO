@@ -507,8 +507,8 @@ void Parser::parse_ldo_line(char *line, int *count){
 		ldo_ptr->node.push_back(pt);
 	}
 	// compute width and height
-	ldo_ptr->width = ldo_ptr->node[2]->x - ldo_ptr->node[0]->x;
-	ldo_ptr->width = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y;
+	ldo_ptr->width = ldo_ptr->node[2]->x - ldo_ptr->node[0]->x+1;
+	ldo_ptr->height = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y+1;
 	p_chip->ldolist.push_back(ldo_ptr);
 
 	// build node and net
