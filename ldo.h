@@ -23,7 +23,9 @@ public:
 	WSPACE();
 	// record 4 boundary lines
 	string name;
+	Node *na;
 	double xl, xr, yb, yt;
+	bool flag_occupy;
 };
 
 #endif

@@ -6,4 +6,6 @@ LDO::LDO(){
 }
 
 WSPACE::WSPACE(){
+	na = NULL;
+	flag_occupy = false;
 }

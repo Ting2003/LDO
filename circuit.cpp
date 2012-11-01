@@ -2217,6 +2217,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 	build_map_node_pt();
 	build_ldolist(ldo_vec);
 	build_wspacelist(wspace_vec);
+	initial_occupy_flag();
 	
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
@@ -2499,8 +2500,8 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 		if(nd_new->isS()!=X){
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
-				clog<<"project_local_pad. "<<*nd_new<<endl;
-				Node *nb = project_local_pad(nd_new, ldo, map_node_pt);
+				clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
+				Node *nb = project_local_pad(nd, nd_new, ldo, map_node_pt);
 				if(nb == NULL)
 					return nd;
 				else{
@@ -3518,64 +3519,90 @@ void Circuit::stamp_worst_cur(double *bnewp){
 }
 
 // project local pad, setting ldo into new white space areas
-Node * Circuit::project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-   bool qualify_flag = false;
-   Node *na;
-   queue<Node*> q;
-   Node* nd_cur;
-   stringstream sstream;
-   string pt_name;
-   double dx[4] = {1, 0, -1, 0};
-   double dy[4] = {0, 1, 0, -1};
+Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+	Node *nd_whi;
+	double ref_x = nd_new->pt.x;
+	double ref_y = nd_new->pt.y;
+	WSPACE *ptr;
+	double dx, dy;	
+	double min_dx, min_dy;
+	double min_dist;
+	// if min_id == -1, stay on old wspace
+	double min_id = -1;
+	double ref_id = -1;
+	stringstream sstream;
+	
+	// find the reference distance
+	min_dx = fabs(ref_x - nd->pt.x);
+	min_dy = fabs(ref_y - nd->pt.y);
+	min_dist = sqrt(min_dx * min_dx + min_dy * min_dy);
 
-   q.push(nd_new);
-   // first qualify this node	
-   qualify_flag = qualify_pad(nd_new, ldo, map_node_pt);   if(qualify_flag){
-	clog<<"nd_new qualified: "<<*nd_new<<endl;
-	ldo->A = nd_new;
-	return nd_new;
-   }
-   // if not, qualify the neighboring node	
-   while(!q.empty()&& qualify_flag == false){
-	Point pt_cur = q.front()->pt;
-   	Point pt_nbr = pt_cur;
-	//expand_pad_pos(q, pt_cur);	
-	for(size_t i=0;i<4;i++){
-		pt_nbr.x = pt_cur.x + dx[i];
-		pt_nbr.y = pt_cur.y + dy[i];
-		stringstream sstream;
-		string pt_name;
-		sstream <<"n"<<pt_nbr.z<<"_"<<
-			pt_nbr.x<<"_"<<
-			pt_nbr.y;
-		pt_name = sstream.str();
-		Node *nd_nbr = get_node_pt(map_node_pt, pt_name);
-		if(nd_nbr->rep->isS()!=X){
-			// judge whether this node qualifies
-			qualify_flag = qualify_pad(nd_nbr, ldo, map_node_pt);
-			// if qualifies
-			if(qualify_flag){
-				nd_nbr->flag_qualified = true;
-				break;
-			}
-		}
-		if(nd_nbr->flag_qualified == false){
-			q.push(nd_nbr);
-			nd_nbr->flag_qualified = true;
+	// compare the refs to whitespaces
+	for(size_t i=0; i<wspacelist.size();i++){
+		ptr = wspacelist[i];
+		dx = fabs(ref_x - ptr->xl);
+		dy = fabs(ref_y - ptr->yb);
+		double dist = sqrt(dx*dx + dy*dy);
+		if(ptr->na== NULL)
+			clog<<"NULL name: "<<endl;
+		else
+			clog<<"ptr->name: nd: "<<ptr->name<<" "<<nd->name<<endl;
+		if(ptr->na!= NULL && ptr->na->name == nd->name)
+			ref_id = i;
+		if(ptr->flag_occupy == true)
+			continue;
+		if(dist < min_dist){
+			min_dist = dist;
+			min_id = i;
 		}
 	}
-	q.pop();
-   }
-   while(!q.empty()){
-	q.pop();
-   }
-   if(qualify_flag == true){
-	ldo->A = nd_new;
-	clog<<"nd_new qualified: "<<*nd_new<<endl;
-	//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
-	return nd_new;
-   }
-   return NULL;	
+	clog<<"after cycling. "<<endl;
+	if(min_id == -1){
+		clog<<"not move. "<<endl;
+		return nd;
+	}
+	// locate the white space to move
+	clog<<"wspacelist: "<<wspacelist[min_id]->name<<endl;	
+	sstream<<"n"<<nd->pt.z<<"_"<<wspacelist[min_id]->xl<<"_"<<wspacelist[min_id]->yb;
+	clog<<"name: "<<sstream.str()<<endl;	
+	nd_whi = get_node_pt(map_node_pt, sstream.str());
+	if(nd_whi == NULL)
+		return nd;
+	clog<<"new node: "<<*nd_whi<<endl;
+	
+	clog<<"ref_id, min_id, whi_ref, whi_min: "<<ref_id<<" "<<min_id<<" "<<wspacelist[ref_id]->flag_occupy<<" "<<wspacelist[min_id]->flag_occupy<<endl;	
+	wspacelist[ref_id]->flag_occupy = false;
+	wspacelist[min_id]->flag_occupy = true;
+	clog<<"whi_ref, whi_min: "<<wspacelist[ref_id]->flag_occupy<<" "<<wspacelist[min_id]->flag_occupy<<endl;	
+	return nd_whi;	
+}
+
+// change the wspace into a local variable
+// here is simply copy
+void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
+	wspacelist.clear();
+	wspacelist = wspace_vec;
+}
+
+void Circuit::initial_occupy_flag(){
+	WSPACE *ptr;
+	Node *nd;
+	for(size_t i=0;i<pad_set_l.size();i++){
+		nd = pad_set_l[i]->node;
+		for(size_t j=0;j<wspacelist.size();j++){
+			ptr = wspacelist[j];
+			if(nd->pt.x >= ptr->xl 
+				&& nd->pt.x <= ptr->xr 
+		  		&& nd->pt.y >= ptr->yb 
+		  		&& nd->pt.y <= ptr->yt){
+				ptr->flag_occupy = true;
+				ptr->na = nd;
+			}
+		}
+	}
+	/*for(size_t j=0;j<wspacelist.size();j++){
+		clog<<"space, flag: "<<wspacelist[j]->name<<" "<<wspacelist[j]->flag_occupy<<endl;	
+	}*/
 }
 
 void Circuit::build_ldolist(vector<LDO*> ldo_vec){
@@ -3588,14 +3615,7 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	}
 	clog<<"ldolist.size: "<<ldolist.size()<<endl;
 	clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
-}
-
-// change the wspace into a local variable
-// here is simply copy
-void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
-	wspacelist.clear();
-	wspacelist = wspace_vec;
-}
+	}
 
 Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
 	Node *na;	

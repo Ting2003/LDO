@@ -549,5 +549,5 @@ void Parser::parse_wspace(char *line){
 	wspace_ptr->yb = yb;
 	wspace_ptr->yt = yt;
 	p_chip->wspacelist.push_back(wspace_ptr);	
-	// clog<<"name, xl, xr, yb, yt: "<<name<<" "<<xl<<" "<<xr<<" "<<yb<<" "<<yt<<endl;	
+	clog<<"name, xl, xr, yb, yt: "<<name<<" "<<xl<<" "<<xr<<" "<<yb<<" "<<yt<<endl;	
 }
