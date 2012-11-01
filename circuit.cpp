@@ -3783,7 +3783,7 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 		}
 	}
 
-	while(candiID_wspace.size()< wspacelist.size()){
+	while(candiID_wspace.size()< temp_wspace.size()){
 		double min_dist = 0;
 		int count = 0;
 		int min_id = -1;
@@ -3800,7 +3800,7 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 				min_id = i;
 			}
 		}
-		// clog<<"min_dist, min_id: "<<min_dist<<" "<<min_id<<endl;
+		// clog<<"min_dist, min_id, ref_dist: "<<min_dist<<" "<<min_id<<" "<<ref_dist<<endl;
 		candiID_wspace.push_back(min_id);
 		wspace_flag[min_id] = true;
 	}
@@ -3814,15 +3814,28 @@ Node *Circuit::place_ldo(double ref_dist, LDO *ldo_ptr, vector<int> &candi_id){
 	int id =0;
 	WSPACE *wspace_ptr;
 	// original point for ldo
-	//Point *pt;
 	int ref_x = ldo_ptr->A->pt.x;
 	int ref_y = ldo_ptr->A->pt.y;
+	double min_dist;
 	
-
 	for(size_t i=0;i<candi_id.size();i++){
 		id = candi_id[i];
 		wspace_ptr = wspacelist[id];
 		// put ldo into this white space	
-			
+		/*for(size_t j=0;j<wspace_ptr->node.size();j++){	
+			pt = wspace_ptr->node[j];
+			x = pt->x;  y = pt->y;	
+			dx = x - ref_x;
+			dy = y - ref_y;
+			dist = sqrt(dx*dx +dy*dy);
+			if(j==0){
+				min_dist = dist;
+				min_pt = pt;
+			}
+			else if(dist < min_dist){
+				min_dist = dist;
+				min_pt = pt;
+			}
+		}*/	
 	}	
 }
