@@ -4,3 +4,6 @@ LDO::LDO(){
 	height = 0;
 	degree = 0;
 }
+
+WSPACE::WSPACE(){
+}

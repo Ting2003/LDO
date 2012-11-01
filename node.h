@@ -50,6 +50,7 @@ public:
 	size_t rid;		// id in rep_list
 	size_t id;		// id in nodelist
 	bool flag_visited;
+	bool flag_qualified;
 	//////// member and function for pad //////
 
 	// disable the flag of some pad node

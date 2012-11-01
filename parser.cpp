@@ -351,68 +351,27 @@ void Parser::parse_ldo(char *filename, int *count){
 		report_exit("Input file not exist!\n");
 		
 	char line[MAX_BUF];
-	// 4 corner node of the LDO module 
-	char sA[MAX_BUF];
-	stringstream sstream;
-	Node sA_X; // the X node on top of sA
-	static Node nd;
-	Node * nd_ptr;
-	int width, height, degree;
-	string l;
-	int layer, ckt_id;
-	layer = nd.get_layer();
-	ckt_id = layer_in_ckt[layer];
-	Circuit *ckt = p_chip->cktlist[ckt_id];
-	LDO *ldo_ptr;
+	clog<<"before parse ldo. "<<endl;
 	while( fgets(line, MAX_BUF, f) != NULL ){
+		char type = line[0];
+		switch(type){	
 		// skip the * line
-		if(line[0] == '*')
-			continue;
-		sscanf(line, "%s %d %d %d", sA, &width, &height, &degree);
-		extract_node(sA, nd);
-		nd_ptr = ckt->get_node(nd.name);
-		if(nd_ptr==NULL)
-			report_exit("LDO node error!");	
-		
-		ldo_ptr = new LDO();
-		ldo_ptr->A = nd_ptr;
-		// assign the in and out
-		ldo_ptr->in = nd_ptr;
-		ldo_ptr->out = nd_ptr;
-		// compute the width and height
-		ldo_ptr->width = width;
-		ldo_ptr->height = height;
-		ldo_ptr->degree = degree;
-		p_chip->ldolist.push_back(ldo_ptr);
-
-		// produce an extra voltage net and resistor net for LDO
-		// first create the X node
-		sA_X = *nd_ptr;
-		sstream.str("");
-		sstream<<"_X_"<<sA_X.name;
-		sA_X.name = sstream.str();
-		if(ckt->get_node(sA_X.name)==NULL){
-			Node *sA_Xptr = new Node(sA_X);
-			sA_Xptr->rep = sA_Xptr;
-			sA_Xptr->flag = X;
-			sA_Xptr->value = VDD_G;
-			ckt->add_node(sA_Xptr);
-			// start to add net
-			Net *net;
-			double value = 0;
-			// then add net
-			net = new Net(RESISTOR, value, nd_ptr, sA_Xptr);
-			net->id = count[RESISTOR]++;
-			ckt->add_net(net);	
-			// updating the neighboring net	
-			sA_Xptr->nbr[BOTTOM] = net;
-			nd_ptr->nbr[TOP] = net;
-
-			net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
-			net->id = count[VOLTAGE]++;
-			ckt->add_net(net);
-			// update the neighboring net
-			sA_Xptr->nbr[TOP] = net;
+		case '*':
+			break;
+		case 'l':
+		case 'L':
+			parse_ldo_line(line, count);
+			break;
+		case 'w':
+		case 'W':
+			clog<<"parse white space. "<<endl;
+			// parse white space
+			parse_wspace(line);
+			break;
+		default:
+			printf("Unknown input line: ");
+			report_exit(line);
+			break;
 		}
 	}
 	fclose(f);
@@ -512,4 +471,83 @@ void Parser::parse_dot(char *line, Tran &tran){
 		default: 
 			break;
 	}
+}
+
+void Parser::parse_ldo_line(char *line, int *count){
+	char sA[MAX_BUF];
+	stringstream sstream;
+	Node sA_X; // the X node on top of sA
+	static Node nd;
+	Node * nd_ptr;
+	int width, height, degree;
+	string l;
+	int layer, ckt_id;
+	layer = nd.get_layer();
+	ckt_id = layer_in_ckt[layer];
+	Circuit *ckt = p_chip->cktlist[ckt_id];
+	LDO *ldo_ptr;
+	char name[MAX_BUF];
+
+	sscanf(line, "%s %s %d %d %d", name, sA, &width, &height, &degree);
+	extract_node(sA, nd);
+	nd_ptr = ckt->get_node(nd.name);
+	if(nd_ptr==NULL)
+		report_exit("LDO node error!");	
+
+	ldo_ptr = new LDO();
+	ldo_ptr->name = name;
+	ldo_ptr->A = nd_ptr;
+	// assign the in and out
+	ldo_ptr->in = nd_ptr;
+	ldo_ptr->out = nd_ptr;
+	// compute the width and height
+	ldo_ptr->width = width;
+	ldo_ptr->height = height;
+	ldo_ptr->degree = degree;
+	p_chip->ldolist.push_back(ldo_ptr);
+
+	// produce an extra voltage net and resistor net for LDO
+	// first create the X node
+	sA_X = *nd_ptr;
+	sstream.str("");
+	sstream<<"_X_"<<sA_X.name;
+	sA_X.name = sstream.str();
+	if(ckt->get_node(sA_X.name)==NULL){
+		Node *sA_Xptr = new Node(sA_X);
+		sA_Xptr->rep = sA_Xptr;
+		sA_Xptr->flag = X;
+		sA_Xptr->value = VDD_G;
+		ckt->add_node(sA_Xptr);
+		// start to add net
+		Net *net;
+		double value = 0;
+		// then add net
+		net = new Net(RESISTOR, value, nd_ptr, sA_Xptr);
+		net->id = count[RESISTOR]++;
+		ckt->add_net(net);	
+		// updating the neighboring net	
+		sA_Xptr->nbr[BOTTOM] = net;
+		nd_ptr->nbr[TOP] = net;
+
+		net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
+		net->id = count[VOLTAGE]++;
+		ckt->add_net(net);
+		// update the neighboring net
+		sA_Xptr->nbr[TOP] = net;
+	}
+}
+
+void Parser::parse_wspace(char *line){
+	int xl, xr, yb, yt;
+	char name[MAX_BUF];
+	WSPACE *wspace_ptr;
+
+	sscanf(line, "%s %d %d %d %d", name, &xl, &xr, &yb, &yt);
+	wspace_ptr = new WSPACE();
+	wspace_ptr->name = name;
+	wspace_ptr->xl = xl;
+	wspace_ptr->xr = xr;
+	wspace_ptr->yb = yb;
+	wspace_ptr->yt = yt;
+	// clog<<"name, xl, xr, yb, yt: "<<name<<" "<<xl<<" "<<xr<<" "<<yb<<" "<<yt<<endl;	
 }

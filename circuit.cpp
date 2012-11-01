@@ -2498,6 +2498,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 		if(nd_new->isS()!=X){
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
+				clog<<"before project_local_pad. "<<*nd_new<<endl;
 				Node *nb = project_local_pad(nd_new, ldo, map_node_pt);
 				if(nb == NULL)
 					return nd;
@@ -2513,13 +2514,15 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 			}
 		}
 	}
-	Node *nd_new_X = expand_pad(nd_new, ldo, map_node_pt);
+	else
+		report_exit("no project node.");
+	/*Node *nd_new_X = expand_pad(nd_new, ldo, map_node_pt);
 	if(nd_new_X != NULL){
 		nd->disableX();
 		nd->value = 0;
 		return nd_new_X;
 	}else
-		return nd;	
+		return nd;	*/
 }
 
 // two map node point lists:
@@ -3513,21 +3516,27 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 }
 
-// modified the position of ldo pad
-Node * Circuit::modify_ldo_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-   bool return_flag = false;
+// project local pad, including LDO boundary and current conflicts for LDO
+Node * Circuit::project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+   bool qualify_flag = false;
    Node *na;
-   queue<Point> q;
-   Point pt;
-   Point pt_cur;
+   queue<Node*> q;
+   Node* nd_cur;
    stringstream sstream;
    string pt_name;
    double dx[4] = {1, 0, -1, 0};
    double dy[4] = {0, 1, 0, -1};
 
-   q.push(nd_new->pt);
-   while(!q.empty()&& return_flag == false){
-	pt_cur = q.front();	
+   q.push(nd_new);
+   // first qualify this node	
+   qualify_flag = qualify_pad(nd_new, ldo, map_node_pt);   if(qualify_flag){
+	clog<<"nd_new qualified: "<<*nd_new<<endl;
+	ldo->A = nd_new;
+	return nd_new;
+   }
+   // if not, qualify the neighboring node	
+   while(!q.empty()&& qualify_flag == false){
+	Point pt_cur = q.front()->pt;
    	Point pt_nbr = pt_cur;
 	//expand_pad_pos(q, pt_cur);	
 	for(size_t i=0;i<4;i++){
@@ -3539,31 +3548,30 @@ Node * Circuit::modify_ldo_pad(Node *nd_new, LDO *ldo, unordered_map<string, Nod
 			pt_nbr.x<<"_"<<
 			pt_nbr.y;
 		pt_name = sstream.str();
-		if(has_node_pt(map_node_pt, pt_name)){
-			nd_new = get_node_pt(map_node_pt, pt_name);
-			nd_new = nd_new->rep;
-			if(nd_new->isS()!=X){
-				//nd->disableX();
-				// nd->value = 0;
-				double x = nd_new->pt.x;
-				double y = nd_new->pt.y;
-				if(x+ldo->width 
-					<= gx && y+ldo->height <= gy){
-					return_flag = true;
-					break;
-				}
-				//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
+		Node *nd_nbr = get_node_pt(map_node_pt, pt_name);
+		if(nd_nbr->rep->isS()!=X){
+			// judge whether this node qualifies
+			qualify_flag = qualify_pad(nd_nbr, ldo, map_node_pt);
+			// if qualifies
+			if(qualify_flag){
+				nd_nbr->flag_qualified = true;
+				break;
 			}
 		}
-		q.push(pt_nbr);
+		if(nd_nbr->flag_qualified == false){
+			q.push(nd_nbr);
+			nd_nbr->flag_qualified = true;
+		}
 	}
 	q.pop();
    }
    while(!q.empty()){
 	q.pop();
    }
-   if(return_flag == true){
+   if(qualify_flag == true){
 	ldo->A = nd_new;
+	clog<<"nd_new qualified: "<<*nd_new<<endl;
+	//cout<<"new name: "<<*nd_new<<" "<<nd_new->isX()<<endl;
 	return nd_new;
    }
    return NULL;	
@@ -3633,19 +3641,83 @@ Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> m
 	return NULL;
 }
 
-// project local pad, including LDO boundary and current conflicts for LDO
-Node * Circuit::project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-	double x = nd_new->pt.x;
-	double y = nd_new->pt.y;
-	// current conflicts
-	
-	if(x + ldo->width <= gx &&
-	  y + ldo->height <= gy){
-		ldo->A = nd_new;
-		return nd_new;
+// qualifying nd_new with current and LDO constraint
+bool Circuit::qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
+	Node *nd;
+	Net *net;
+	stringstream sstream;
+	int x = nd_new->pt.x;
+	int y = nd_new->pt.y;
+	bool return_flag = false;
+
+	net = nd_new->nbr[BOTTOM];
+	if(net != NULL && net->type == CURRENT){
+		return false;
 	}
-	else{// search for a available pos
-		Node *nb = modify_ldo_pad(nd_new, ldo, map_node_pt);	
-		return nb;
+	
+	// record 8 position cases
+	int dx[8];
+	int dy[8];
+	int w = ldo->width;
+	int h = ldo->height;
+	dx[0] = dx[2] = w;	dy[0] = dy[1] = h;
+	dx[1] = dx[3] = -w;	dy[2] = dy[3] = -h;
+	dx[4] = dx[6] = h;	dy[4] = dy[5] = w;
+	dx[5] = dx[7] = -h;	dy[6] = dy[7] = -w;
+	// dx[8] = {w, -w, w, -w, h, -h, h, -h};
+	// dy[8] = {h, h, -h, -h, w, w, -w, -w};
+	// current conflicts
+	// starts with only 1 pos
+	for(int i=0;i<1;i++){
+		int bx = x + dx[i];
+		int by = y + dy[i];
+		// clog<<"x/bx, y/by: "<<x<<" "<<bx<<" "<<y<<" "<<by<<endl;
+		// if not in boundary, skip
+		if(bx < lx || bx > gx || 
+			by < ly || by > gy )
+			continue;
+		// working on first fitting case
+		int min_x, max_x;
+		int min_y, max_y;
+		locate_ldo_region_bound(bx, x, min_x, max_x);
+		// clog<<"minx, maxx: "<<min_x<<" "<<max_x<<endl;
+		locate_ldo_region_bound(by, y, min_y, max_y);
+		// clog<<"miny, maxy: "<<min_y<<" "<<max_y<<endl;
+		bool cur_flag = false;
+		// search the region for current nets
+		for(int j = min_x; j< max_x; j++){
+			for(int k = min_y; k < max_y; k++){
+				sstream.str("");
+				sstream<<"n"<<nd_new->pt.z<<"_"<<j<<"_"<<k;
+				// clog<<"name: "<<sstream.str();
+				nd = get_node_pt(map_node_pt, sstream.str());
+				if(nd == NULL) continue;
+				nd->flag_qualified = true;
+				net = nd->nbr[BOTTOM];
+				if(net!= NULL && net->type == CURRENT){
+					cur_flag = true;
+					//clog<<"===== non-qualify node. "<<endl;
+					break;
+				}
+			}
+		}
+		if(cur_flag == true)
+			continue;
+		else{
+			return_flag = true;
+			break;	
+		}
+	}
+	// clog<<"qualifying ? "<<return_flag<<endl;
+	return return_flag;	
+}
+
+void Circuit::locate_ldo_region_bound(int a, int b, int &min, int &max){
+	if(a > b){
+		min = b;	
+		max = a;
+	}else{
+		min = a;
+		max = b;
 	}
 }

@@ -215,7 +215,8 @@ private:
 
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
-	Node * modify_ldo_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
+	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
+	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);	
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void release_tr_nodes(Tran &tran);
