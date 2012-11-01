@@ -556,7 +556,8 @@ void Parser::parse_wspace(char *line){
 		sscanf(chs, "%d,%d", &x,&y);
 		//clog<<"x, y: "<<x<<" "<<y<<endl;
 		pt = new Point(x, y, -1);
-		pt->x = x;	pt->y = y;
+		//pt->x = x;	pt->y = y;
 		wspace_ptr->node.push_back(pt);
 	}
+	p_chip->wspacelist.push_back(wspace_ptr);
 }
