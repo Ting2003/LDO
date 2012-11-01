@@ -32,5 +32,11 @@ inline void Point::set(long _x, long _y, long _z){
 	z=_z;
 }
 
+class Point_2D{
+public:
+	Point_2D();
+	Point_2D(long x, long y);
+	long x, y;
+};
 #endif
 

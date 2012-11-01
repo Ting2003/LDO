@@ -17,15 +17,21 @@ public:
 
 // white space class
 // each white space is a rectangle
+class RECTANGLE{
+private:
+public:
+	RECTANGLE();
+	// record 4 boundary lines
+	string name;
+	double xl, xr, yb, yt;
+};
+
 class WSPACE{
 private:
 public:
 	WSPACE();
-	// record 4 boundary lines
 	string name;
-	Node *na;
-	double xl, xr, yb, yt;
-	bool flag_occupy;
+	vector<Point_2D>
 };
 
 #endif
