@@ -2498,7 +2498,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 		if(nd_new->isS()!=X){
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
-				clog<<"before project_local_pad. "<<*nd_new<<endl;
+				clog<<"project_local_pad. "<<*nd_new<<endl;
 				Node *nb = project_local_pad(nd_new, ldo, map_node_pt);
 				if(nb == NULL)
 					return nd;
@@ -3516,7 +3516,7 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 }
 
-// project local pad, including LDO boundary and current conflicts for LDO
+// project local pad, setting ldo into new white space areas
 Node * Circuit::project_local_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
    bool qualify_flag = false;
    Node *na;

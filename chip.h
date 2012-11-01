@@ -11,6 +11,7 @@ public:
 	friend class Parser;
 	vector<Circuit *>cktlist;
 	vector<LDO*> ldolist;
+	vector<WSPACE*> wspacelist;
 };
 
 #endif
