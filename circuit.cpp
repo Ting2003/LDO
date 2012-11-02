@@ -3928,5 +3928,6 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSP
 	return flag;	
 }
 
+// search for a spot for ldo, which has no overlap with others
 bool Circuit::avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 }
