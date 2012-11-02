@@ -2223,7 +2223,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
 	//print_pad_set();
-	for(size_t i=0;i<11;i++){
+	for(size_t i=0;i<10;i++){
 		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
@@ -2511,9 +2511,10 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 					return nb;
 				}
 			}else{
-				nd->disableX();
-				nd->value = 0;
-				return nd_new;
+				return nd;
+				//nd->disableX();
+				//nd->value = 0;
+				//return nd_new;
 			}
 		}
 	}
@@ -3533,7 +3534,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	double min_id = -1;
 	double ref_id = -1;
 	stringstream sstream;
-	LDO *ldo_ptr;
+	LDO ldo_ptr;
 	// find the reference distance
 	ref_dx = fabs(ref_x - nd->pt.x);
 	ref_dy = fabs(ref_y - nd->pt.y);
@@ -3543,7 +3544,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 		Node *A = ldolist[i]->A;
 		if(A->pt.x == nd->pt.x && 
 		   A->pt.y == nd->pt.y)
-			ldo_ptr = ldolist[i];
+			ldo_ptr = *ldolist[i];
 	}
 
 	// find the nearest whitespaces id: sorted
@@ -3551,14 +3552,31 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	get_candi_wspace(ref_x, ref_y, ref_dist, 
 		candi_wspace);
 	// if all the wspace are farther away, not move
-	if(candi_wspace.size() == 0) return nd;
+	if(candi_wspace.size() == 0){
+		clog<<"no candi white space. "<<endl;
+		return nd;
+	}
 	// see if there is any place for this ldo
 	// no overlap with other ldos
-	clog<<"placing ldo: "<<*nd<<" "<<*nd_new<<endl;
-	Node *nd_place = place_ldo(ref_dist, ref_x, ref_y, ldo_ptr, candi_wspace);
+	//clog<<"placing ldo: "<<*nd<<" "<<*nd_new<<endl;
+	bool flag_place = place_ldo(ref_dist, ref_x, ref_y, ldo_ptr, candi_wspace);
 	// if no place, return;
-	if(nd_place == false)	return nd;
-		return nd_place; 
+	if(flag_place == false){
+		clog<<"not move: "<<endl;
+		return nd;
+	}
+	// get the node
+	sstream.str("");
+	sstream<<"n"<<local_layers[0]<<"_"<<ldo_ptr.node[0]->x<<"_"<<ldo_ptr.node[0]->y;
+	clog<<"check ldo node: "<<ldo_ptr.node[0]->x<<" "<<ldo_ptr.node[0]->y<<endl;
+	Node *nd_new_ldo = get_node_pt(map_node_pt, sstream.str());
+	if(nd_new_ldo == NULL){
+		clog<<"no this node: "<<endl;
+		return nd;
+	}
+	clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
+	ldo->A = nd_new_ldo;
+	return nd_new_ldo; 
 }
 
 // change the wspace into a local variable
@@ -3807,9 +3825,11 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 }
 
 // search for avaliable space for ldo with node nd
-Node *Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO *ldo_ptr, vector<int> &candi_id){
+bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_id){
 	int id =0;
 	WSPACE *wspace_ptr;
+	Node *nd;
+	LDO ldo_temp;
 	// original point for ldo
 	// int ref_x = ldo_ptr->A->pt.x;
 	// int ref_y = ldo_ptr->A->pt.y;
@@ -3818,7 +3838,9 @@ Node *Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO *ldo_p
 	int dx, dy;
 	double dist;
 	double min_dist;
-	
+	bool flag_adjust = false;
+
+	// clog<<"ref_x, ref_y: "<<ref_x<<" "<<ref_y<<endl;	
 	for(size_t i=0;i<candi_id.size();i++){
 		id = candi_id[i];
 		wspace_ptr = wspacelist[id];
@@ -3838,22 +3860,33 @@ Node *Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO *ldo_p
 				min_pt = pt;
 			}
 		}	
-	}
-	// first create a temp ldo object	
-	LDO ldo_temp;
-	ldo_temp = *ldo_ptr;
 	
-	// set ldo into min_pt
-	ldo_temp.node[0] = min_pt;
-	adjust_ldo_pos(ldo_temp, wspace_ptr);	
+		// first create a temp ldo object	
+		ldo_temp = ldo_ptr;
+	
+		// set ldo into min_pt
+		ldo_temp.node[0] = min_pt;
+		//ldo_ptr->node[0] = min_pt;
+		flag_adjust = false;
+		flag_adjust = adjust_ldo_pos(ref_dist, ref_x, ref_y, ldo_temp, wspace_ptr);
+		// if settled, break
+		if(flag_adjust == true)
+			break;
+	}
+	ldo_ptr = ldo_temp;
+	clog<<"ldo_temp: "<<ldo_temp.node[0]->x<<" "<<ldo_temp.node[0]->y<<endl;
+	
+	//clog<<"ldo_ptr: "<<ldo_ptr->node[0]->x<<" "<<ldo_ptr->node[0]->y<<endl;
+	return flag_adjust;
 }
 
 // adjust ldo position around min_id, no overlap
-void Circuit::adjust_ldo_pos(LDO &ldo, WSPACE *wspace){
+bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	int width = ldo.width;
 	int height = ldo.height;
 	int x0 = ldo.node[0]->x;
 	int y0 = ldo.node[0]->y;
+	//clog<<"x0, y0: "<<x0<<" "<<y0<<endl;
 
 	// try all 8 positions first to find a place
 	vector<int> y; // diagonal corner coordinate
@@ -3880,9 +3913,42 @@ void Circuit::adjust_ldo_pos(LDO &ldo, WSPACE *wspace){
 		x[7] = x0 + height; y[7] = y0 - width;
 	}
 
+	bool flag = false;
 	// see if there is overlap with this rec
-	/*for(size_t i=0;i<x.size();i++){
-		find_overlap(x0,y0,x[i],y[i], wspace);
-	}*/
-		
+	for(size_t i=0;i<x.size();i++){
+		//clog<<"find overlap. "<<endl;
+		flag = find_overlap(ref_dist, ref_x, ref_y, x[i],y[i], ldo, wspace);
+		if(flag == true)
+			break;
+	}
+	return flag;	
 }
+
+bool Circuit::find_overlap(double ref_dist, double ref_x, double ref_y, double x2, double y2, LDO &ldo, WSPACE *wspace){
+	double width, height;
+	bool flag = false;
+	// if there is no LDO in this wspace
+	if(wspace->LDO_id.size()==0){
+		flag = ldo_in_wspace_trial(ref_dist, 
+		  ref_x, ref_y, x2, y2, ldo, wspace);
+		// assign ldo other nodes
+		ldo.node[2]->x = x2;
+		ldo.node[2]->y = y2;
+
+		width = fabs(x2 - ldo.node[0]->x);
+		height = fabs(y2 - ldo.node[0]->y);
+		ldo.width = width;
+		ldo.height = height;
+
+		ldo.node[1]->x = x2;
+		ldo.node[1]->y = ldo.node[0]->y;
+		ldo.node[3]->x = ldo.node[0]->x;
+		ldo.node[3]->y = y2;
+		//for(int i=0;i<4;i++)	
+		// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
+		return flag;
+	}else{
+		// check for overlap with other ldo
+	}
+}
+

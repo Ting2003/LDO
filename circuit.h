@@ -99,7 +99,8 @@ public:
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
-	void adjust_ldo_pos(LDO &ldo, WSPACE *wspace);
+	bool find_overlap(double ref_dist, double ref_x, double ref_y, double x2, double y2, LDO &ldo, WSPACE *wspace);
+	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
 	////// new member for pad //////
@@ -224,7 +225,7 @@ private:
 	void mark_wspace_ldo();
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
-	Node *place_ldo(double ref_dist, double ref_x, double ref_y, LDO *ldo_ptr, vector<int> &candi_wspace);
+	bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);
