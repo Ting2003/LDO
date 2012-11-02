@@ -111,11 +111,38 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 	double x, y;
 	double dx, dy;
 	double dist;
-	x1 = ldo.node[0]->x;
-	y1 = ldo.node[0]->y;
+		
+	int width = ldo.width;
+	int height = ldo.height;
+	int x0 = ldo.node[0]->x;
+	int y0 = ldo.node[0]->y;
+	//clog<<"x0, y0: "<<x0<<" "<<y0<<endl;
+
+	// try all 8 positions first to find a place
+	vector<int> vec_y; // diagonal corner coordinate
+	vector<int> vec_x;
 	
-	double width = fabs(x2-x1);
-	double height = fabs(y2-y1);
+	if(width == height){
+		vec_y.resize(4);
+		vec_x.resize(4);
+	}else{
+		vec_y.resize(8);
+		vec_x.resize(8);
+	}
+	// case 1
+	vec_x[0] = x0 + width-1; vec_y[0] = y0 + height-1;
+	vec_x[1] = x0 - width+1; vec_y[1] = y0 + height-1;
+	vec_x[2] = x0 - width+1; vec_y[2] = y0 - height+1;
+	vec_x[3] = x0 + width-1; vec_y[3] = y0 - height+1;
+
+	if(width != height){
+		// the other 4
+		vec_x[4] = x0 + height-1; vec_y[4] = y0 + width-1;
+		vec_x[5] = x0 - height+1; vec_y[5] = y0 + width-1;
+		vec_x[6] = x0 - height+1; vec_y[6] = y0 - width+1;
+		vec_x[7] = x0 + height-1; vec_y[7] = y0 - width+1;
+	}
+
 	bool return_flag = false;
 	bool flag_1, flag_2;
 	double x1_new, y1_new, x2_new, y2_new;
@@ -132,9 +159,10 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 	for(size_t i=0;i<wspace->node.size();i++){
 		x = wspace->node[i]->x;
 		y = wspace->node[i]->y;
-		if(x == x1 && y == y1)
-		min_id = i;
-		break;
+		if(x == x0 && y == y0){
+			min_id = i;
+			break;
+		}
 	}
 
 	q.push(min_id);
@@ -145,35 +173,32 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 		id_nbr = id_cur;
 		x = wspace->node[id_cur]->x;
 		y = wspace->node[id_cur]->y;
+		//clog<<"x, y: "<<x<<" "<<y<<endl;
 		
 		dx = x - ref_x;
 		dy = y - ref_y;
 		dist = sqrt(dx*dx + dy*dy);
 		// avaliable
 		if(dist < ref_dist){
-			if(x2 < x1)
-				x2_new = x - width +1;
-			else
-				x2_new = x + width-1;
-			if(y2 < y1)
-				y2_new = y - height+1;
-			else
-				y2_new = y + height-1;
+			for(int i=0;i<vec_x.size();i++){
+				x2_new = vec_x[i];
+				y2_new = vec_y[i];
 			//clog<<"x, y, xnew, ynew: "<<x<<" "<<y<<" "<<x2_new<<" "<<y2_new<<endl;
-			flag_2 = node_in_wspace(x2_new, y2_new, wspace);
+				flag_2 = node_in_wspace(vec_x[i], vec_y[i], wspace);
 			//clog<<"flag: "<<flag_2<<endl;
 			// not satisfied, continue
-			if(flag_2){
-				// satisfied
-				ldo.node[0]->x = x;
-				ldo.node[0]->y = y;
-				//x1 = x; y1 = y; 
-				x2 = x2_new; 
-				y2 = y2_new;
+				if(flag_2){
+					// satisfied
+					ldo.node[0]->x = x;
+					ldo.node[0]->y = y;
+					//x1 = x; y1 = y; 
+					x2 = vec_x[i]; 
+					y2 = vec_y[i];
 				
-				// clog<<"x, y, xnew, ynew, name: "<<x<<" "<<y<<" "<<x2_new<<" "<<y2_new<<" "<<wspace->name<<endl;
-				return_flag = true;
-				break;
+				 clog<<"x, y, xnew, ynew, name: "<<x<<" "<<y<<" "<<x2<<" "<<y2<<" "<<wspace->name<<endl;
+					return_flag = true;
+					break;
+				}
 			}
 		}	
 		for(size_t i=0;i<2;i++){
@@ -191,5 +216,7 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 	// clear queue
 	while(!q.empty())
 		q.pop();
+	vec_x.clear();
+	vec_y.clear();
 	return return_flag;
 }

@@ -99,7 +99,7 @@ public:
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
-	bool find_overlap(double ref_dist, double ref_x, double ref_y, double x2, double y2, LDO &ldo, WSPACE *wspace);
+	bool find_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);

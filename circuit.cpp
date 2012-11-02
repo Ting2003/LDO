@@ -2233,12 +2233,15 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 		// build pad connection graph
 		build_graph(pad_set_g);
 		build_graph(pad_set_l);
+		//clog<<"after build graph. "<<endl;
 		// find control nodes for each pad
 		extract_pads(pad_set_g, pad_number);
 		extract_pads(pad_set_l, pad_number);
+		//clog<<"after extract pads. "<<endl;
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(pad_set_g, ref_drop_vec_g, i);
 		update_pad_control_nodes(pad_set_l, ref_drop_vec_l, i);
+		//clog<<"after update control nodes. "<<endl;
 		//print_all_control_nodes();	
 		if(i>=6){
 			dynamic_update_violate_ref(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g);
@@ -2247,18 +2250,22 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 		// find new point for all pads	
 		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
 		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_l);
+		//clog<<"update pad pos. "<<endl;
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
 			extract_min_max_pads(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g);
 			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l);
 		}
+		//clog<<"before min max. "<<endl;
 		// update the old pad set value
 		assign_pad_set(pad_set_g, pad_set_old_g);
+		//clog<<"after global assign. "<<endl;
 		assign_pad_set(pad_set_l, pad_set_old_l);
-		
+		//clog<<"before violate. "<<endl;	
 		move_violate_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g);
 		move_violate_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
+		//clog<<"after violate. "<<endl;
 		for(size_t k=0;k<pad_set_g.size();k++){
 			Node * pad = pad_set_g[k]->node;
 			//if(pad->name == "_X_n6_200_150")
@@ -2270,7 +2277,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 		// move pads according to graph contraints
 		graph_move_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g);	
 		graph_move_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
-		
+		//clog<<"after graph move. "<<endl;
 		clear_flags(pad_set_g);
 		clear_flags(pad_set_l);
 		// actual move pads into the new spots
@@ -2296,8 +2303,12 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 
 void Circuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
 	//clog<<"assign pad set."<<endl;
+	// clog<<"size: "<<pad_set_old.size()<<endl;
 	for(size_t i=0;i<pad_set_old.size();i++){
+		if(pad_set[i]->node == NULL)
+			clog<<"NULL node. "<<endl;
 		pad_set_old[i] = pad_set[i]->node;
+		//if(pad_set[i]->node->get_layer()==local_layers[0])
 		//clog<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
 	}
 }
@@ -2499,6 +2510,7 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 		nd_new = nd_new->rep;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
+			//clog<<"nd_new: "<<*nd_new<<endl;
 			// need to adjust the local pads
 			if(nd_new->get_layer() == local_layers[0]){
 				clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
@@ -2512,9 +2524,9 @@ Node * Circuit::pad_projection(unordered_map<string, Node*> map_node_pt,
 				}
 			}else{
 				return nd;
-				//nd->disableX();
-				//nd->value = 0;
-				//return nd_new;
+				/*nd->disableX();
+				nd->value = 0;
+				return nd_new;*/
 			}
 		}
 	}
@@ -3553,8 +3565,8 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 		candi_wspace);
 	// if all the wspace are farther away, not move
 	if(candi_wspace.size() == 0){
-		clog<<"no candi white space. "<<endl;
-		return nd;
+		clog<<"no candi white space. "<<*nd<<endl;
+		return NULL;
 	}
 	// see if there is any place for this ldo
 	// no overlap with other ldos
@@ -3563,16 +3575,16 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	// if no place, return;
 	if(flag_place == false){
 		clog<<"not move: "<<endl;
-		return nd;
+		return NULL;
 	}
 	// get the node
 	sstream.str("");
 	sstream<<"n"<<local_layers[0]<<"_"<<ldo_ptr.node[0]->x<<"_"<<ldo_ptr.node[0]->y;
-	clog<<"check ldo node: "<<ldo_ptr.node[0]->x<<" "<<ldo_ptr.node[0]->y<<endl;
+	//clog<<"check ldo node: "<<ldo_ptr.node[0]->x<<" "<<ldo_ptr.node[0]->y<<endl;
 	Node *nd_new_ldo = get_node_pt(map_node_pt, sstream.str());
 	if(nd_new_ldo == NULL){
 		clog<<"no this node: "<<endl;
-		return nd;
+		return NULL;
 	}
 	clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
 	ldo->A = nd_new_ldo;
@@ -3595,7 +3607,7 @@ void Circuit::mark_wspace_ldo(){
 			//clog<<"ldo in space flag: "<<flag<<endl;	
 			if(flag){
 				wspacelist[j]->LDO_id.push_back(i);
-				clog<<"wspace: "<<wspacelist[j]->name<<" has ldo: "<<ldolist[i]->name<<endl;
+				//clog<<"wspace: "<<wspacelist[j]->name<<" has ldo: "<<ldolist[i]->name<<endl;
 				break;
 			}	
 		}
@@ -3866,15 +3878,16 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 	
 		// set ldo into min_pt
 		ldo_temp.node[0] = min_pt;
-		//ldo_ptr->node[0] = min_pt;
-		flag_adjust = false;
+		//clog<<"min_pt: "<<min_pt->x<<" "<<min_pt->y<<endl; 
 		flag_adjust = adjust_ldo_pos(ref_dist, ref_x, ref_y, ldo_temp, wspace_ptr);
 		// if settled, break
 		if(flag_adjust == true)
 			break;
 	}
-	ldo_ptr = ldo_temp;
-	clog<<"ldo_temp: "<<ldo_temp.node[0]->x<<" "<<ldo_temp.node[0]->y<<endl;
+	if(flag_adjust == true){
+		ldo_ptr = ldo_temp;
+		//clog<<"ldo_temp: "<<ldo_temp.node[0]->x<<" "<<ldo_temp.node[0]->y<<endl;
+	}
 	
 	//clog<<"ldo_ptr: "<<ldo_ptr->node[0]->x<<" "<<ldo_ptr->node[0]->y<<endl;
 	return flag_adjust;
@@ -3882,50 +3895,14 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 
 // adjust ldo position around min_id, no overlap
 bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
-	int width = ldo.width;
-	int height = ldo.height;
-	int x0 = ldo.node[0]->x;
-	int y0 = ldo.node[0]->y;
-	//clog<<"x0, y0: "<<x0<<" "<<y0<<endl;
-
-	// try all 8 positions first to find a place
-	vector<int> y; // diagonal corner coordinate
-	vector<int> x;
-	
-	if(width == height){
-		y.resize(4);
-		x.resize(4);
-	}else{
-		y.resize(8);
-		x.resize(8);
-	}
-	// case 1
-	x[0] = x0 + width; y[0] = y0 + height;
-	x[1] = x0 - width; y[1] = y0 + height;
-	x[2] = x0 - width; y[2] = y0 - height;
-	x[3] = x0 + width; y[3] = y0 - height;
-
-	if(width != height){
-		// the other 4
-		x[4] = x0 + height; y[4] = y0 + width;
-		x[5] = x0 - height; y[5] = y0 + width;
-		x[6] = x0 - height; y[6] = y0 - width;
-		x[7] = x0 + height; y[7] = y0 - width;
-	}
-
-	bool flag = false;
-	// see if there is overlap with this rec
-	for(size_t i=0;i<x.size();i++){
-		//clog<<"find overlap. "<<endl;
-		flag = find_overlap(ref_dist, ref_x, ref_y, x[i],y[i], ldo, wspace);
-		if(flag == true)
-			break;
-	}
+	//clog<<"find overlap. "<<endl;
+	bool flag = find_overlap(ref_dist, ref_x, ref_y, ldo, wspace);
 	return flag;	
 }
 
-bool Circuit::find_overlap(double ref_dist, double ref_x, double ref_y, double x2, double y2, LDO &ldo, WSPACE *wspace){
+bool Circuit::find_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	double width, height;
+	double x2, y2;
 	bool flag = false;
 	// if there is no LDO in this wspace
 	if(wspace->LDO_id.size()==0){
