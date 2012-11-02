@@ -3842,9 +3842,6 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 	WSPACE *wspace_ptr;
 	Node *nd;
 	LDO ldo_temp;
-	// original point for ldo
-	// int ref_x = ldo_ptr->A->pt.x;
-	// int ref_y = ldo_ptr->A->pt.y;
 	Point *pt, *min_pt;
 	int x, y;
 	int dx, dy;
@@ -3852,7 +3849,6 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 	double min_dist;
 	bool flag_adjust = false;
 
-	// clog<<"ref_x, ref_y: "<<ref_x<<" "<<ref_y<<endl;	
 	for(size_t i=0;i<candi_id.size();i++){
 		id = candi_id[i];
 		wspace_ptr = wspacelist[id];
@@ -3895,37 +3891,42 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 
 // adjust ldo position around min_id, no overlap
 bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
-	//clog<<"find overlap. "<<endl;
-	bool flag = find_overlap(ref_dist, ref_x, ref_y, ldo, wspace);
+	bool flag = false;
+	if(wspace->LDO_id.size()==0){
+		//clog<<"find overlap. "<<endl;
+		flag = set_ldo(ref_dist, ref_x, ref_y, ldo, wspace);
+	}
+	else{// need to move for overlap
+		flag = avoid_overlap(ref_dist, ref_x, ref_y, ldo, wspace);
+	}
 	return flag;	
 }
 
-bool Circuit::find_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
+bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	double width, height;
 	double x2, y2;
 	bool flag = false;
 	// if there is no LDO in this wspace
-	if(wspace->LDO_id.size()==0){
-		flag = ldo_in_wspace_trial(ref_dist, 
-		  ref_x, ref_y, x2, y2, ldo, wspace);
-		// assign ldo other nodes
-		ldo.node[2]->x = x2;
-		ldo.node[2]->y = y2;
+	//if(wspace->LDO_id.size()==0){
+	flag = ldo_in_wspace_trial(ref_dist, 
+	  ref_x, ref_y, x2, y2, ldo, wspace);
+	// assign ldo other nodes
+	ldo.node[2]->x = x2;
+	ldo.node[2]->y = y2;
 
-		width = fabs(x2 - ldo.node[0]->x);
-		height = fabs(y2 - ldo.node[0]->y);
-		ldo.width = width;
-		ldo.height = height;
+	width = fabs(x2 - ldo.node[0]->x);
+	height = fabs(y2 - ldo.node[0]->y);
+	ldo.width = width;
+	ldo.height = height;
 
-		ldo.node[1]->x = x2;
-		ldo.node[1]->y = ldo.node[0]->y;
-		ldo.node[3]->x = ldo.node[0]->x;
-		ldo.node[3]->y = y2;
-		//for(int i=0;i<4;i++)	
-		// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
-		return flag;
-	}else{
-		// check for overlap with other ldo
-	}
+	ldo.node[1]->x = x2;
+	ldo.node[1]->y = ldo.node[0]->y;
+	ldo.node[3]->x = ldo.node[0]->x;
+	ldo.node[3]->y = y2;
+	//for(int i=0;i<4;i++)	
+	// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
+	return flag;	
 }
 
+bool Circuit::avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
+}
