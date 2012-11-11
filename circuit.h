@@ -225,6 +225,9 @@ private:
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
 	bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);
+	bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr);
+
+	bool move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr);
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);

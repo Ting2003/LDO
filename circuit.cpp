@@ -3531,7 +3531,7 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 }
 
-// project local pad, setting ldo into new white space areas
+// project local pad, setting ldo into new white spaces near current/device blocks
 Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
 	Node *nd_whi;
 	double ref_x = nd_new->pt.x;
@@ -3551,27 +3551,28 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	ref_dy = fabs(ref_y - nd->pt.y);
 	ref_dist = sqrt(ref_dx * ref_dx + ref_dy * ref_dy);
 
+	// ldo_ptr points to current LDO
 	for(size_t i=0;i<ldolist.size();i++){
 		Node *A = ldolist[i]->A;
 		if(A->pt.x == nd->pt.x && 
 		   A->pt.y == nd->pt.y)
 			ldo_ptr = *ldolist[i];
 	}
-
-	// find the nearest whitespaces id: sorted
-	// must closer than ref_dist
-	get_candi_wspace(ref_x, ref_y, ref_dist, 
-		candi_wspace);
-	// if all the wspace are farther away, not move
-	if(candi_wspace.size() == 0){
-		clog<<"no candi white space. "<<*nd<<endl;
-		return NULL;
+	bool flag = false;
+	bool flag_move = false;
+	for(size_t i=0;i<wspacelist.size();i++){
+		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);
+		// if ldo is in some block
+		if(flag == true){
+			// move the LDO out of this block
+			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr);	
+			break;
+		}
 	}
-	// see if there is any place for this ldo
-	// no overlap with other ldos
-	//clog<<"placing ldo: "<<*nd<<" "<<*nd_new<<endl;
-	bool flag_place = place_ldo(ref_dist, ref_x, ref_y, ldo_ptr, candi_wspace);
-	// if no place, return;
+	// now ldo is out of blocks, need shift around
+	// until no overlap with other block and LDOs
+	bool flag_place = place_ldo(ref_dist, ref_x, ref_y, ldo_ptr);
+	
 	if(flag_place == false){
 		clog<<"not move: "<<endl;
 		return NULL;
@@ -3910,4 +3911,10 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MOD
 	//for(int i=0;i<4;i++)	
 	// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
 	return flag;	
+}
+
+bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
+}
+
+bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
 }
