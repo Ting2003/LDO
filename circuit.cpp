@@ -2249,11 +2249,12 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		// find new point for all pads	
 		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
 		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_l);
-		//clog<<"update pad pos. "<<endl;
+		// clog<<"update pad pos. "<<endl;
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
 			extract_min_max_pads(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g);
+			//clog<<"after extract global. "<<endl;
 			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l);
 		}
 		//clog<<"before min max. "<<endl;
@@ -2906,7 +2907,7 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 				//double ref_drop_value = ref_drop_vec[k];
 				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j]);
 				
-				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+				clog<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
 				pad_set[m]->node->value = 0;
@@ -3558,12 +3559,14 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 		   A->pt.y == nd->pt.y)
 			ldo_ptr = *ldolist[i];
 	}
+	clog<<"enter project local pad. "<<endl;
 	bool flag = false;
 	bool flag_move = false;
 	for(size_t i=0;i<wspacelist.size();i++){
 		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);
 		// if ldo is in some block
 		if(flag == true){
+			clog<<"target in current module. "<<endl;
 			// move the LDO out of this block
 			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr);	
 			break;
@@ -3913,8 +3916,11 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MOD
 	return flag;	
 }
 
+// move LDO out of current modules
+bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){//, MODULE *module){
+		
+}
+
 bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
 }
 
-bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
-}
