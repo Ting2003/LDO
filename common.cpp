@@ -152,6 +152,15 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 	int step[2] = {1,-1};
 	vector<bool> process;
 	process.resize(wspace->node.size(), false);
+
+	// first see if this node is already within wspace
+	bool flag = node_in_wspace(ref_x, ref_y, wspace);
+	clog<<"target in wspace: "<<flag<<endl;
+	// directly set LDO here
+	if(flag ==  true){
+			
+		//return;
+	}	
 	// need to move, put the white space as a queue
 	// radius search for position around optimum place
 	// first push back optimial node
@@ -165,6 +174,7 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 		}
 	}
 
+	// scan all the corners
 	q.push(min_id);
 	process[min_id] = true;
 	while(!q.empty()&&!return_flag){

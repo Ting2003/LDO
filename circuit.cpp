@@ -2218,12 +2218,11 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPA
 	build_ldolist(ldo_vec);
 	build_wspacelist(wspace_vec);
 	// assign ldo to white spaces
-	mark_wspace_ldo();
 	
 	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
 	//print_pad_set();
-	for(size_t i=0;i<10;i++){
+	for(size_t i=0;i<1;i++){
 		clog<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
@@ -3598,22 +3597,6 @@ void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
 	wspacelist = wspace_vec;
 }
 
-void Circuit::mark_wspace_ldo(){
-	LDO *ldo;
-	for(size_t i=0;i<ldolist.size();i++){
-		ldo = ldolist[i];
-		for(size_t j=0;j<wspacelist.size();j++){
-			bool flag = ldo_in_wspace(ldo, wspacelist[j]);
-			//clog<<"ldo in space flag: "<<flag<<endl;	
-			if(flag){
-				wspacelist[j]->LDO_id.push_back(i);
-				//clog<<"wspace: "<<wspacelist[j]->name<<" has ldo: "<<ldolist[i]->name<<endl;
-				break;
-			}	
-		}
-	}	
-}
-
 void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	Node *nd;
 	ldolist.clear();
@@ -3892,13 +3875,13 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 // adjust ldo position around min_id, no overlap
 bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	bool flag = false;
-	if(wspace->LDO_id.size()==0){
+	//if(wspace->LDO_id.size()==0){
 		//clog<<"find overlap. "<<endl;
-		flag = set_ldo(ref_dist, ref_x, ref_y, ldo, wspace);
-	}
-	else{// need to move for overlap
-		flag = avoid_overlap(ref_dist, ref_x, ref_y, ldo, wspace);
-	}
+	flag = set_ldo(ref_dist, ref_x, ref_y, ldo, wspace);
+	//}
+	//else{// need to move for overlap
+	//	flag = avoid_overlap(ref_dist, ref_x, ref_y, ldo, wspace);
+	//}
 	return flag;	
 }
 
@@ -3933,6 +3916,13 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSP
 // greedy method, only move current LDO position
 bool Circuit::avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	// number of existing LDO numbers in wspace
-	size_t num_LDO = wspace->LDO_id.size();
-	
+	/*size_t num_LDO = wspace->LDO_id.size();
+
+	// first judge if this node is close to edge of wspace
+	Point *na = wspace.node[0];
+	Point *nb;
+	for(size_t i=1;i<wspace.node.size();i++){
+		nb = wspace.node[i];
+		if
+	}*/			
 }

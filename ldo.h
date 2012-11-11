@@ -15,13 +15,14 @@ public:
 	int height;
 };
 
+// current block in polygon format
 class WSPACE{
 private:
 public:
 	WSPACE();
 	string name;
 	vector<Point*> node;
-	vector<int> LDO_id; // index of LDO within wspace
+	// vector<int> LDO_id; // index of LDO within wspace
 };
 
 #endif
