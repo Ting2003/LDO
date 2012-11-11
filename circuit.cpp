@@ -3902,6 +3902,7 @@ bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &l
 	return flag;	
 }
 
+// see if the white space is large enough for LDO
 bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
 	double width, height;
 	double x2, y2;
@@ -3928,6 +3929,10 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSP
 	return flag;	
 }
 
-// search for a spot for ldo, which has no overlap with others
+// search for a spot for ldo in white space that already has LDO inside
+// greedy method, only move current LDO position
 bool Circuit::avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
+	// number of existing LDO numbers in wspace
+	size_t num_LDO = wspace->LDO_id.size();
+	
 }
