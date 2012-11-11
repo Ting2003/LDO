@@ -16,10 +16,10 @@ public:
 };
 
 // current block in polygon format
-class WSPACE{
+class MODULE{
 private:
 public:
-	WSPACE();
+	MODULE();
 	string name;
 	vector<Point*> node;
 	// vector<int> LDO_id; // index of LDO within wspace

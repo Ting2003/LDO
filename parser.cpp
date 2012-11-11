@@ -550,13 +550,13 @@ void Parser::parse_ldo_line(char *line, int *count){
 }
 
 void Parser::parse_wspace(char *line){
-	WSPACE *wspace_ptr;
+	MODULE *wspace_ptr;
 	int x, y;
 	char *chs;
 	char *saveptr;
 	const char *sep = "() \n";
 	
-	wspace_ptr = new WSPACE();
+	wspace_ptr = new MODULE();
 	Point * pt;
 
 	chs = strtok_r(line, sep, &saveptr);

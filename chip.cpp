@@ -17,7 +17,7 @@ Chip::Chip(){
 void Chip::extract_rec_single(size_t k){
 	// clog<<"entering extract rec single. "<<endl;
 	RECTANGLE * rec;
-	WSPACE *wspace = wspacelist[k];
+	MODULE *wspace = wspacelist[k];
 	vector<int> x;
 	vector<int> y;
 	int xl, xr, yb, yt;

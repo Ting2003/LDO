@@ -4,6 +4,6 @@ LDO::LDO(){
 	height = 0;
 }
 
-WSPACE::WSPACE(){
+MODULE::MODULE(){
 }
 

@@ -1,6 +1,6 @@
 #include "common.h"
 // judge whether a point is within white space or not
-bool node_in_wspace(double x0, double y0, WSPACE *wspace){
+bool node_in_wspace(double x0, double y0, MODULE *wspace){
 	bool flag = false;
 	int degree = 0;
 	double x_new, y_new;
@@ -84,7 +84,7 @@ bool node_in_wspace(double x0, double y0, WSPACE *wspace){
 	return flag;
 }
 
-bool ldo_in_wspace(LDO *ldo, WSPACE *wspace){
+bool ldo_in_wspace(LDO *ldo, MODULE *wspace){
 	Point *pt;
 	double x, y;
 	bool node_flag;
@@ -105,7 +105,7 @@ bool ldo_in_wspace(LDO *ldo, WSPACE *wspace){
 
 // simple version utilized in moving process
 // at least one corner should be OK for the ldo
-bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2, double &y2, LDO &ldo, WSPACE *wspace){
+bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2, double &y2, LDO &ldo, MODULE *wspace){
 	bool in_space_flag = false;
 	double x1, y1;
 	double x, y;

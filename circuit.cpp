@@ -2201,7 +2201,7 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<WSPACE*> &wspace_vec){
+void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_g;
 	vector<Node*> pad_set_old_l;
 	double dist_g = 0;
@@ -3536,7 +3536,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	Node *nd_whi;
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
-	WSPACE *ptr;
+	MODULE *ptr;
 	vector<int> candi_wspace;
 	double dx, dy;	
 	double ref_dx, ref_dy;
@@ -3592,7 +3592,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 
 // change the wspace into a local variable
 // here is simply copy
-void Circuit::build_wspacelist(vector<WSPACE*> wspace_vec){
+void Circuit::build_wspacelist(vector<MODULE*> wspace_vec){
 	wspacelist.clear();
 	wspacelist = wspace_vec;
 }
@@ -3751,9 +3751,9 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 	double x, y;
 	double dx, dy;
 	double min_dist;
-	WSPACE *wspace_ptr;
+	MODULE *wspace_ptr;
 	vector<double> wspace_dist;
-	vector<WSPACE*> temp_wspace;
+	vector<MODULE*> temp_wspace;
 	// vector<Point*> wspace_pt;
 	vector<bool> wspace_flag; 
 
@@ -3822,7 +3822,7 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 // search for avaliable space for ldo with node nd
 bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_id){
 	int id =0;
-	WSPACE *wspace_ptr;
+	MODULE *wspace_ptr;
 	Node *nd;
 	LDO ldo_temp;
 	Point *pt, *min_pt;
@@ -3873,7 +3873,7 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_pt
 }
 
 // adjust ldo position around min_id, no overlap
-bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
+bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace){
 	bool flag = false;
 	//if(wspace->LDO_id.size()==0){
 		//clog<<"find overlap. "<<endl;
@@ -3886,7 +3886,7 @@ bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &l
 }
 
 // see if the white space is large enough for LDO
-bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
+bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace){
 	double width, height;
 	double x2, y2;
 	bool flag = false;
@@ -3910,19 +3910,4 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSP
 	//for(int i=0;i<4;i++)	
 	// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
 	return flag;	
-}
-
-// search for a spot for ldo in white space that already has LDO inside
-// greedy method, only move current LDO position
-bool Circuit::avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace){
-	// number of existing LDO numbers in wspace
-	/*size_t num_LDO = wspace->LDO_id.size();
-
-	// first judge if this node is close to edge of wspace
-	Point *na = wspace.node[0];
-	Point *nb;
-	for(size_t i=1;i<wspace.node.size();i++){
-		nb = wspace.node[i];
-		if
-	}*/			
 }

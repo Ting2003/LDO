@@ -99,9 +99,8 @@ public:
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
-	bool set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
-	bool avoid_overlap(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
-	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, WSPACE *wspace);
+	bool set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
+	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
 	////// new member for pad //////
@@ -135,9 +134,9 @@ public:
 	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
 	void build_map_node_pt();
 	void build_ldolist(vector<LDO*> ldo_vec);
-	void build_wspacelist(vector<WSPACE*> wspace_vec);
+	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_pads();
-	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist, vector<WSPACE*> &wspace_vec);
+	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist, vector<MODULE*> &wspace_vec);
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
@@ -282,7 +281,7 @@ private:
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
 	vector<LDO*> ldolist;
-	vector<WSPACE*> wspacelist;
+	vector<MODULE*> wspacelist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
