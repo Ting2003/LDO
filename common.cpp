@@ -5,36 +5,45 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 	int degree = 0;
 	double x_new, y_new;
 	double x_old, y_old;
-	x_old = wspace->node[0]->x;	
-	y_old = wspace->node[0]->y;
 
 	// case A. node is exactly a corner of wspace
 	for(size_t i=0;i<wspace->node.size();i++){
 		if(x0 == wspace->node[i]->x && 
-		   y0 == wspace->node[i]->y)
+		   y0 == wspace->node[i]->y){
 			return true;
+		}
 	}
 	// case B. node is on a boundary of wspace
 	for(size_t i=1;i<wspace->node.size();i++){
+		x_old = wspace->node[i-1]->x;	
+		y_old = wspace->node[i-1]->y;
 		x_new = wspace->node[i]->x;	
 		y_new = wspace->node[i]->y;
+		//clog<<"x_old, y_old, x_new, y_new: "<<
+			//x_old<<" "<<y_old<<" "<<x_new<<"	"<<y_new<<endl;
 		// on horizontal line
-		if(y_old == y_new){
+		if(y_old == y_new && y0 == y_old){
 			double dx0 = x0 - x_old;
 			double dx1 = x0 - x_new;
-			if(dx0 * dx1 < 0)
+			if(dx0 * dx1 < 0){
+				//clog<<"on edge. "<<endl;
 				return true;
+			}
 		}// on vertical line
-		else if(x_old == x_new){
+		else if(x_old == x_new && x0 == x_old){
 			double dy0 = y0 - y_old;
 			double dy1 = y0 - y_new;
-			if(dy0 * dy1 < 0)
+			if(dy0 * dy1 < 0){
+				//clog<<"on edge. "<<endl;
 				return true;
+			}
 		}
 		
 	}
 	// case C. node is not A. and B.	
 	for(size_t i=1;i<wspace->node.size();i++){
+		x_old = wspace->node[i-1]->x;	
+		y_old = wspace->node[i-1]->y;
 		x_new = wspace->node[i]->x;	
 		y_new = wspace->node[i]->y;
 		// 1 
@@ -76,7 +85,7 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 		
 	}
 	// if(wspace->name == "W11")
-	// clog<<"degree: "<<degree<<endl;
+	// clog<<"wspace, degree: "<<wspace->name<<" "<<degree<<endl;
 	if(degree == 360)
 		flag = true;
 	else if(degree == 0)
