@@ -3574,7 +3574,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	if(flag == false){
 		clog<<"target not in current module. "<<endl;
 		// direct set ldo from current spot
-		//flag_move = place_ldo_cur(ref_dist, ref_x, ref_y, ref_x, ref_y, ldo_ptr);
+		flag_move = set_ldo(ref_dist, ref_x, ref_y, ref_x, ref_y, ldo_ptr);
 	}
 	if(flag_move == false){
 		clog<<"not move: "<<endl;
@@ -3885,32 +3885,6 @@ void Circuit::get_candi_wspace(double ref_x, double ref_y, double ref_dist, vect
 }*/
 
 // see if the white space is large enough for LDO
-bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace){
-	/*double width, height;
-	double x2, y2;
-	bool flag = false;
-	// if there is no LDO in this wspace
-	//if(wspace->LDO_id.size()==0){
-	flag = ldo_in_wspace_trial(ref_dist, 
-	  ref_x, ref_y, x2, y2, ldo, wspace);
-	// assign ldo other nodes
-	ldo.node[2]->x = x2;
-	ldo.node[2]->y = y2;
-
-	width = fabs(x2 - ldo.node[0]->x);
-	height = fabs(y2 - ldo.node[0]->y);
-	ldo.width = width;
-	ldo.height = height;
-
-	ldo.node[1]->x = x2;
-	ldo.node[1]->y = ldo.node[0]->y;
-	ldo.node[3]->x = ldo.node[0]->x;
-	ldo.node[3]->y = y2;
-	//for(int i=0;i<4;i++)	
-	// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
-	return flag;	*/
-}
-
 // move LDO out of current modules
 bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module){
 	Point *pt;
@@ -4028,6 +4002,8 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 		for(int i=0;i<8;i++){
 			double temp_x = x + dx[i];
 			double temp_y = x + dy[i];
+			if(temp_x <lx || temp_x > gx || 				temp_y < ly || 
+				temp_y > gy) continue;
 			bool flag = node_in_wspace(temp_x, temp_y, module);
 			if(flag == true) continue;
 			// find the one not in block
@@ -4063,6 +4039,11 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 	//free(dx);
 	//free(dy);
 	return return_flag;
+}
+
+// directly see if ldo can be moved into target spot
+bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
+
 }
 
 // simple version utilized in moving process

@@ -99,7 +99,7 @@ public:
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
 	void mark_special_nodes();
-	bool set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
+	bool set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
