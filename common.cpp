@@ -114,7 +114,80 @@ bool ldo_in_wspace(LDO *ldo, MODULE *wspace){
 
 // simple version utilized in moving process
 // at least one corner should be OK for the ldo
-bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2, double &y2, LDO &ldo, MODULE *wspace){
+bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo, vector<MODULE*> wspacelist){
+	double x1, y1;
+	double x, y;
+	double dx, dy;
+	double dist;
+		
+	int width = ldo.width;
+	int height = ldo.height;
+
+	// try all 8 positions first to find a place
+	int vec_y[4][8]; // diagonal corner coordinate
+	int vec_x[4][8];
+		
+	// define all the 4 nodes under 8 cases
+	vec_x[2][0] = x0 + width-1; 
+	vec_y[2][0] = y0 + height-1;
+	vec_x[2][1] = x0 - width+1; 
+	vec_y[2][1] = y0 + height-1;
+	vec_x[2][2] = x0 - width+1; 
+	vec_y[2][2] = y0 - height+1;
+	vec_x[2][3] = x0 + width-1; 
+	vec_y[2][3] = y0 - height+1;
+	vec_x[2][4] = x0 + height-1; 
+	vec_y[2][4] = y0 + width-1;
+	vec_x[2][5] = x0 - height+1; 
+	vec_y[2][5] = y0 + width-1;
+	vec_x[2][6] = x0 - height+1; 
+	vec_y[2][6] = y0 - width+1;
+	vec_x[2][7] = x0 + height-1; 
+	vec_y[2][7] = y0 - width+1;
+	for(int i=0;i<8;i++){
+		vec_x[0][i] = x0;
+		vec_y[0][i] = y0;
+		vec_x[1][i] = vec_x[2][i];
+		vec_y[1][i] = y0;
+		vec_x[3][i] = x0;
+		vec_y[3][i] = vec_y[2][i];
+	}
+
+	bool return_flag = false;
+	// see if LDO is in wspace
+	int id_pos = -1;
+	for(int i=0;i<8;i++){
+	  bool flag_ldo = false;
+	  for(size_t k=0;k<wspacelist.size();k++){
+	    MODULE *module = wspacelist[k];
+	    bool flag_block = false;
+	    for(int j=0;j<4;j++){
+	      flag_block = node_in_wspace(vec_x[j][i], vec_y[j][i], module);
+	      if(flag_block == true){
+		 flag_ldo = true;
+		 break;
+	      }
+            }
+	    if(flag_ldo) break;
+	  }
+	  if(!flag_ldo){
+		id_pos = i;
+		break;
+	  } 
+	}
+	if(id_pos != -1)
+		clog<<"target in wspace: "<<id_pos<<endl;
+		
+	for(int i=0;i<4;i++){
+		delete vec_x[i];
+		delete vec_y[i];
+	}
+	delete vec_x;
+	delete vec_y;
+	return return_flag;
+}
+
+/*bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double x0, double y0, LDO &ldo, MODULE *wspace){
 	bool in_space_flag = false;
 	double x1, y1;
 	double x, y;
@@ -123,9 +196,6 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 		
 	int width = ldo.width;
 	int height = ldo.height;
-	int x0 = ldo.node[0]->x;
-	int y0 = ldo.node[0]->y;
-	//clog<<"x0, y0: "<<x0<<" "<<y0<<endl;
 
 	// try all 8 positions first to find a place
 	vector<int> vec_y; // diagonal corner coordinate
@@ -153,89 +223,19 @@ bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x2
 	}
 
 	bool return_flag = false;
-	bool flag_1, flag_2;
-	double x1_new, y1_new, x2_new, y2_new;
-	queue<int> q;
-	int id_cur;
-	int id_nbr;
-	int step[2] = {1,-1};
-	vector<bool> process;
-	process.resize(wspace->node.size(), false);
-
-	// first see if this node is already within wspace
-	bool flag = node_in_wspace(ref_x, ref_y, wspace);
-	clog<<"target in wspace: "<<flag<<endl;
-	// directly set LDO here
-	if(flag ==  true){
-			
-		//return;
-	}	
-	// need to move, put the white space as a queue
-	// radius search for position around optimum place
-	// first push back optimial node
-	int min_id;
-	for(size_t i=0;i<wspace->node.size();i++){
-		x = wspace->node[i]->x;
-		y = wspace->node[i]->y;
-		if(x == x0 && y == y0){
-			min_id = i;
+	double x2_new, y2_new;
+		
+	// scan all the 8 different shapes
+	for(int i=0;i<vec_x.size();i++){
+		x2_new = vec_x[i];
+		y2_new = vec_y[i];
+		return_flag = node_in_wspace(vec_x[i], vec_y[i], wspace);
+		// if find ont, process overlap
+		if(return_flag){
 			break;
 		}
-	}
-
-	// scan all the corners
-	q.push(min_id);
-	process[min_id] = true;
-	while(!q.empty()&&!return_flag){
-		id_cur = q.front();
-		// clog<<"id_cur: "<<id_cur<<endl;
-		id_nbr = id_cur;
-		x = wspace->node[id_cur]->x;
-		y = wspace->node[id_cur]->y;
-		//clog<<"x, y: "<<x<<" "<<y<<endl;
-		
-		dx = x - ref_x;
-		dy = y - ref_y;
-		dist = sqrt(dx*dx + dy*dy);
-		// avaliable
-		if(dist < ref_dist){
-			for(int i=0;i<vec_x.size();i++){
-				x2_new = vec_x[i];
-				y2_new = vec_y[i];
-			//clog<<"x, y, xnew, ynew: "<<x<<" "<<y<<" "<<x2_new<<" "<<y2_new<<endl;
-				flag_2 = node_in_wspace(vec_x[i], vec_y[i], wspace);
-			//clog<<"flag: "<<flag_2<<endl;
-			// not satisfied, continue
-				if(flag_2){
-					// satisfied
-					ldo.node[0]->x = x;
-					ldo.node[0]->y = y;
-					//x1 = x; y1 = y; 
-					x2 = vec_x[i]; 
-					y2 = vec_y[i];
-				
-				 clog<<"x, y, xnew, ynew, name: "<<x<<" "<<y<<" "<<x2<<" "<<y2<<" "<<wspace->name<<endl;
-					return_flag = true;
-					break;
-				}
-			}
-		}	
-		for(size_t i=0;i<2;i++){
-			id_nbr = id_cur + step[i];
-			if(id_nbr < wspace->node.size()
-			  && id_nbr >= 0 && 
-			  process[id_nbr] == false){
-				q.push(id_nbr);
-				//clog<<"push: "<<id_nbr<<endl;
-				process[id_nbr] = true;
-			}
-		}
-		q.pop();
-	}
-	// clear queue
-	while(!q.empty())
-		q.pop();
+	}	
 	vec_x.clear();
 	vec_y.clear();
 	return return_flag;
-}
+}*/

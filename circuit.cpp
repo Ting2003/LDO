@@ -3559,8 +3559,6 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 		   A->pt.y == nd->pt.y)
 			ldo_ptr = *ldolist[i];
 	}
-	clog<<"enter project local pad. "<<endl;
-	clog<<"ref_x, ref_y: "<<ref_x<<" "<<ref_y<<endl;
 	bool flag = false;
 	bool flag_move = false;
 	for(size_t i=0;i<wspacelist.size();i++){
@@ -3575,6 +3573,8 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	}
 	if(flag == false){
 		clog<<"target not in current module. "<<endl;
+		// direct set ldo from current spot
+		//flag_move = place_ldo_cur(ref_dist, ref_x, ref_y, ref_x, ref_y, ldo_ptr);
 	}
 	if(flag_move == false){
 		clog<<"not move: "<<endl;
@@ -3891,7 +3891,7 @@ bool Circuit::adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &l
 
 // see if the white space is large enough for LDO
 bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace){
-	double width, height;
+	/*double width, height;
 	double x2, y2;
 	bool flag = false;
 	// if there is no LDO in this wspace
@@ -3913,7 +3913,7 @@ bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo, MOD
 	ldo.node[3]->y = y2;
 	//for(int i=0;i<4;i++)	
 	// clog<<"new node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<endl;
-	return flag;	
+	return flag;	*/
 }
 
 // move LDO out of current modules
@@ -3930,8 +3930,9 @@ bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y
 	// propagate along this node to find a ldo 
 	// position which does not have overlap with 
 	// each other
-	bool flag = place_ldo(ref_dist, ref_x, ref_y, pt, 
-		ldo_ptr, module);
+	bool flag = place_ldo(ref_dist, ref_x, ref_y, 
+		pt, ldo_ptr, module);
+	return flag;
 }
 
 // locate the point on boundary of block that has 
@@ -4009,13 +4010,14 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 	double x, y;
 	double deltax, deltay;
 	double dist;
-	while(!q.empty() && ! return_flag){
+	while(!q.empty()){
 		cur = q.front();
 		nbr = cur;
 		x = cur.x;	y = cur.y;
 		deltax = x - ref_x; deltay = y - ref_y;
 		dist = sqrt(deltax*deltax + deltay*deltay);
 		if(dist >= ref_dist) break;
+		bool flag_place = false;
 		// handle current spot
 		for(int i=0;i<8;i++){
 			double temp_x = x + dx[i];
@@ -4024,8 +4026,13 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 			if(flag == true) continue;
 			// find the one not in block
 			// see if this one fits LDO
-
+			flag_place = place_ldo_cur(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr, module);
+			// if find, break
+			if(flag_place == true)
+				break;
 		}
+		if(flag_place == true)
+			break;
 
 		for(int i=0;i<4;i++){
 			double temp_x = x + dx[i];
@@ -4049,3 +4056,10 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 	free(dy);
 }
 
+// adjust place for ldo
+// no overlap with other blocks or LDOs
+bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr, MODULE * module){	
+	bool flag = false;
+	flag = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr, wspacelist);
+	return flag;
+}
