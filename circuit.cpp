@@ -3573,8 +3573,10 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	}
 	if(flag == false){
 		clog<<"target not in current module. "<<endl;
+		double x0 = ref_x;
+		double y0 = ref_y;
 		// direct set ldo from current spot
-		flag_move = set_ldo(ref_dist, ref_x, ref_y, ref_x, ref_y, ldo_ptr);
+		flag_move = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, x0, y0, ldo_ptr);
 	}
 	if(flag_move == false){
 		clog<<"not move: "<<endl;
@@ -4041,11 +4043,6 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 	return return_flag;
 }
 
-// directly see if ldo can be moved into target spot
-bool Circuit::set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
-
-}
-
 // simple version utilized in moving process
 // at least one corner should be OK for the ldo
 bool Circuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
@@ -4127,15 +4124,15 @@ bool Circuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, d
 	if(id_pos == -1) return false;
 	return_flag = true;
 	// clog<<"target not in blocks and LDOs: "<<id_pos<<endl;
-	double min_dist = 0;
+	double min_dist = -1;
 	int min_id = 0;
 	for(int i=0;i<4;i++){
-		// clog<<"4 node: "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<" "<<endl;
+		 // clog<<"4 node: "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<" "<<endl;
 		dx = vec_x[i][id_pos] - ref_x;
 		dy = vec_y[i][id_pos] - ref_y;
 		dist = sqrt(dx*dx+dy*dy);
 		// clog<<"dist ,ref: "<<dist<<" "<<ref_dist<<endl;
-		if(min_dist ==0 || dist < min_dist){
+		if(min_dist ==-1 || dist < min_dist){
 			min_dist = dist;
 			min_id = i;
 		}
@@ -4143,7 +4140,7 @@ bool Circuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, d
 	// clog<<"min_dist, min_id: "<<min_dist<<" "<<min_id<<endl;
 	for(int i=0;i<4;i++){
 		int j = (4+(min_id -i))%4;
-		//clog<<"j, node: "<<j<<" "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<endl;
+		// clog<<"j, node: "<<j<<" "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<endl;
 		ldo.node[j]->x = vec_x[i][id_pos];
 		ldo.node[j]->y = vec_y[i][id_pos];
 	}
