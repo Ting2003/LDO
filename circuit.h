@@ -129,7 +129,7 @@ public:
 	double update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, size_t i);
 	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
 	void round_data(double &data);
-	Node * pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd);
+	Node * pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd, bool local_flag);
 	void project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
 	bool has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const;
 	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
@@ -137,7 +137,10 @@ public:
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_pads();
-	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldolist, vector<MODULE*> &wspace_vec);
+	void relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
+	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
+	void relocate_pads(Tran &tran, vector<LDO*> &ldolist, vector<MODULE*> &wspace_vec);
+
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
@@ -146,20 +149,20 @@ public:
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_vec, size_t iter);
-	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt);
-	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt);
+	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
+	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
 
 	void build_graph(vector<Pad*> &pad_set);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec);
+	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	int locate_max_drop_pad(vector<Pad*> &pad_set, vector<double> vec);
 	double calc_avg_ref_drop(vector<Pad*> &pad_set, vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(vector<Pad*> &pad_set, size_t i);
-	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec,unordered_map<string, Node*> map_node_pt);
+	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec,unordered_map<string, Node*> map_node_pt, bool local_flag);
 	bool print_flag(Node *nd);
-	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec);
+	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
 	double resolve_direct(Tran &tran);
 	void resolve_queue(vector<Node *> origin_pad_set);

@@ -2201,24 +2201,77 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
+void Circuit::relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_g;
-	vector<Node*> pad_set_old_l;
-
 	double dist_g = 0;
-	double dist_l = 0;
-	//double new_dist = 0;
 	pad_set_old_g.resize(pad_set_g.size());
-	pad_set_old_l.resize(pad_set_l.size());
 	assign_pad_set(pad_set_g, pad_set_old_g);
-	assign_pad_set(pad_set_l, pad_set_old_l);
-	// store a original copy of the pad set
 	
 	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
+		
+	vector<double> ref_drop_vec_g;
+	double min_IR = max_IRdrop;
+	// used for global pad movement
+	for(size_t i=0;i<5;i++){
+		clog<<endl<<"iter for pad move. "<<i<<endl;
+		int pad_number = 1;
+		origin_pad_set_g.resize(pad_set_g.size());
+		assign_pad_set(pad_set_g, origin_pad_set_g);
+		// build pad connection graph
+		build_graph(pad_set_g);
+		// find control nodes for each pad
+		extract_pads(pad_set_g, pad_number);
+		// find the tune spot for control nodes	
+		update_pad_control_nodes(pad_set_g, ref_drop_vec_g, i);
+		//print_all_control_nodes();	
+		if(i>=6){
+			dynamic_update_violate_ref(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g, false);
+		}
+		// find new point for all pads	
+		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
+		// move the low 10% pads into high 10% 
+		// pad area 
+		if(i==0){
+			extract_min_max_pads(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g, false);
+		}
+		// update the old pad set value
+		assign_pad_set(pad_set_g, pad_set_old_g);
+		move_violate_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g, false);
+
+		// move pads according to graph contraints
+		graph_move_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g, false);	
+		//clog<<"after graph move. "<<endl;
+		clear_flags(pad_set_g);
+		// actual move pads into the new spots
+		// project_pads();
+		
+		double max_IR = resolve_direct(tran);
+		if(max_IR ==0)
+			break;
+		// need to add the best case for global pads
+	}
+	ref_drop_vec_g.clear();
+	origin_pad_set_g.clear();
+	pad_set_old_g.clear();
+}
+
+// top level function for global and local pad movement
+void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
+	for(int i=0;i<1;i++){
+		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		relocate_pads_graph(tran, ldo_vec, wspace_vec);
+	}
+}
+
+void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
+	vector<Node*> pad_set_old_l;
+	double dist_l = 0;
+	pad_set_old_l.resize(pad_set_l.size());
+	assign_pad_set(pad_set_l, pad_set_old_l);
+	
 	build_ldolist(ldo_vec);
 	build_wspacelist(wspace_vec);
-	
 	// stores the best ldolist
 	vector<LDO*>ldolist_best;
 	ldolist_best.resize(ldolist.size());
@@ -2231,61 +2284,39 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
 		}
 	}
-	vector<double> ref_drop_vec_g;
 	vector<double> ref_drop_vec_l;
-	double min_IR = max_IRdrop;
-	//print_pad_set();
+	double min_IR = max_IRdrop;	
+	
+	// for local pad movement
 	for(size_t i=0;i<5;i++){
 		clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
-		origin_pad_set_g.resize(pad_set_g.size());
 		origin_pad_set_l.resize(pad_set_l.size());
-		assign_pad_set(pad_set_g, origin_pad_set_g);
 		assign_pad_set(pad_set_l, origin_pad_set_l);
 		// build pad connection graph
-		build_graph(pad_set_g);
 		build_graph(pad_set_l);
-		//clog<<"after build graph. "<<endl;
 		// find control nodes for each pad
-		extract_pads(pad_set_g, pad_number);
 		extract_pads(pad_set_l, pad_number);
-		//clog<<"after extract pads. "<<endl;
 		// find the tune spot for control nodes	
-		update_pad_control_nodes(pad_set_g, ref_drop_vec_g, i);
 		update_pad_control_nodes(pad_set_l, ref_drop_vec_l, i);
-		//clog<<"after update control nodes. "<<endl;
 		//print_all_control_nodes();	
 		if(i>=6){
-			dynamic_update_violate_ref(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g);
-			dynamic_update_violate_ref(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l);
+			dynamic_update_violate_ref(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l, true);
 		}
 		// find new point for all pads	
-		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
 		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_l);
-		// clog<<"update pad pos. "<<endl;
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
-			extract_min_max_pads(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g);
-			//clog<<"after extract global. "<<endl;
-			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l);
+			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_l, true);
 		}
-		//clog<<"before min max. "<<endl;
 		// update the old pad set value
-		assign_pad_set(pad_set_g, pad_set_old_g);
-		//clog<<"after global assign. "<<endl;
 		assign_pad_set(pad_set_l, pad_set_old_l);
-		//clog<<"before violate. "<<endl;	
-		move_violate_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g);
-		move_violate_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
-		// actual move pads into the new spots
-		//project_pads();
+		move_violate_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l, true);
 
 		// move pads according to graph contraints
-		graph_move_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g);	
-		graph_move_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l);
+		graph_move_pads(map_node_pt_l, pad_set_l, ref_drop_vec_l, true);
 		//clog<<"after graph move. "<<endl;
-		clear_flags(pad_set_g);
 		clear_flags(pad_set_l);
 		// actual move pads into the new spots
 		// project_pads();
@@ -2296,16 +2327,12 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		if(max_IR < min_IR){
 			min_IR = max_IR;
 			for(size_t i=0;i<ldolist.size();i++){
-				//ldolist_best[i] = *ldolist[i];
 				for(int j=0;j<ldolist_best[i]->node.size();j++){
 					ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 					ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
-					//clog<<"node: ("<<ldolist_best[i]->node[j]->x<<","<<ldolist_best[i]->node[j]->y<<endl;	
 				}
 			}
 		}
-		//resolve_queue(origin_pad_set);
-		//solve_GS();
 		clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
 		/*for(int i=0;i<ldolist_best.size();i++){
 			LDO ldo_ptr = ldolist_best[i];
@@ -2331,11 +2358,8 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	//clog<<"pad, origin_pad_set.size: "<<pad_set_l.size()<<" "<<origin_pad_set_l.size()<<endl;
 	double max_IR  = resolve_direct(tran);
 
-	ref_drop_vec_g.clear();
 	ref_drop_vec_l.clear();
-	origin_pad_set_g.clear();
 	origin_pad_set_l.clear();
-	pad_set_old_g.clear();
 	pad_set_old_l.clear();
 	// terminate cm and xp,bp and so on
 	//print_pad_set();
@@ -2476,7 +2500,7 @@ double Circuit::update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, siz
 	return dist;
 }
 
-void Circuit::project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set){
+/*void Circuit::project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set){
 	Node *pad;
 	Node *new_pad;
 	Pad *pad_ptr;
@@ -2495,7 +2519,7 @@ void Circuit::project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();	
 	}
-}
+}*/
 
 // round double, depends on whether the frac >=0.5
 void Circuit::round_data(double &data){
@@ -2511,7 +2535,8 @@ void Circuit::round_data(double &data){
 // fits for non-uniform grid
 Node * Circuit::pad_projection(
 	unordered_map<string, Node*> map_node_pt, 
-	vector<Pad*> &pad_set, Pad *pad, Node *nd){
+	vector<Pad*> &pad_set, Pad *pad, Node *nd,
+	bool local_flag){
 	//Node *nd;
 	Node *na;
 	stringstream sstream;
@@ -2554,7 +2579,7 @@ Node * Circuit::pad_projection(
 		if(nd_new->isS()!=X){
 			//clog<<"nd_new: "<<*nd_new<<endl;
 			// need to adjust the local pads
-			if(nd_new->get_layer() == local_layers[0]){
+			if(local_flag == true && nd_new->get_layer() == local_layers[0]){
 				//clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
 				Node *nb = project_local_pad(nd, nd_new, ldo, map_node_pt);
 				if(nb == NULL)
@@ -2564,11 +2589,11 @@ Node * Circuit::pad_projection(
 					nd->value = 0;
 					return nb;
 				}
-			}else{
-				return nd;
-				/*nd->disableX();
+			}else if(local_flag == false){
+				//return nd;
+				nd->disableX();
 				nd->value = 0;
-				return nd_new;*/
+				return nd_new;
 			}
 		}
 	}
@@ -2789,7 +2814,7 @@ void Circuit::print_pad_set(vector<Pad*> &pad_set){
 	}		
 }
 
-void Circuit::extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt){
+void Circuit::extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag){
 	Node *nd;
 	Pad *pad;
 	size_t max_index = 0;
@@ -2866,7 +2891,7 @@ void Circuit::extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector
 				pad_ptr = pad_set[k];
 				//double ref_drop_value = ref_drop_vec[k];
 
-				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j]);
+				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j], local_flag);
 				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 
 				size_t m = id_minpad;
@@ -2886,7 +2911,7 @@ void Circuit::extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector
 	max_pads.clear();
 }
 
-void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt){
+void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag){
 	double min = 0;
 	double max = 0;	
 	size_t min_index=0;
@@ -2948,8 +2973,7 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 				nd->name){	
 				pad_ptr = pad_set[k];
 				//double ref_drop_value = ref_drop_vec[k];
-				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j]);
-				
+				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j], local_flag);	
 				clog<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
@@ -2974,7 +2998,7 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 	max_pads.clear();
 }
 
-void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, vector<double> ref_drop_vec){
+void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, vector<double> ref_drop_vec, bool local_flag){
 	Pad *pad_ptr;
 	Node * pad;
 	Node * new_pad;
@@ -2986,7 +3010,7 @@ void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector
 		pad = pad_ptr->node;
 		// if violate, move this pad
 		if(pad_ptr->violate_flag == true){
-			new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad);
+			new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad, local_flag);
 			// clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 			pad_ptr->node = new_pad;
 			pad_ptr->control_nodes.clear();
@@ -2995,7 +3019,7 @@ void Circuit::move_violate_pads(unordered_map<string, Node*> map_node_pt, vector
 	}
 }
 
-void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, vector<double> ref_drop_vec){
+void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, vector<double> ref_drop_vec, bool local_flag){
 	Node *new_pad;
 	int id=0;
 	// for(size_t i=0;i<5;i++){
@@ -3005,7 +3029,7 @@ void Circuit::graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<P
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad);
+		new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, pad, local_flag);
 		 // if(pad->name == "_X_n6_200_150")
 		 // clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
@@ -3083,7 +3107,7 @@ double Circuit::locate_ref(vector<Pad*> &pad_set, size_t i){
 	return middle_value;
 }
 
-void Circuit::dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec, unordered_map<string, Node*> map_node_pt){
+void Circuit::dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag){
 	//for(size_t j=0;j<2;j++){
 	double avg_drop = 0;
 	avg_drop = calc_avg_ref_drop(pad_set, ref_drop_vec);
@@ -3107,7 +3131,7 @@ void Circuit::dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vect
 		}
 	}
 	
-	extract_min_max_pads_new(VDD, pad_set, ref_drop_vec, map_node_pt);	
+	extract_min_max_pads_new(VDD, pad_set, ref_drop_vec, map_node_pt, local_flag);	
 }
 
 bool Circuit::print_flag(Node *pad){
