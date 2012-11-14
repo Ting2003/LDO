@@ -2216,7 +2216,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	for(size_t i=0;i<pad_set_best.size();i++){
 		pad_set_best[i] = new Node();
 		pad_set_best[i]->name = pad_set_g[i]->node->name;
-		//cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
+		//clog<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
 		pad_set_best[i]->pt = pad_set_g[i]->node->pt; 
 	}
 	// build up the global and local map for nodes concering of global and local pads
@@ -2226,7 +2226,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	double min_IR = max_IRdrop;
 	// used for global pad movement
 	for(size_t i=0;i<5;i++){
-		clog<<endl<<"iter for pad move. "<<i<<endl;
+		//clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
 		assign_pad_set(pad_set_g, origin_pad_set_g);
@@ -2289,7 +2289,7 @@ void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &
 	for(int i=0;i<1;i++){
 		clog<<endl;
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
-		//relocate_pads_graph(tran, ldo_vec, wspace_vec);
+		relocate_pads_graph(tran, ldo_vec, wspace_vec);
 	}
 }
 
@@ -2312,6 +2312,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
 		}
+		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 	}
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
@@ -2379,13 +2380,12 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	// recover into old local pad status
 	
 	origin_pad_set_l.resize(pad_set_l.size()); 
-	recover_local_pad(ldolist_best);
+	recover_local_pad(tran, ldolist_best);
 	//clog<<"after recover. "<<endl;
 	/*for(size_t i=0;i<pad_set_l.size();i++){
 		clog<<"pad_set_l, origin: "<<*pad_set_l[i]->node->rep<<" "<<*origin_pad_set_l[i]->rep<<endl;	
 	}*/
 	//clog<<"pad, origin_pad_set.size: "<<pad_set_l.size()<<" "<<origin_pad_set_l.size()<<endl;
-	double max_IR  = resolve_direct(tran, true);
 
 	ref_drop_vec_l.clear();
 	origin_pad_set_l.clear();
@@ -2698,6 +2698,191 @@ void Circuit::restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old){
 }
 
 // modify voltage net set with rm_node and add_node
+void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_best){
+	int type = VOLTAGE;
+	size_t index_rm_net = 0;
+	size_t index_rm_resistor_net = 0;
+	size_t index_via_net = 0;
+	Net *net=NULL;
+	Net *add_net=NULL;
+	Net *resistor_net = NULL;
+	Net *add_resistor_net = NULL;
+	Net *via_net = NULL;
+	int type_1 = RESISTOR;
+	Node *add_node_new;
+	stringstream sstream;
+	//Node *nd_ori=NULL;
+	//Node *nd_new=NULL;
+	Node *rm_node=NULL;
+	Node *add_node=NULL;
+	vector<Net*> rm_net;
+	vector<bool> pad_set_process;
+	vector<bool> pad_best_process;
+	pad_set_process.resize(pad_set.size(), false);
+	pad_best_process.resize(pad_set.size(), false);
+
+	int count = 0;
+	Node *na;
+	size_t pos;
+	for(size_t i=0;i<pad_set.size();i++){
+		rm_node = pad_set[i]->node->rep;
+		bool flag = false;
+		size_t j=0;
+		for(j=0;j<pad_set.size();j++){
+			if(pad_set_best[j]->name == rm_node->name){
+				flag = true;
+				break;
+			}
+		}
+		if(flag == true){
+			pad_set_process[i] = true;
+			pad_best_process[j] = true;
+		}
+	}
+		
+	// delete all origin pad set
+	// and build nets of new pad set
+	for(size_t i=0;i<pad_set.size();i++){
+		// skip preserved pad
+		if(pad_set_process[i] == true){
+			 continue;
+		}
+		pad_set_process[i] = true;
+		if(pad_set[i]->node->pt == pad_set_best[i]->pt){
+			cout<<"rm_node: "<<*pad_set[i]->node<<endl;
+			continue;
+		}
+		rm_node = pad_set[i]->node->rep;
+		// reset the rep of bottom node of rm pad
+		Net *net = rm_node->nbr[BOTTOM];
+		na = net->ab[0];
+		if(na->name == rm_node->name){
+			na = net->ab[1];
+		}	
+		na->rep = na;
+		//cout<<"na, rep: "<<*na<<" "<<*na->rep<<endl;
+		//rm_node = pad_set_old[i];
+		size_t j=0;
+		// locate the corresponding add_pad
+		for(j=0;j<pad_set.size();j++){
+			if(pad_best_process[j]== false){
+				 break;
+			}
+		}
+		pad_best_process[j] = true;
+		sstream.str("");
+		sstream<<"n"<<pad_set_best[j]->pt.z<<"_"<<pad_set_best[j]->pt.x<<"_"<<pad_set_best[j]->pt.y;
+		//clog<<"sstream.str: "<<sstream.str()<<endl;
+		add_node = get_node_pt(map_node_pt_l, 
+			sstream.str());
+		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		add_node = add_node->rep;
+		if(add_node->isS()==X){
+		   continue;
+		}
+		//if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
+			//continue;
+		count++;
+		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+
+		for(size_t i=0;i<net_set[type].size();i++){
+			net = net_set[type][i];
+			//clog<<"id, net: "<<net->id<<" "<<*net<<endl;
+
+			if(net->ab[0]->name == rm_node->name ||
+				net->ab[1]->name == rm_node->name){
+				//cout<<endl<<"candi net: "<<*net<<endl;
+				index_rm_net = net->id;
+				rm_net.push_back(net);
+				
+				// also remove the resistor net
+				if(net->ab[0]->name == rm_node->name){
+					resistor_net = net->ab[0]->nbr[BOTTOM];
+					rm_net.push_back(resistor_net);
+					index_rm_resistor_net = resistor_net->id;
+					net->ab[0]->nbr[BOTTOM] = NULL;
+					resistor_net->ab[0]->nbr[TOP] = NULL;
+				}
+				else if(net->ab[1]->name == rm_node->name){
+					resistor_net = net->ab[1]->nbr[BOTTOM];
+					rm_net.push_back(resistor_net);
+					index_rm_resistor_net = resistor_net->id;
+					net->ab[1]->nbr[TOP] = NULL;
+					resistor_net->ab[0]->nbr[TOP] = NULL;
+				}
+				//cout<<"rm resistor net: "<<*resistor_net<<endl;
+				break;
+			}
+		}
+		// stores the X node
+		// new node id and rep  =  old one
+		add_node_new = new Node(*add_node);
+		add_node_new->enableX();
+		add_node_new->value = VDD;
+		add_node_new->rep = add_node_new;
+
+		sstream.str("");
+		// modify add_node_new with _X_xxxx
+		sstream<<"_X_"<<add_node_new->name;
+		add_node_new->name = sstream.str();
+		//cout<<"add_node_new: "<<*add_node_new<<endl;
+		add_net = new Net(VOLTAGE, VDD, add_node_new, 
+				nodelist[nodelist.size()-1]);
+		//cout<<"add_net: "<<*add_net<<" "<<index_rm_net<<endl;
+		add_net->id = index_rm_net;
+
+		//cout<<"net set type: "<<*net_set[type][index_rm_net]<<endl;
+		net_set[type][index_rm_net] = add_net;
+
+		double value = resistor_net->value;
+		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
+
+		if(rm_node->get_layer() == local_layers[0]){
+			// Need to move the via net
+			via_net = add_node->nbr[TOP];
+			if(via_net != NULL){
+				//clog<<"via net old: "<<*via_net<<endl;
+				// need to locate the top node
+				sstream.str("");
+				sstream<<"n"<<global_layers[0]<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y;
+				if(has_node_pt(map_node_pt_l, sstream.str())){
+					Node *nd = get_node_pt(map_node_pt_l, sstream.str());
+					via_net->ab[0] = na;
+					via_net->ab[1] = nd;
+					//clog<<"via net new: "<<*via_net<<endl;
+				}
+			}
+		}
+		//clog<<"via net new: "<<*via_net<<endl;
+		//cout<<"add_net resistor: "<<*add_resistor_net<<endl;
+		add_resistor_net->id = index_rm_resistor_net;
+
+		// modify the neighboring nets
+		add_net->ab[0]->nbr[BOTTOM] = add_resistor_net;
+		add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
+	
+		type_1 = RESISTOR;
+		//cout<<"net_set resis: "<<*net_set[type_1][index_rm_resistor_net]<<endl;
+		net_set[type_1][index_rm_resistor_net] = add_resistor_net;
+
+		// substitue the new pos with the old one
+		// may need to free rm node
+		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node->rep<<" "<<*add_node_new<<endl;
+		//cout<<"nodelist: "<<*nodelist[rm_node->id]<<" "<<*replist[rm_node->rid]<<endl;
+		replist[rm_node->rid] = add_node_new;
+		nodelist[rm_node->id] = add_node_new;
+		rm_node->disableX();
+		rm_node->value = 0;
+		delete rm_node;
+	}
+        //clog<<"before delete rm_net. "<<endl;
+	rm_net.clear();
+	pad_set_process.clear();
+	pad_best_process.clear();
+	//free(rm_node);
+}
+
+// modify voltage net set with rm_node and add_node
 void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_best){
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
@@ -2775,21 +2960,9 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 			sstream.str());
 		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 		add_node = add_node->rep;
-		if(add_node->isS()==X){
-		   cout<<"add_node: "<<*add_node<<endl;
-		   if(add_node->name == "_X_n6_58_51"){
-			clog<<"X_n6_58_51, rid: "<<add_node->rid<<" "<<*add_node<<endl;
-			clog<<"rid, rm: "<<rm_node->rid<<" "<<*rm_node<<endl;
-			rm_node->disableX();
-			rm_node->value = 0;
-			add_node->enableX();
-			add_node->value = VDD;
-			//replist[rm_node->rid] = add_node;
-			//nodelist[rm_node->id] = add_node;
-		   }
+		if(add_node->isS()==X){ 
 		   continue;
 		}
-		if(rm_node->name == "_X_n6_58_51") clog<<"rm X_n6_58_51: "<<*add_node<<endl;
 		//if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
 			//continue;
 		count++;
@@ -4488,24 +4661,13 @@ bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double 
 }
 
 // recover best global pad positions
-void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
-	/*for(size_t i=0;i<pad_set_best.size();i++){
-		cout<<"pad_set, best: "<<pad_set_g[i]->node->name<<" "<<pad_set_best[i]->name<<endl;
-	}*/
+void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){	
 	clock_t t1, t2;
 	t1 = clock();
 	size_t n = replist.size();
 	rebuild_voltage_nets_g(pad_set_g, pad_set_best);
 	Net *net;
-	/*cout<<"pad_set, pad_set_best size: "<<pad_set_g.size()<<" "<<pad_set_best.size()<<endl;
-	for(size_t i=0;i<pad_set_best.size();i++){
-		if(pad_set_g[i]->node==NULL || pad_set_g[i]==NULL)
-			cout<<"i, null pad: "<<i<<" "<<endl;
-		else if(pad_set_best[i]==NULL)
-			cout<<"i, null best: "<<i<<endl;
-		else
-			cout<<"pad_set, best: "<<i<<" "<<pad_set_g[i]->node->name<<" "<<pad_set_best[i]->name<<endl;
-	}*/
+	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
 	//solve_LU_core();
@@ -4518,7 +4680,7 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	//return max_IR;
 }
 
-void Circuit::recover_local_pad(vector<LDO*> &ldolist_best){
+void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	stringstream sstream;
 	string pt_name;
 	Node *nd_new = NULL;
@@ -4529,12 +4691,33 @@ void Circuit::recover_local_pad(vector<LDO*> &ldolist_best){
 		sstream<<"n"<<ldolist[i]->A->pt.z<<"_"<<ldolist_best[i]->node[0]->x<<"_"<<ldolist_best[i]->node[0]->y;
 		pt_name = sstream.str();
 		nd_new = get_node_pt(map_node_pt_l, pt_name);
-		nd_new = nd_new->rep;
-
-		ldolist[i]->A = ldolist[i]->A->rep;
-		origin_pad_set_l[i] = ldolist[i]->A;
-		
-		pad_set_l[i]->node = nd_new;
-		//clog<<"add, rm: "<<*nd_new<<" "<<*ldolist[i]->A<<endl;
+		nd_new = nd_new->rep;	
+		origin_pad_set_l[i] = nd_new;
+		//clog<<"add, rm: "<<*nd_new<<" "<<*pad_set_l[i]->node<<endl;
 	}
+	// solve with best case again
+	clock_t t1, t2;
+	t1 = clock();
+	size_t n = replist.size();
+	/*for(size_t i=0;i<nodelist.size()-1;i++){
+		if(nodelist[i]->pt.z !=4) continue;
+		if(nodelist[i]->isS()==X)
+			clog<<"pad before: "<<*nodelist[i]<<endl;
+	}*/
+	rebuild_voltage_nets_l(pad_set_l, origin_pad_set_l);
+	/*for(size_t i=0;i<nodelist.size()-1;i++){
+		if(nodelist[i]->isS()!=X){
+			nodelist[i]->value = 0;
+		}
+	}*/
+	Net *net;
+	
+	// need to repeat solve_init and stamp matrix, decomp matrix process
+	pad_solve_DC(tran);
+	//solve_LU_core();
+	double max_IR = locate_maxIRdrop();	
+	//double max_IRS = locate_special_maxIRdrop();
+	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
+	worst_cur = worst_cur_new;
+	t2 = clock();
 }
