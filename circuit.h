@@ -101,7 +101,7 @@ public:
 	void mark_special_nodes();
 	bool set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
 	void recover_local_pad(vector<LDO*> &ldolist_best);
-	void recover_global_pad(vector<Node*> &pad_set_best);
+	void recover_global_pad(Tran &tran, vector<Node*> &pad_set_best);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
@@ -145,6 +145,7 @@ public:
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
+	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void print_pad_set(vector<Pad*> &pad_set);
 	void extract_pads(vector<Pad*> &pad_set, int pad_number);
 	void print_matlab();
