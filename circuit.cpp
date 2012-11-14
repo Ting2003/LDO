@@ -2288,7 +2288,10 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	for(int i=0;i<2;i++){
 		clog<<endl;
+		clog<<"================ iter "<<i <<" ============"<<endl;
+		clog<<"======= global ==== "<<endl;
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		clog<<"======== local ===== "<<endl;
 		relocate_pads_graph(tran, ldo_vec, wspace_vec);
 	}
 }
@@ -2312,14 +2315,14 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
 		}
-		clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
+		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 	}
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
-	
+
 	// for local pad movement
 	for(size_t i=0;i<5;i++){
-		clog<<endl<<"iter for pad move. "<<i<<endl;
+		//clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_l.resize(pad_set_l.size());
 		assign_pad_set(pad_set_l, origin_pad_set_l);
@@ -2363,19 +2366,9 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 				}
 			}
 		}
-		clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
-		/*for(int i=0;i<ldolist_best.size();i++){
-			LDO ldo_ptr = ldolist_best[i];
-			clog<<"LDO: "<<i<<endl;
-				
-		}*/
+		//clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
 	}
-	/*for(size_t i=0;i<ldolist.size();i++){
-		//ldolist_best[i] = *ldolist[i];
-		for(int j=0;j<ldolist_best[i]->node.size();j++){
-			clog<<"node: ("<<ldolist_best[i]->node[j]->x<<","<<ldolist_best[i]->node[j]->y<<endl;	
-		}
-	}*/
+	
 	//ldolist = ldolist_best;
 	// recover into old local pad status
 	
