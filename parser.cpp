@@ -530,6 +530,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 		sA_Xptr->flag = X;
 		sA_Xptr->value = VDD_G;
 		ckt->add_node(sA_Xptr);
+		//ldo_ptr->A = sA_Xptr;
 		// start to add net
 		Net *net;
 		double value = 0;
