@@ -2275,20 +2275,9 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		// need to add the best case for global pads
 	}
 	// get the best pad set by name and pt
-	// copy the best node
-	
-	for(size_t i=0;i<pad_set_g.size();i++){
-		//pad_set_best[i]->node->name = pad_set_g[i]->node->name;	
-		//pad_set_best[i]->node->pt = pad_set_g[i]->node->pt;
-		cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
-	}
-	
+	// copy the best node		
 	recover_global_pad(tran, pad_set_best);
-	for(size_t i=0;i<pad_set_g.size();i++){
-		//pad_set_best[i]->node->name = pad_set_g[i]->node->name;	
-		//pad_set_best[i]->node->pt = pad_set_g[i]->node->pt;
-		cout<<"i, pad_set: "<<i<<" "<<*pad_set_g[i]->node<<endl;	
-	}
+	
 	ref_drop_vec_g.clear();
 	origin_pad_set_g.clear();
 	pad_set_old_g.clear();
@@ -2730,26 +2719,42 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 	/*for(size_t i=0;i<origin_pad_set.size();i++){
 		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
 	}*/
+	vector<bool> pad_set_process;
+	vector<bool> pad_best_process;
+	pad_set_process.resize(pad_set.size(), false);
+	pad_best_process.resize(pad_set.size(), false);
+
 	int count = 0;
-	Node *na;	
-	// delete all origin pad set
-	// and build nets of new pad set
+	Node *na;
+	size_t pos;
 	for(size_t i=0;i<pad_set.size();i++){
-		if(pad_set[i]->node->pt == pad_set_best[i]->pt){
-			cout<<"rm_node: "<<*pad_set[i]->node<<endl;
-			continue;
-		}
 		rm_node = pad_set[i]->node->rep;
-		/*bool flag = false;
-		for(size_t j=0;j<pad_set.size();j++){
+		bool flag = false;
+		size_t j=0;
+		for(j=0;j<pad_set.size();j++){
 			if(pad_set_best[j]->name == rm_node->name){
 				flag = true;
 				break;
 			}
 		}
 		if(flag == true){
+			pad_set_process[i] = true;
+			pad_best_process[j] = true;
+		}
+	}
+		
+	// delete all origin pad set
+	// and build nets of new pad set
+	for(size_t i=0;i<pad_set.size();i++){
+		// skip preserved pad
+		if(pad_set_process[i] == true) continue;
+		pad_set_process[i] = true;
+		if(pad_set[i]->node->pt == pad_set_best[i]->pt){
+			cout<<"rm_node: "<<*pad_set[i]->node<<endl;
 			continue;
-		}*/
+		}
+		rm_node = pad_set[i]->node->rep;
+		
 		// reset the rep of bottom node of rm pad
 		Net *net = rm_node->nbr[BOTTOM];
 		na = net->ab[0];
@@ -2759,8 +2764,13 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		na->rep = na;
 		//cout<<"na, rep: "<<*na<<" "<<*na->rep<<endl;
 		//rm_node = pad_set_old[i];
+		size_t j=0;
+		// locate the corresponding add_pad
+		for(j=0;j<pad_set.size();j++)
+			if(pad_best_process[j]== false) break;
+		pad_best_process[j] = true;
 		sstream.str("");
-		sstream<<"n"<<pad_set_best[i]->pt.z<<"_"<<pad_set_best[i]->pt.x<<"_"<<pad_set_best[i]->pt.y;
+		sstream<<"n"<<pad_set_best[j]->pt.z<<"_"<<pad_set_best[j]->pt.x<<"_"<<pad_set_best[j]->pt.y;
 		add_node = get_node_pt(map_node_pt_g, 
 			sstream.str());
 		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
@@ -2825,7 +2835,7 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		// modify add_node_new with _X_xxxx
 		sstream<<"_X_"<<add_node_new->name;
 		add_node_new->name = sstream.str();
-		cout<<"add_node_new: "<<*add_node_new<<endl;
+		//cout<<"add_node_new: "<<*add_node_new<<endl;
 		add_net = new Net(VOLTAGE, VDD, add_node_new, 
 				nodelist[nodelist.size()-1]);
 		//cout<<"add_net: "<<*add_net<<" "<<index_rm_net<<endl;
@@ -2877,6 +2887,8 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 	}
         //clog<<"before delete rm_net. "<<endl;
 	rm_net.clear();
+	pad_set_process.clear();
+	pad_best_process.clear();
 	/*for(size_t i=0;i<rm_net.size();i++){
 		delete rm_net[i];
 	}*/
