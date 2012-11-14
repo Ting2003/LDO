@@ -101,6 +101,7 @@ public:
 	void mark_special_nodes();
 	bool set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
 	void recover_local_pad(vector<LDO*> &ldolist_best);
+	void recover_global_pad(vector<Node*> &pad_set_best);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);

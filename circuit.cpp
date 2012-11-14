@@ -2201,13 +2201,24 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
+
+// move global pads, track the best set
 void Circuit::relocate_pads_graph_global(Tran &tran, 
 	vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_g;
+	vector<Node*> pad_set_best;
 	double dist_g = 0;
 	pad_set_old_g.resize(pad_set_g.size());
 	assign_pad_set(pad_set_g, pad_set_old_g);
-	
+
+	// record initial case
+	pad_set_best.resize(pad_set_g.size());
+	for(size_t i=0;i<pad_set_best.size();i++){
+		pad_set_best[i] = new Node();
+		pad_set_best[i]->name = pad_set_g[i]->node->name;
+		//cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
+		pad_set_best[i]->pt = pad_set_g[i]->node->pt; 
+	}
 	// build up the global and local map for nodes concering of global and local pads
 	build_map_node_pt();
 		
@@ -2250,18 +2261,38 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		double max_IR = resolve_direct(tran, false);
 		if(max_IR ==0)
 			break;
+		cout<<endl;
+		if(max_IR < min_IR){
+			min_IR = max_IR;
+			
+			//cout<<"min, max: "<<min_IR<<" "<<max_IR<<endl; 
+			for(size_t i=0;i<pad_set_g.size();i++){
+				pad_set_best[i]->name = pad_set_g[i]->node->name;	
+				pad_set_best[i]->pt = pad_set_g[i]->node->pt;
+				//cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
+			}
+		}
 		// need to add the best case for global pads
 	}
+	// get the best pad set by name and pt
+	// copy the best node
+	recover_global_pad(pad_set_best);
+	for(size_t i=0;i<pad_set_g.size();i++){
+		//pad_set_best[i]->node->name = pad_set_g[i]->node->name;	
+		//pad_set_best[i]->node->pt = pad_set_g[i]->node->pt;
+		cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<" "<<pad_set_best[i]->pt.z<<" "<<pad_set_best[i]->pt.x<<" "<<pad_set_best[i]->pt.y<<endl;	
+			}
 	ref_drop_vec_g.clear();
 	origin_pad_set_g.clear();
 	pad_set_old_g.clear();
+	pad_set_best.clear();
 }
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	for(int i=0;i<1;i++){
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
-		relocate_pads_graph(tran, ldo_vec, wspace_vec);
+		//relocate_pads_graph(tran, ldo_vec, wspace_vec);
 	}
 }
 
@@ -4259,6 +4290,10 @@ bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double 
 	bool flag = false;
 	flag = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
 	return flag;
+}
+
+// recover best global pad positions
+void Circuit::recover_global_pad(vector<Node*> &pad_set_best){
 }
 
 void Circuit::recover_local_pad(vector<LDO*> &ldolist_best){
