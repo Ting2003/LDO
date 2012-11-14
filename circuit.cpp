@@ -2201,7 +2201,8 @@ double Circuit::locate_special_maxIRdrop(){
 	return max_IRdrop;
 }
 
-void Circuit::relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
+void Circuit::relocate_pads_graph_global(Tran &tran, 
+	vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_g;
 	double dist_g = 0;
 	pad_set_old_g.resize(pad_set_g.size());
@@ -2246,7 +2247,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vect
 		// actual move pads into the new spots
 		// project_pads();
 		
-		double max_IR = resolve_direct(tran);
+		double max_IR = resolve_direct(tran, false);
 		if(max_IR ==0)
 			break;
 		// need to add the best case for global pads
@@ -2321,7 +2322,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		// actual move pads into the new spots
 		// project_pads();
 		
-		double max_IR = resolve_direct(tran);
+		double max_IR = resolve_direct(tran, true);
 		if(max_IR ==0)
 			break;
 		if(max_IR < min_IR){
@@ -2356,7 +2357,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		clog<<"pad_set_l, origin: "<<*pad_set_l[i]->node->rep<<" "<<*origin_pad_set_l[i]->rep<<endl;	
 	}*/
 	//clog<<"pad, origin_pad_set.size: "<<pad_set_l.size()<<" "<<origin_pad_set_l.size()<<endl;
-	double max_IR  = resolve_direct(tran);
+	double max_IR  = resolve_direct(tran, true);
 
 	ref_drop_vec_l.clear();
 	origin_pad_set_l.clear();
@@ -3221,14 +3222,16 @@ void Circuit::clear_flags(vector<Pad*> &pad_set){
 	}
 }
 
-double Circuit::resolve_direct(Tran &tran){
+double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	clock_t t1, t2;
 	t1 = clock();
 	size_t n = replist.size();
 	//cout<<endl;
 	//clog<<"============ a new round ======"<<endl;
-	rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
-	rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
+	if(local_flag == false)
+		rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
+	else
+		rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
 	//clog<<"========== finish net building. ==="<<endl;	
 	Net *net;	
 

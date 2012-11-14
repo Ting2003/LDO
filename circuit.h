@@ -164,7 +164,7 @@ public:
 	bool print_flag(Node *nd);
 	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
-	double resolve_direct(Tran &tran);
+	double resolve_direct(Tran &tran, bool local_flag);
 	void resolve_queue(vector<Node *> origin_pad_set);
 	void solve_queue(vector<Node *> pad_set_old);
 	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
