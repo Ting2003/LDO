@@ -2286,7 +2286,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
-	for(int i=0;i<1;i++){
+	for(int i=0;i<2;i++){
 		clog<<endl;
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
 		relocate_pads_graph(tran, ldo_vec, wspace_vec);
@@ -2312,7 +2312,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
 		}
-		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
+		clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 	}
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
@@ -2381,12 +2381,8 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	
 	origin_pad_set_l.resize(pad_set_l.size()); 
 	recover_local_pad(tran, ldolist_best);
-	//clog<<"after recover. "<<endl;
-	/*for(size_t i=0;i<pad_set_l.size();i++){
-		clog<<"pad_set_l, origin: "<<*pad_set_l[i]->node->rep<<" "<<*origin_pad_set_l[i]->rep<<endl;	
-	}*/
-	//clog<<"pad, origin_pad_set.size: "<<pad_set_l.size()<<" "<<origin_pad_set_l.size()<<endl;
-
+	
+	
 	ref_drop_vec_l.clear();
 	origin_pad_set_l.clear();
 	pad_set_old_l.clear();
@@ -4698,20 +4694,9 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	// solve with best case again
 	clock_t t1, t2;
 	t1 = clock();
-	size_t n = replist.size();
-	/*for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->pt.z !=4) continue;
-		if(nodelist[i]->isS()==X)
-			clog<<"pad before: "<<*nodelist[i]<<endl;
-	}*/
+	size_t n = replist.size();	
 	rebuild_voltage_nets_l(pad_set_l, origin_pad_set_l);
-	/*for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->isS()!=X){
-			nodelist[i]->value = 0;
-		}
-	}*/
-	Net *net;
-	
+		
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
 	//solve_LU_core();
@@ -4720,4 +4705,20 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
 	worst_cur = worst_cur_new;
 	t2 = clock();
+
+	// restore the ldolist from ldolist_best
+	for(size_t i=0;i<ldolist.size();i++){
+		sstream.str("");
+		sstream<<"n"<<ldolist[i]->A->pt.z<<"_"<<ldolist_best[i]->node[0]->x<<"_"<<ldolist_best[i]->node[0]->y;
+		Node *nA = get_node_pt(map_node_pt_l, sstream.str());
+		if(nA == NULL) continue;
+		ldolist[i]->A = nA;
+		//ldolist_best[i] = *ldolist[i];
+		//clog<<"best A: "<<*ldolist[i]->A<<endl;
+		for(int j=0;j<ldolist_best[i]->node.size();j++){
+			ldolist[i]->node[j]->x =ldolist_best[i]->node[j]->x;
+			ldolist[i]->node[j]->y = ldolist_best[i]->node[j]->y; 
+			//clog<<"node: ("<<ldolist[i]->node[j]->x<<","<<ldolist[i]->node[j]->y<<endl;	
+		}
+	}	
 }
