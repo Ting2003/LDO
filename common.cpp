@@ -193,7 +193,6 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 }
 
 bool ldo_in_wspace(LDO *ldo, MODULE *wspace){
-	Point *pt;
 	double x, y;
 	bool node_flag;
 	bool ldo_flag = true;

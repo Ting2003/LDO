@@ -2756,7 +2756,6 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
 	size_t index_via_net = 0;
-	Net *net=NULL;
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
@@ -2776,7 +2775,6 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 
 	int count = 0;
 	Node *na;
-	size_t pos;
 	for(size_t i=0;i<pad_set.size();i++){
 		rm_node = pad_set[i]->node->rep;
 		bool flag = false;
@@ -2940,8 +2938,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
-	size_t index_via_net = 0;
-	Net *net=NULL;
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
@@ -2964,7 +2960,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 
 	int count = 0;
 	Node *na;
-	size_t pos;
 	for(size_t i=0;i<pad_set.size();i++){
 		rm_node = pad_set[i]->node->rep;
 		bool flag = false;
@@ -3126,8 +3121,6 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
-	size_t index_via_net = 0;
-	Net *net=NULL;
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
@@ -3677,7 +3670,6 @@ void Circuit::clear_flags(vector<Pad*> &pad_set){
 double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	clock_t t1, t2;
 	t1 = clock();
-	size_t n = replist.size();
 	//cout<<endl;
 	//clog<<"============ a new round ======"<<endl;
 	if(local_flag == false)
@@ -3685,8 +3677,6 @@ double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	else
 		rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
 	//clog<<"========== finish net building. ==="<<endl;	
-	Net *net;	
-
 	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
@@ -4061,17 +4051,12 @@ void Circuit::stamp_worst_cur(double *bnewp){
 
 // project local pad, setting ldo into new white spaces near current/device blocks
 Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-	Node *nd_whi;
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
-	MODULE *ptr;
 	vector<int> candi_wspace;
-	double dx, dy;	
 	double ref_dx, ref_dy;
 	double ref_dist;
 	// if min_id == -1, stay on old wspace
-	double min_id = -1;
-	double ref_id = -1;
 	stringstream sstream;
 	LDO ldo_ptr;
 	// find the reference distance
@@ -4159,7 +4144,6 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	}
 
 Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt){
-	Node *na;	
 	queue<Point> q;
 	Point pt;
 	Point pt_cur;
@@ -4168,7 +4152,6 @@ Node* Circuit::expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> m
 	bool return_flag = false;
 	// else start to search for node
 	q.push(pt);
-	Node *nd_new_X;
 	
 	double dx[4] = {1, 0, -1, 0};
 	double dy[4] = {0, 1, 0, -1};
@@ -4590,8 +4573,6 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 // simple version utilized in moving process
 // at least one corner should be OK for the ldo
 bool Circuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
-	double x1, y1;
-	double x, y;
 	double dx, dy;
 	double dist;
 		
@@ -4720,9 +4701,7 @@ bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double 
 void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){	
 	clock_t t1, t2;
 	t1 = clock();
-	size_t n = replist.size();
 	rebuild_voltage_nets_g(pad_set_g, pad_set_best);
-	Net *net;
 	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
