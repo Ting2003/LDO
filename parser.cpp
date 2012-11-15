@@ -517,6 +517,8 @@ void Parser::parse_ldo_line(char *line, int *count){
 	if(nd_ptr==NULL)
 		report_exit("LDO node error!");	
 	ldo_ptr->A = nd_ptr;
+	// initiallize voltage
+	ldo_ptr->voltage = VDD_G;
 
 	// produce an extra voltage net and resistor net for LDO
 	// first create the X node

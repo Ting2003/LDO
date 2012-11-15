@@ -15,10 +15,12 @@ int main(int argc, char * argv[]){
 	char * logfile=NULL;
 	char * input=NULL, * output=NULL;
 	char * input_ldo = NULL;
+	char * spicefile = NULL;
 	bool input_flag = false, output_flag = false;
 	bool input_flag_ldo = false;
+	bool spicefile_flag = false;
 //#if 0
-	while( ( c = getopt(argc, argv, "i:a:f:e:o:r:b:l:LI")) != -1 ){
+	while( ( c = getopt(argc, argv, "i:a:s:f:e:o:r:b:l:LI")) != -1 ){
 		switch(c){
 		case 'l':
 			logfile = optarg;
@@ -31,6 +33,9 @@ int main(int argc, char * argv[]){
 			input_ldo = optarg;
 			input_flag_ldo = true;
 			break;
+		case 's':
+			spicefile = optarg;
+			spicefile_flag = true;
 		case 'f':
 			output = optarg;
 			output_flag = true;
@@ -42,7 +47,7 @@ int main(int argc, char * argv[]){
 		}
 	}
 	//if( argc == optind ) report_exit(usage2);
-	if( !input_flag || !input_flag_ldo || ! output_flag ){
+	if( !input_flag || !input_flag_ldo || !spicefile_flag || ! output_flag ){
 		fprintf(stderr, usage2, argv[0]);
 		exit(EXIT_FAILURE);
 	}
@@ -74,6 +79,7 @@ int main(int argc, char * argv[]){
 		//ckt->solve_DC();
 		ckt->relocate_pads(tran, chip.ldolist, chip.wspacelist);
 		ckt->compute_ldo_current();
+		ckt->verify_ldo(tran, spicefile);
 		//delete ckt;
 	}
 	//tran.print_tr_nodes();

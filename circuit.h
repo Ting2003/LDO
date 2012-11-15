@@ -148,6 +148,8 @@ public:
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void compute_ldo_current();
+	void update_ldo_voltage(char *filename);
+	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
 	void extract_pads(vector<Pad*> &pad_set, int pad_number);
 	void print_matlab();

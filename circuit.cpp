@@ -2305,7 +2305,7 @@ void Circuit::compute_ldo_current(){
 	double current = 0;
 	for(size_t i=0;i<ldolist.size();i++){
 		nA = ldolist[i]->A;
-		clog<<"i, nA: "<<*nA<<endl;
+		//clog<<"i, nA: "<<*nA<<endl;
 		current_sum =0;	
 		// scan neighboring nodes to find cur
 		for(DIRECTION d = WEST; d <= NORTH; d = (DIRECTION)(d+1)){
@@ -2321,8 +2321,41 @@ void Circuit::compute_ldo_current(){
 			// clog<<"cur, sum: "<<current<<" "<<current_sum<<endl;
 		}
 		ldolist[i]->current = current_sum;
-		clog<<"cur: "<<current_sum<<endl;
+		// clog<<"cur: "<<current_sum<<endl;
 	}
+}
+
+void Circuit::update_ldo_voltage(char *filename){
+	FILE *f;
+	f = fopen(filename, "r");
+	char sa[MAX_BUF];
+	double value;
+	if( f == NULL ) 
+		report_exit("Input file not exist!\n");
+		
+	char line[MAX_BUF];
+	while( fgets(line, MAX_BUF, f) != NULL ){
+		// skip the * line
+		if(line[0]=='*')	
+			continue;
+		// read in the voltage values
+		sscanf(line, "%s %lf", sa, &value);
+		string name(sa);
+		
+		//clog<<"name, value: "<<name<<" "<<value<<endl;
+		for(size_t i=0;i<ldolist.size();i++){
+			//clog<<"A name: "<<*ldolist[i]->A<<endl;
+			if(ldolist[i]->A->name == name){
+				ldolist[i]->voltage = value;
+				ldolist[i]->A->rep->value = value;	
+				//clog<<"ldo, vol: "<<*ldolist[i]->A<<" "<<ldolist[i]->A->rep->isS();
+				
+				break;
+			}
+		}
+	}
+	fclose(f);
+	
 }
 
 void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
@@ -4696,6 +4729,16 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	t2 = clock();
 	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 	//return max_IR;
+}
+
+void Circuit::verify_ldo(Tran &tran, char *filename){
+	update_ldo_voltage(filename);
+	pad_solve_DC(tran);
+	//solve_LU_core();
+	double max_IR = locate_maxIRdrop();	
+	//double max_IRS = locate_special_maxIRdrop();
+	clog<<"verified max_IR by cholmod is: "<<max_IR<<endl;
+
 }
 
 void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
