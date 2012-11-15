@@ -2225,7 +2225,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	vector<double> ref_drop_vec_g;
 	double min_IR = max_IRdrop;
 	// used for global pad movement
-	for(size_t i=0;i<5;i++){
+	for(size_t i=0;i<0;i++){
 		//clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
@@ -2276,7 +2276,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	}
 	// get the best pad set by name and pt
 	// copy the best node		
-	recover_global_pad(tran, pad_set_best);
+	// recover_global_pad(tran, pad_set_best);
 	
 	ref_drop_vec_g.clear();
 	origin_pad_set_g.clear();
@@ -2286,7 +2286,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
-	for(int i=0;i<2;i++){
+	for(int i=0;i<1;i++){
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
 		clog<<"======= global ==== "<<endl;
@@ -2377,13 +2377,13 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
 		}
-		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
+		clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 	}
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
 
 	// for local pad movement
-	for(size_t i=0;i<5;i++){
+	for(size_t i=0;i<2;i++){
 		//clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_l.resize(pad_set_l.size());
@@ -2425,10 +2425,12 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 				for(int j=0;j<ldolist_best[i]->node.size();j++){
 					ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
 					ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
+					
+					clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 				}
 			}
 		}
-		//clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
+		clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
 	}
 	
 	//ldolist = ldolist_best;
@@ -2660,7 +2662,7 @@ Node * Circuit::pad_projection(
 			//clog<<"nd_new: "<<*nd_new<<endl;
 			// need to adjust the local pads
 			if(local_flag == true && nd_new->get_layer() == local_layers[0]){
-				//clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
+				clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
 				Node *nb = project_local_pad(nd, nd_new, ldo, map_node_pt);
 				if(nb == NULL)
 					return nd;
@@ -4087,24 +4089,26 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 	bool flag = false;
 	bool flag_move = false;
 	for(size_t i=0;i<wspacelist.size();i++){
+		//clog<<"ref_x, ref_y, wspace: "<<ref_x<<" "<<ref_y<<" ";
 		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);
+		
 		// if ldo is in some block
 		if(flag == true){
-			//clog<<"target in current module. "<<endl;
+			clog<<"target in current module. "<<endl;
 			// move the LDO out of this block
 			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
 			break;
 		}
 	}
 	if(flag == false){
-		//clog<<"target not in current module. "<<endl;
+		clog<<"target not in current module. "<<endl;
 		double x0 = ref_x;
 		double y0 = ref_y;
 		// direct set ldo from current spot
 		flag_move = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, x0, y0, ldo_ptr);
 	}
 	if(flag_move == false){
-		//clog<<"not move: "<<endl;
+		clog<<"not move: "<<endl;
 		return NULL;
 	}
 	// get the node
@@ -4129,7 +4133,7 @@ Node * Circuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_ma
 		nodelist[nd_new_ldo->id] = ldo_final_ptr;
 		ldo->A = ldo_final_ptr;
 	}*/
-	//clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
+	clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
 	ldo->A = nd_new_ldo;
 	return nd_new_ldo; 
 }
@@ -4436,7 +4440,7 @@ bool Circuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y
 
 	// locate the cloest point at pt
 	// propagate block nodes from pt
-	// clog<<"existing pt. "<<pt->x<<" "<<pt->y<<endl;	
+	clog<<"existing pt. "<<pt->x<<" "<<pt->y<<endl;	
 	// propagate along this node to find a ldo 
 	// position which does not have overlap with 
 	// each other
@@ -4536,15 +4540,16 @@ bool Circuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, 
 		x = cur.x;	y = cur.y;
 		deltax = x - ref_x; deltay = y - ref_y;
 		dist = sqrt(deltax*deltax + deltay*deltay);
-		//clog<<"x, y, dist: "<<x<<" "<<y<<" "<<dist<<" "<<ref_dist<<endl;
+		clog<<"x, y, dist, ref: "<<x<<" "<<y<<" "<<dist<<" "<<ref_dist<<endl;
 		if(dist >= ref_dist) break;
 		bool flag_place = false;
 		// handle current spot
 		for(int i=0;i<8;i++){
 			double temp_x = x + dx[i];
-			double temp_y = x + dy[i];
+			double temp_y = y + dy[i];
 			if(temp_x <lx || temp_x > gx || 				temp_y < ly || 
 				temp_y > gy) continue;
+			clog<<"temp_x, temp_y: "<<temp_x<<" "<<temp_y<<endl;
 			bool flag = node_in_wspace(temp_x, temp_y, module);
 			if(flag == true) continue;
 			// find the one not in block

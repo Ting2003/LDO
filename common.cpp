@@ -134,12 +134,17 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 		}
 		
 	}
+	
 	// case C. node is not A. and B.	
 	for(size_t i=1;i<wspace->node.size();i++){
 		x_old = wspace->node[i-1]->x;	
 		y_old = wspace->node[i-1]->y;
 		x_new = wspace->node[i]->x;	
 		y_new = wspace->node[i]->y;
+		/*if(wspace->name =="W6"){
+			clog<<"x0, y0: "<<x0<<" "<<y0<<endl;
+			clog<<"x_old, y_old, x_new, y_new: "<<x_old<<" "<<y_old<<" "<<x_new<<" "<<y_new<<endl;
+		}*/
 		// 1 
 		if(x_old > x0 && y_old > y0){
 			// 1 -->2
@@ -158,7 +163,7 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 			if(x_new > x0 && y_new > y0)
 				degree -= 90;	
 		}// 3
-		else if(x_old <x0 && y_old <x0){
+		else if(x_old <x0 && y_old <y0){
 			// 3 -->4
 			if(x_new > x0 && y_new < y0)
 				degree += 90;
@@ -178,8 +183,8 @@ bool node_in_wspace(double x0, double y0, MODULE *wspace){
 		y_old = y_new;
 		
 	}
-	// if(wspace->name == "W11")
-	// clog<<"wspace, degree: "<<wspace->name<<" "<<degree<<endl;
+	 //if(wspace->name == "W6")
+	 //clog<<"wspace, degree: "<<wspace->name<<" "<<degree<<endl;
 	if(degree == 360)
 		flag = true;
 	else if(degree == 0)
