@@ -13,6 +13,10 @@ public:
 	vector<Point*> node;
 	int width;
 	int height;
+	// stores the output voltage
+	double voltage;
+	// current extracted from this LDO
+	double current; 
 };
 
 // current block in polygon format

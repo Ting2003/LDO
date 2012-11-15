@@ -2296,6 +2296,35 @@ void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &
 	}
 }
 
+// compute LDO currents 
+void Circuit::compute_ldo_current(){
+	Node *nA;
+	Net *net;
+	Node *nb;
+	double current_sum = 0;
+	double current = 0;
+	for(size_t i=0;i<ldolist.size();i++){
+		nA = ldolist[i]->A;
+		clog<<"i, nA: "<<*nA<<endl;
+		current_sum =0;	
+		// scan neighboring nodes to find cur
+		for(DIRECTION d = WEST; d <= NORTH; d = (DIRECTION)(d+1)){
+			net = nA->nbr[d];
+			if(net == NULL) continue;
+			//clog<<"net: "<<*net<<endl;
+			nb = net->ab[0];
+			if(nb->name == nA->name)
+				nb = net->ab[1];
+			//clog<<"var1, var2: "<<*nA<<" "<<*nb<<endl;
+			current = (nA->value - nb->value)/net->value;
+			current_sum += current;
+			// clog<<"cur, sum: "<<current<<" "<<current_sum<<endl;
+		}
+		ldolist[i]->current = current_sum;
+		clog<<"cur: "<<current_sum<<endl;
+	}
+}
+
 void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_l;
 	double dist_l = 0;
