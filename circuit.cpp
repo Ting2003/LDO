@@ -208,6 +208,12 @@ void Circuit::solve_init(){
 	}
 	//cout<<"nodelist.size: "<<nodelist<<endl;
 	//clog<<"replist.size: "<<replist<<endl;
+	for(size_t i=0;i<ldolist.size();i++){
+		LDO *ldo_ptr = ldolist[i];
+		ldo_ptr->A->rep->enableLDO();
+		//clog<<"enable ldo flag: "<<*ldo_ptr->A->rep<<endl;
+	}
+	
 	build_pad_set();
 	mark_special_nodes();
 }
@@ -2364,7 +2370,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	pad_set_old_l.resize(pad_set_l.size());
 	assign_pad_set(pad_set_l, pad_set_old_l);
 	
-	build_ldolist(ldo_vec);
+	//build_ldolist(ldo_vec);
 	build_wspacelist(wspace_vec);
 	// stores the best ldolist
 	vector<LDO*>ldolist_best;
@@ -3866,17 +3872,22 @@ void Circuit::build_pad_set(){
 		if(nodelist[i]->isS()==X){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
-			if(nodelist[i]->get_layer()== global_layers[0])
+			if(nodelist[i]->is_LDO() == false){
+			//if(nodelist[i]->get_layer()== global_layers[0])
 				pad_set_g.push_back(pad_ptr);
+			}
 			else
 				pad_set_l.push_back(pad_ptr);
 		}
 	}
-	//for(size_t j=0;j<pad_set_g.size();j++)
-		// cout<<"global pad: "<<*pad_set_g[j]->node<<endl;
+	/*for(size_t j=0;j<pad_set_g.size();j++)
+		 cout<<"global pad: "<<*pad_set_g[j]->node<<endl;
+	cout<<endl;
 
-	/*for(size_t j=0;j<pad_set_l.size();j++)
+	for(size_t j=0;j<pad_set_l.size();j++)
 		 clog<<"local pad: "<<*pad_set_l[j]->node<<endl;
+	*/
+	/*
 	for(size_t i=0;i<replist.size();i++){
 		if(replist[i]->pt.z != 4) continue;
 		if(replist[i]->isS()==X || replist[i]->value == 1.4)

@@ -74,6 +74,7 @@ int main(int argc, char * argv[]){
 	for(i=0;i<chip.cktlist.size();i++){
 		Circuit * ckt = chip.cktlist[i];
 		// functions for transient solve
+		ckt->build_ldolist(chip.ldolist);
 		ckt->solve(tran);
 		
 		//ckt->solve_DC();

@@ -58,7 +58,9 @@ public:
 	// disable the flag of some pad node
 	void disableX();
 	// enable the flag of some pad node
-	void enableX();	
+	void enableX();
+	void enableLDO();
+	void disableLDO();	
 private:
 	double value;		// voltage
 	// flag = 1 --> X
