@@ -29,6 +29,7 @@ public:
 	int get_layer() const;
 
 	int isS() const;
+	bool is_LDO() const;
 	bool is_ground() const;
 
 	double get_value() const;
@@ -51,6 +52,7 @@ public:
 	size_t id;		// id in nodelist
 	bool flag_visited;
 	bool flag_qualified;
+	bool flag_LDO; 	// whether this node is LDO node
 	//////// member and function for pad //////
 
 	// disable the flag of some pad node
@@ -70,11 +72,13 @@ private:
 inline int Node::isS() const{return flag;}
 inline void Node::disableX() {flag = -1;}
 inline void Node::enableX() {flag = 0;}
-
+inline void Node::enableLDO() {flag_LDO = true;}
+inline void Node::disableLDO() {flag_LDO = false;}
 
 //inline bool Node::is_ground() const{return name == "0";}
 // use a tricky way to speed up
 inline bool Node::is_ground() const{return pt.x<0;}
+inline bool Node::is_LDO() const{return flag_LDO;}
 
 inline int Node::get_layer() const{ return pt.z; }
 
