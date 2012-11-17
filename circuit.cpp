@@ -2382,7 +2382,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	}
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
-
+	clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	for(size_t i=0;i<5;i++){
 		//clog<<endl<<"iter for pad move. "<<i<<endl;
@@ -2660,6 +2660,7 @@ Node * Circuit::pad_projection(
 		nd_new = get_node_pt(map_node_pt, 
 			pt_name);
 		nd_new = nd_new->rep;
+		//clog<<"has this node: "<<*nd_new<<endl;
 		// if this node is not occupied by pad
 		if(nd_new->isS()!=X){
 			//clog<<"nd_new: "<<*nd_new<<endl;
