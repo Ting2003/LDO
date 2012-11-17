@@ -191,9 +191,6 @@ void Circuit::solve_init(){
 			assert( net->ab[1] != p );
 			p->rep = net->ab[1]->rep;
 		} // else the representative is itself
-		//if(p->isS()==X && p->name != p->rep->name)
-		//if(p->name == "_X_n6_50_0" || p->name == "n6_50_0")
-		//cout<<"p, p->rep: "<<*p<<" "<<*p->rep<<endl;
 		// push the representatives into list
 		if( p->rep == p ) {
 			replist.push_back(p);
@@ -205,8 +202,6 @@ void Circuit::solve_init(){
 			p->rid = p->rep->rid;
 		 //cout<<"p, p->rep, rid: "<<p->name<<" "<<p->rep->name<<" "<<p->rid<<endl;
 	}
-	//cout<<"nodelist.size: "<<nodelist<<endl;
-	//clog<<"replist.size: "<<replist<<endl;
 	for(size_t i=0;i<ldolist.size();i++){
 		LDO *ldo_ptr = ldolist[i];
 		ldo_ptr->A->rep->enableLDO();
@@ -2765,11 +2760,9 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
-	//size_t index_via_net = 0;
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
-	//Net *via_net = NULL;
 	int type_1 = RESISTOR;
 	Node *add_node_new;
 	stringstream sstream;
@@ -2901,24 +2894,6 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		double value = resistor_net->value;
 		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
 
-		/*if(rm_node->get_layer() == local_layers[0]){
-			// Need to move the via net
-			via_net = add_node->nbr[TOP];
-			if(via_net != NULL){
-				//clog<<"via net old: "<<*via_net<<endl;
-				// need to locate the top node
-				sstream.str("");
-				sstream<<"n"<<global_layers[0]<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y;
-				if(has_node_pt(map_node_pt_l, sstream.str())){
-					Node *nd = get_node_pt(map_node_pt_l, sstream.str());
-					via_net->ab[0] = na;
-					via_net->ab[1] = nd;
-					//clog<<"via net new: "<<*via_net<<endl;
-				}
-			}
-		}*/
-		//clog<<"via net new: "<<*via_net<<endl;
-		//cout<<"add_net resistor: "<<*add_resistor_net<<endl;
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
@@ -2926,13 +2901,10 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
 	
 		type_1 = RESISTOR;
-		//cout<<"net_set resis: "<<*net_set[type_1][index_rm_resistor_net]<<endl;
 		net_set[type_1][index_rm_resistor_net] = add_resistor_net;
 
 		// substitue the new pos with the old one
 		// may need to free rm node
-		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node->rep<<" "<<*add_node_new<<endl;
-		//cout<<"nodelist: "<<*nodelist[rm_node->id]<<" "<<*replist[rm_node->rid]<<endl;
 		replist[rm_node->rid] = add_node_new;
 		nodelist[rm_node->id] = add_node_new;
 		rm_node->disableX();
@@ -2954,7 +2926,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 	Net *add_net=NULL;
 	Net *resistor_net = NULL;
 	Net *add_resistor_net = NULL;
-	// Net *via_net = NULL;
 	int type_1 = RESISTOR;
 	Node *add_node_new;
 	stringstream sstream;
@@ -3081,24 +3052,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		double value = resistor_net->value;
 		add_resistor_net = new Net(RESISTOR, value, add_node, add_node_new);
 
-		/*if(rm_node->get_layer() == local_layers[0]){
-			// Need to move the via net
-			via_net = add_node->nbr[TOP];
-			if(via_net != NULL){
-				//clog<<"via net old: "<<*via_net<<endl;
-				// need to locate the top node
-				sstream.str("");
-				sstream<<"n"<<global_layers[0]<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y;
-				if(has_node_pt(map_node_pt_g, sstream.str())){
-					Node *nd = get_node_pt(map_node_pt_g, sstream.str());
-					via_net->ab[0] = na;
-					via_net->ab[1] = nd;
-					//clog<<"via net new: "<<*via_net<<endl;
-				}
-			}
-		}*/
-		//clog<<"via net new: "<<*via_net<<endl;
-		//cout<<"add_net resistor: "<<*add_resistor_net<<endl;
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
@@ -3110,8 +3063,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 
 		// substitue the new pos with the old one
 		// may need to free rm node
-		//cout<<"rm_id: node, add_node: "<<rm_node->rid<<" "<<*rm_node->rep<<" "<<*add_node_new<<endl;
-		//cout<<"nodelist: "<<*nodelist[rm_node->id]<<" "<<*replist[rm_node->rid]<<endl;
 		replist[rm_node->rid] = add_node_new;
 		nodelist[rm_node->id] = add_node_new;
 		rm_node->disableX();
