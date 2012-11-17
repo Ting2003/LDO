@@ -181,8 +181,7 @@ void Circuit::solve_init(){
 		p->id = i;
 		// set the representative
 		Net * net = p->nbr[TOP];
-		//if(net!=NULL)
-			//cout<<"p, net: "<<*p<<" "<<p->isS()<<" "<<*net<<endl;
+			//clog<<"p, net: "<<*p<<" "<<p->isS()<<" "<<*net<<endl;
 		if( p->isS()== X) VDD = p->get_value();
 		// test short circuit
 		if( p->isS() !=X && // X must be representative 
@@ -2417,13 +2416,16 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		move_violate_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
 
 		// move pads according to graph contraints
+		
+		// clog<<"before graph_move. "<<endl;
 		graph_move_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
-		//clog<<"after graph move. "<<endl;
+		// clog<<"after graph move. "<<endl;
 		clear_flags(pad_set_l);
 		// actual move pads into the new spots
 		// project_pads();
 		
 		double max_IR = resolve_direct(tran, true);
+		// clog<<"after resolve direct. "<<endl;
 		if(max_IR ==0)
 			break;
 		if(max_IR < min_IR){
@@ -2656,10 +2658,9 @@ Node * Circuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	pt_name = sstream.str();
-	//clog<<"pt_name: "<<pt_name<<endl;
+	// clog<<"pt_name: "<<pt_name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
-	//clog<<"orig pad: "<<*nd<<endl;
 	if(has_node_pt(map_node_pt, pt_name)){
 		nd_new = get_node_pt(map_node_pt, 
 			pt_name);
@@ -2684,7 +2685,8 @@ Node * Circuit::pad_projection(
 				nd->value = 0;
 				return nd_new;
 			}
-		}
+		}else
+			return nd;
 	}
 	else
 		report_exit("no project node.");
@@ -2700,6 +2702,7 @@ Node * Circuit::pad_projection(
 // two map node point lists:
 // one for global pads, the other for local pads
 void Circuit::build_map_node_pt(){
+	map_node_pt_g.clear();
 	if(pad_set_g.size()==0)
 		clog<<"no pad on grid. ERROR"<<endl;
 	int ref_layer_g;
@@ -2717,14 +2720,14 @@ void Circuit::build_map_node_pt(){
 		if(nd->isS()==Z || nd->isS() ==X)
 			continue;
 		stringstream sstream;
-		if(nd->get_layer()==ref_layer_g){
+		//if(nd->get_layer()==ref_layer_g){
 			sstream.str("");	
 			sstream<<"n"<<ref_layer_g<<"_"<<
 				nd->pt.x<<"_"<<nd->pt.y;
 			pt_pair.first = sstream.str();
 			pt_pair.second = nd;
 			map_node_pt_g.insert(pt_pair);
-		} else if(nd->get_layer() == 
+		/*} else if(nd->get_layer() == 
 			ref_layer_l){
 			sstream.str("");	
 			sstream<<"n"<<ref_layer_l<<"_"<<
@@ -2732,7 +2735,7 @@ void Circuit::build_map_node_pt(){
 			pt_pair.first = sstream.str();
 			pt_pair.second = nd;
 			map_node_pt_l.insert(pt_pair);
-		}
+		}*/
 	}
 }
 
@@ -2813,7 +2816,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		}
 		rm_node = pad_set[i]->node->rep;
 		
-		clog<<"rm_node: "<<*rm_node<<endl;
+		// clog<<"rm_node: "<<*rm_node<<endl;
 		// reset the rep of bottom node of rm pad
 		Net *net = rm_node->nbr[BOTTOM];
 		na = net->ab[0];
@@ -2836,7 +2839,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		//clog<<"sstream.str: "<<sstream.str()<<endl;
 		add_node = get_node_pt(map_node_pt_g, 
 			sstream.str());
-		clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		// clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 		add_node = add_node->rep;
 		if(add_node->isS()==X){
 		   continue;
@@ -3024,7 +3027,7 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		//if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
 			//continue;
 		count++;
-		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		//clog<<endl<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
@@ -3103,7 +3106,6 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
 	
 		type_1 = RESISTOR;
-		//cout<<"net_set resis: "<<*net_set[type_1][index_rm_resistor_net]<<endl;
 		net_set[type_1][index_rm_resistor_net] = add_resistor_net;
 
 		// substitue the new pos with the old one
@@ -3243,6 +3245,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 	
 		type_1 = RESISTOR;
 		net_set[type_1][index_rm_resistor_net] = add_resistor_net;
+		
 
 		// substitue the new pos with the old one
 		// may need to free rm node
@@ -3430,7 +3433,7 @@ void Circuit::extract_min_max_pads(double VDD, vector<Pad*> &pad_set, vector<dou
 				pad_ptr = pad_set[k];
 				//double ref_drop_value = ref_drop_vec[k];
 				new_pad = pad_projection(map_node_pt, pad_set, pad_ptr, min_pads[j], local_flag);	
-				clog<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+				// clog<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 				size_t m = id_minpad;		
 				pad_set[m]->node->disableX();
 				pad_set[m]->node->value = 0;
@@ -4717,7 +4720,6 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	clock_t t1, t2;
 	t1 = clock();
 	rebuild_voltage_nets_g(pad_set_g, pad_set_best);
-	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
 	//solve_LU_core();
@@ -4726,6 +4728,7 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	clog<<"recovered global max_IR is: "<<max_IR<<endl;
 	worst_cur = worst_cur_new;
 	t2 = clock();
+	
 	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 	//return max_IR;
 }
@@ -4753,7 +4756,7 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 		nd_new = get_node_pt(map_node_pt_g, pt_name);
 		nd_new = nd_new->rep;	
 		origin_pad_set_l[i] = nd_new;
-		clog<<"add, rm: "<<*nd_new<<" "<<*pad_set_l[i]->node<<endl;
+		//clog<<"add, rm: "<<*nd_new<<" "<<*pad_set_l[i]->node<<endl;
 	}
 	// solve with best case again
 	clock_t t1, t2;
