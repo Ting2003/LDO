@@ -535,7 +535,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 		//ldo_ptr->A = sA_Xptr;
 		// start to add net
 		Net *net;
-		double value = 0;
+		double value = 0.1;
 		// then add net
 		net = new Net(RESISTOR, value, nd_ptr, sA_Xptr);
 		net->id = count[RESISTOR]++;

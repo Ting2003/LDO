@@ -71,7 +71,7 @@ int main(int argc, char * argv[]){
 	size_t i=0;
 	clog<<"start to solve. "<<endl;
 //#pragma omp parallel for private(i)	
-	for(i=0;i<chip.cktlist.size();i++){
+	for(i=0;i<1;i++){//chip.cktlist.size();i++){
 		Circuit * ckt = chip.cktlist[i];
 		// functions for transient solve
 		ckt->build_ldolist(chip.ldolist);
