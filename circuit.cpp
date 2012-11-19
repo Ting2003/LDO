@@ -202,6 +202,7 @@ void Circuit::solve_init(){
 			p->rid = p->rep->rid;
 		 //cout<<"p, p->rep, rid: "<<p->name<<" "<<p->rep->name<<" "<<p->rid<<endl;
 	}
+	
 	Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
 		LDO *ldo_ptr = ldolist[i];
@@ -216,8 +217,10 @@ void Circuit::solve_init(){
 			nd = net->ab[1];
 		nd->enableLDO();
 	}
+	
 	//clog<<"before build pad set. "<<endl;	
 	build_pad_set();
+	
 	mark_special_nodes();
 }
 
@@ -2230,7 +2233,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	}
 	clog<<"max_IR is: "<<max_IRdrop<<endl;
 	// build up the global and local map for nodes concering of global and local pads
-	build_map_node_pt();
+	// build_map_node_pt();
 		
 	vector<double> ref_drop_vec_g;
 	double min_IR = max_IRdrop;
@@ -2273,6 +2276,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		// project_pads();
 			
 		double max_IR = resolve_direct(tran, false);
+		
 		if(max_IR ==0)
 			break;
 		//cout<<endl;
@@ -2300,13 +2304,23 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
-	for(int i=0;i<2;i++){
+	for(int i=0;i<2;i++){	
+		build_map_node_pt();
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
-		clog<<"======= global ==== "<<endl;
-		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		//clog<<"======= global ==== "<<endl;
+		
+		//relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		
+		//if(i>=1)
+			//build_pad_set_l(ldolist);
 		clog<<"======== local ===== "<<endl;
 		relocate_pads_graph(tran, ldo_vec, wspace_vec);
+		clog<<"======= global ==== "<<endl;
+		
+		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		
+
 	}
 }
 
@@ -2333,15 +2347,15 @@ void Circuit::compute_ldo_current(){
 		//for(DIRECTION d = WEST; d <= BOTTOM; d = (DIRECTION)(d+1)){
 			net = nA->nbr[d];
 			if(net == NULL) {
-				//clog<<"null net. "<<endl;
+				clog<<"null net. "<<endl;
 				continue;
 			}
-			//cout<<"net: "<<*net<<endl;
+			cout<<"net: "<<*net<<endl;
 			nb = net->ab[0];
 			if(nb->name == nA->name)
 				nb = net->ab[1];
 			//clog<<"var1, var2: "<<*nA<<" "<<*nb<<endl;
-			current = (nb->value - nA->value)/net->value;
+			current = (nb->value - nA->value)/0.5;//net->value;
 			current_sum += current;
 			//clog<<"cur, sum: "<<current<<" "<<current_sum<<endl;
 		//}
@@ -2386,6 +2400,7 @@ void Circuit::update_ldo_voltage(char *filename){
 void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
 	vector<Node*> pad_set_old_l;
 	double dist_l = 0;
+	
 	pad_set_old_l.resize(pad_set_l.size());
 	assign_pad_set(pad_set_l, pad_set_old_l);
 	
@@ -2415,6 +2430,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		//clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_l.resize(pad_set_l.size());
+		
 		assign_pad_set(pad_set_l, origin_pad_set_l);
 		// build pad connection graph
 		build_graph(pad_set_l);
@@ -2915,6 +2931,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		// new node id and rep  =  old one
 		add_node_new = new Node(*add_node);
 		add_node_new->enableX();
+		add_node_new->enableLDO();
 		add_node_new->value = VDD;
 		add_node_new->rep = add_node_new;
 
@@ -2956,9 +2973,11 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		// may need to free rm node
 		replist[rm_node->rid] = add_node_new;
 		nodelist[rm_node->id] = add_node_new;
+		pad_set[i]->node = add_node_new;
 		rm_node->disableX();
+		rm_node->disableLDO();
 		rm_node->value = 0;
-		delete rm_node;
+		 delete rm_node;
 	}
 	rm_net.clear();
 	pad_set_process.clear();
@@ -3081,6 +3100,7 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		// new node id and rep  =  old one
 		add_node_new = new Node(*add_node);
 		add_node_new->enableX();
+		add_node_new->enableLDO();
 		add_node_new->value = VDD;
 		add_node_new->rep = add_node_new;
 
@@ -3118,11 +3138,12 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		replist[rm_node->rid] = add_node_new;
 		nodelist[rm_node->id] = add_node_new;
 		rm_node->disableX();
+		rm_node->disableLDO();
 		rm_node->value = 0;
 		rm_node->nbr[BOTTOM] = NULL;
 		rm_node->nbr[TOP] = NULL;
 		na->nbr[TOP] = NULL;
-		delete rm_node;
+		 delete rm_node;
 	}
         //clog<<"before delete rm_net. "<<endl;
 	rm_net.clear();
@@ -3207,6 +3228,8 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		// new node id and rep  =  old one
 		add_node_new = new Node(*add_node);
 		add_node_new->enableX();
+		if(rm_node->is_LDO())
+			add_node_new->enableLDO();
 		add_node_new->value = VDD;
 		add_node_new->rep = add_node_new;
 
@@ -3268,7 +3291,9 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		//clog<<"nodelist: "<<*nodelist[rm_node->id]<<" "<<*replist[rm_node->rid]<<endl;
 		replist[rm_node->rid] = add_node_new;
 		nodelist[rm_node->id] = add_node_new;
+		pad_set[i]->node = add_node_new;
 		rm_node->disableX();
+		rm_node->disableLDO();
 		rm_node->value = 0;
 		rm_node->nbr[BOTTOM] = NULL;
 		rm_node->nbr[TOP] = NULL;
@@ -3708,9 +3733,9 @@ double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	else
 		rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
 	//clog<<"========== finish net building. ==="<<endl;	
-	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
+	
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -3889,6 +3914,16 @@ void Circuit::update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & r
 	}
 }
 
+void Circuit::build_pad_set_l(vector<LDO*> ldolist){
+	pad_set_l.clear();
+	Node *nd;
+	for(size_t i=0;i<ldolist.size();i++){
+		Pad *pad_ptr  = new Pad();
+		pad_ptr->node = ldolist[i]->A;
+		pad_set_l.push_back(pad_ptr);
+	}
+}
+
 void Circuit::build_pad_set(){
 	pad_set_g.resize(0);
 	pad_set_l.resize(0);
@@ -3990,8 +4025,8 @@ void Circuit::release_resource(){
    cholmod_finish(&c); 
 }
 
-void Circuit::pad_solve_DC(Tran &tran){
-   solve_init();
+void Circuit::pad_solve_DC(Tran &tran){ 
+   solve_init(); 
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node   
     
@@ -4003,7 +4038,9 @@ void Circuit::pad_solve_DC(Tran &tran){
    bnewp = static_cast<double *>(bnew->x); 
 
    Matrix A;
+  
    stamp_by_set_pad(A, tran);
+   
    //cout<<A<<endl;
    A.set_row(n);
 
@@ -4020,10 +4057,12 @@ void Circuit::pad_solve_DC(Tran &tran){
 	continue; // it's a 0v via
 	stamp_VDD_tr(bnewp, ns[i], flag_cur);
    }
+   
    //cout<<endl<<"======= pad process. "<<endl;
    make_A_symmetric(bnewp, flag_cur);
 
    Algebra::solve_CK(A, L, x, bnew, cm);
+   
    A.clear();
    xp = static_cast<double *> (x->x);
    for(size_t i=0;i<n;i++)
@@ -4739,11 +4778,14 @@ bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double 
 void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){	
 	clock_t t1, t2;
 	t1 = clock();
+	
 	rebuild_voltage_nets_g(pad_set_g, pad_set_best);
+	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
+	
 	//solve_LU_core();
-	double max_IR = locate_maxIRdrop();	
+	double max_IR = locate_maxIRdrop();
 	//double max_IRS = locate_special_maxIRdrop();
 	clog<<"recovered global max_IR is: "<<max_IR<<endl;
 	worst_cur = worst_cur_new;
@@ -4756,6 +4798,7 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 void Circuit::verify_ldo(Tran &tran, char *filename){
 	update_ldo_voltage(filename);
 	pad_solve_DC(tran);
+	
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -4792,6 +4835,8 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 		
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
+	//build_pad_set_l(ldolist);
+	
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
@@ -4804,14 +4849,17 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 		sstream.str("");
 		sstream<<"n"<<ldolist[i]->A->pt.z<<"_"<<ldolist_best[i]->node[0]->x<<"_"<<ldolist_best[i]->node[0]->y;
 		Node *nA = get_node_pt(map_node_pt_g, sstream.str());
-		if(nA == NULL) continue;
+		if(nA == NULL) {
+			clog<<"null node. "<<sstream.str()<<endl;
+			continue;
+		}
 		ldolist[i]->A = nA;
 		//ldolist_best[i] = *ldolist[i];
-		//clog<<"best A: "<<*ldolist[i]->A<<endl;
+		//clog<<"best A: "<<*ldolist[i]->A<<" "<<endl;
 		for(int j=0;j<ldolist_best[i]->node.size();j++){
 			ldolist[i]->node[j]->x =ldolist_best[i]->node[j]->x;
 			ldolist[i]->node[j]->y = ldolist_best[i]->node[j]->y; 
 			// clog<<"node: ("<<ldolist[i]->node[j]->x<<","<<ldolist[i]->node[j]->y<<endl;	
 		}
-	}	
+	}
 }

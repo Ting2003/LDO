@@ -105,6 +105,7 @@ public:
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
+	void build_pad_set_l(vector<LDO*> ldolist);
 	////// new member for pad //////
 	
 	double max_IRdrop;
