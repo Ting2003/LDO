@@ -2252,22 +2252,26 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		}
 		// find new point for all pads	
 		dist_g = update_pad_pos_all(pad_set_g, ref_drop_vec_g);
+		// clog<<"after update pad pos. "<<endl;
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
 			extract_min_max_pads(VDD, pad_set_g, ref_drop_vec_g, map_node_pt_g, false);
 		}
+		// clog<<"before move vilate pads. "<<endl;
 		// update the old pad set value
 		assign_pad_set(pad_set_g, pad_set_old_g);
+		// clog<<"again before move violate pas."<<endl;
 		move_violate_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g, false);
 
 		// move pads according to graph contraints
+		// clog<<"before graph move. "<<endl;
 		graph_move_pads(map_node_pt_g, pad_set_g, ref_drop_vec_g, false);	
-		//clog<<"after graph move. "<<endl;
+		// clog<<"after graph move. "<<endl;
 		clear_flags(pad_set_g);
 		// actual move pads into the new spots
 		// project_pads();
-		
+			
 		double max_IR = resolve_direct(tran, false);
 		if(max_IR ==0)
 			break;
@@ -2286,7 +2290,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	}
 	// get the best pad set by name and pt
 	// copy the best node		
-	//recover_global_pad(tran, pad_set_best);
+	recover_global_pad(tran, pad_set_best);
 	
 	ref_drop_vec_g.clear();
 	origin_pad_set_g.clear();
@@ -2296,7 +2300,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
-	for(int i=0;i<1;i++){
+	for(int i=0;i<2;i++){
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
 		clog<<"======= global ==== "<<endl;
@@ -2316,27 +2320,33 @@ void Circuit::compute_ldo_current(){
 	//cout<<"ldolist.size: "<<ldolist.size()<<endl;
 	for(size_t i=0;i<ldolist.size();i++){
 		nA = ldolist[i]->A;
-		cout<<"i, nA: "<<*nA<<endl;
+		clog<<"nA: "<<*nA<<" ";
 		current_sum =0;
 		DIRECTION d = TOP;	
+		/*double resistor_val = 0.1;
+		current = (VDD_G - nA->value)/resistor_val;
+		current_sum += current;
+		net = nA->nbr[d];
+		if(net == NULL)
+			clog<<"null net; "<<endl;*/
 		// scan neighboring nodes to find cur
-		//for(DIRECTION d = WEST; d <= NORTH; d = (DIRECTION)(d+1)){
+		//for(DIRECTION d = WEST; d <= BOTTOM; d = (DIRECTION)(d+1)){
 			net = nA->nbr[d];
 			if(net == NULL) {
-				clog<<"null net. "<<endl;
+				//clog<<"null net. "<<endl;
 				continue;
 			}
 			//cout<<"net: "<<*net<<endl;
 			nb = net->ab[0];
 			if(nb->name == nA->name)
 				nb = net->ab[1];
-			//cout<<"var1, var2: "<<*nA<<" "<<*nb<<endl;
+			//clog<<"var1, var2: "<<*nA<<" "<<*nb<<endl;
 			current = (nb->value - nA->value)/net->value;
 			current_sum += current;
-			// cout<<"cur, sum: "<<current<<" "<<current_sum<<endl;
+			//clog<<"cur, sum: "<<current<<" "<<current_sum<<endl;
 		//}
 		ldolist[i]->current = current_sum;
-		cout<<"cur: "<<current_sum<<endl;
+		clog<<"cur: "<<current_sum<<endl;
 	}
 }
 
@@ -2472,12 +2482,14 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 void Circuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
 	//clog<<"assign pad set."<<endl;
 	// clog<<"size: "<<pad_set_old.size()<<endl;
+	// clog<<"pad_set size: "<<pad_set.size()<<endl;
+	pad_set_old.resize(pad_set.size());
 	for(size_t i=0;i<pad_set_old.size();i++){
 		if(pad_set[i]->node == NULL)
 			clog<<"NULL node. "<<endl;
 		pad_set_old[i] = pad_set[i]->node;
 		//if(pad_set[i]->node->get_layer()==local_layers[0])
-		//clog<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
+		// cout<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
 	}
 }
 // special nodes includes nodes in local grids (including X node for LDO)
@@ -2799,11 +2811,14 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 	Node *nb;
 	for(size_t i=0;i<pad_set.size();i++){
 		rm_node = pad_set[i]->node->rep;
-		//clog<<"rm_node, add_node: "<<*rm_node<<" "<<*pad_set_best[i]<<endl;
+		//clog<<"i, rm_node, add_node: "<<i<<" "<<*rm_node<<" "<<*pad_set_best[i]<<endl;
 		bool flag = false;
 		size_t j=0;
-		for(j=0;j<pad_set.size();j++){
+		for(j=0;j<pad_set_best.size();j++){
 			Net *net = pad_set_best[j]->nbr[TOP];
+			if(net == NULL) continue;
+			if(net == NULL) clog<<"Null net. "<<endl;
+			//clog<<"net: "<<*net<<endl;
 			nb = net->ab[0];
 			if(nb->name != rm_node->name)
 				nb = net->ab[1];
@@ -2817,7 +2832,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 			pad_best_process[j] = true;
 		}
 	}
-		
+	
 	// delete all origin pad set
 	// and build nets of new pad set
 	for(size_t i=0;i<pad_set.size();i++){
@@ -2857,7 +2872,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		//clog<<"sstream.str: "<<sstream.str()<<endl;
 		add_node = get_node_pt(map_node_pt_g, 
 			sstream.str());
-		// clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		// clog<<"i, rm_nod, add_node, na: "<<i<<" "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 		add_node = add_node->rep;
 		if(add_node->isS()==X){
 		   continue;
@@ -2865,7 +2880,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		//if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
 			//continue;
 		count++;
-		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		// clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
@@ -2922,15 +2937,15 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		add_resistor_net->id = index_rm_resistor_net;
 
 		// modify the neighboring nets
-		add_net->ab[0]->nbr[BOTTOM] = add_resistor_net;
-		add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
+		//add_net->ab[0]->nbr[BOTTOM] = add_resistor_net;
+		//add_resistor_net->ab[0]->nbr[TOP] = add_resistor_net;
 		add_node->nbr[TOP] = add_resistor_net;
 		add_node_new->nbr[BOTTOM] = add_resistor_net;
 		add_node_new->nbr[TOP] = add_net;
 		//if(rm_node->name =="n6_75_172"){
-			clog<<"rm_node, add_node: "<<*rm_node<<" "<<*add_node_new<<endl;
+			/*clog<<"rm_node, add_node: "<<*rm_node<<" "<<*add_node_new<<endl;
 			clog<<"ad_node top: "<<*add_node->nbr[TOP]<<endl;
-			clog<<"X node bot, top: "<<*add_node_new->nbr[BOTTOM]<<" "<<*add_node_new->nbr[TOP]<<endl;
+			clog<<"X node bot, top: "<<*add_node_new->nbr[BOTTOM]<<" "<<*add_node_new->nbr[TOP]<<endl;			*/
 		//}
 	
 
@@ -4788,7 +4803,7 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	for(size_t i=0;i<ldolist.size();i++){
 		sstream.str("");
 		sstream<<"n"<<ldolist[i]->A->pt.z<<"_"<<ldolist_best[i]->node[0]->x<<"_"<<ldolist_best[i]->node[0]->y;
-		Node *nA = get_node_pt(map_node_pt_l, sstream.str());
+		Node *nA = get_node_pt(map_node_pt_g, sstream.str());
 		if(nA == NULL) continue;
 		ldolist[i]->A = nA;
 		//ldolist_best[i] = *ldolist[i];
@@ -4796,7 +4811,7 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 		for(int j=0;j<ldolist_best[i]->node.size();j++){
 			ldolist[i]->node[j]->x =ldolist_best[i]->node[j]->x;
 			ldolist[i]->node[j]->y = ldolist_best[i]->node[j]->y; 
-			//clog<<"node: ("<<ldolist[i]->node[j]->x<<","<<ldolist[i]->node[j]->y<<endl;	
+			// clog<<"node: ("<<ldolist[i]->node[j]->x<<","<<ldolist[i]->node[j]->y<<endl;	
 		}
 	}	
 }
