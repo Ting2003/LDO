@@ -4872,6 +4872,7 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	}
 }
 
+// build global graph and setting controlling nodes
 void Circuit::build_graph_global(){
 	vector<Pad*> total_pad_set;
 	size_t size = pad_set_g.size() + pad_set_l.size();
@@ -4884,6 +4885,9 @@ void Circuit::build_graph_global(){
 
 	// build a global graph for all pads
 	build_graph(total_pad_set);
+	// int pad_number = 1;
+	// building up controlling nodes
+	// extract_pads(total_pad_set, pad_number);
 	total_pad_set.clear();
 }
 
