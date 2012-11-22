@@ -2243,8 +2243,12 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		int pad_number = 1;
 		origin_pad_set_g.resize(pad_set_g.size());
 		assign_pad_set(pad_set_g, origin_pad_set_g);
-		// build pad connection graph
-		build_graph(pad_set_g);
+		// reset the global pads to be visited
+		// build_graph(pad_set_g);
+		build_graph_global();
+		if(i==0)
+			modify_graph(false);
+
 		// find control nodes for each pad
 		extract_pads(pad_set_g, pad_number);
 		// find the tune spot for control nodes	
@@ -2303,9 +2307,10 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 }
 
 // top level function for global and local pad movement
-void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
+void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){	
 	for(int i=0;i<3;i++){	
 		build_map_node_pt();
+		
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
 		
@@ -2313,11 +2318,13 @@ void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &
 			//build_pad_set_l(ldolist);
 		clog<<"======== local ===== "<<endl;
 		relocate_pads_graph(tran, ldo_vec, wspace_vec);
-		clog<<"======= global ==== "<<endl;
-		
-		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
-		
+		// clear global fix flag
+		clear_flags(pad_set_g);
 
+		clog<<"======= global ==== "<<endl;	
+		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
+		// clear local fix flag
+		clear_flags(pad_set_l);
 	}
 }
 
@@ -2430,7 +2437,11 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		
 		assign_pad_set(pad_set_l, origin_pad_set_l);
 		// build pad connection graph
-		build_graph(pad_set_l);
+		//build_graph(pad_set_l);
+		build_graph_global();
+		if(i==0)
+			modify_graph(true);
+
 		// find control nodes for each pad
 		extract_pads(pad_set_l, pad_number);
 		// find the tune spot for control nodes	
@@ -4859,4 +4870,35 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 			// clog<<"node: ("<<ldolist[i]->node[j]->x<<","<<ldolist[i]->node[j]->y<<endl;	
 		}
 	}
+}
+
+void Circuit::build_graph_global(){
+	vector<Pad*> total_pad_set;
+	size_t size = pad_set_g.size() + pad_set_l.size();
+	total_pad_set.resize(size);
+	for(size_t i=0;i<pad_set_g.size();i++)
+		total_pad_set[i] = pad_set_g[i];
+	for(size_t i=0;i<pad_set_l.size();i++)
+		total_pad_set[i+pad_set_g.size()] = 
+			pad_set_l[i];
+
+	// build a global graph for all pads
+	build_graph(total_pad_set);
+	total_pad_set.clear();
+}
+
+// fix the flag of either global or local
+void Circuit::modify_graph(bool flag){
+	// only keep local pad fixed
+	if(flag == false){
+		for(size_t i=0;i<pad_set_l.size();i++){
+			pad_set_l[i]->visit_flag = true;
+		}
+	}
+	// else only keep global pad fixed
+	else{
+		for(size_t i=0;i<pad_set_g.size();i++){
+			pad_set_g[i]->visit_flag = true;
+		}
+	}	
 }
