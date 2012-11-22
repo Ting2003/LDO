@@ -2308,14 +2308,11 @@ void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &
 		build_map_node_pt();
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
-		//clog<<"======= global ==== "<<endl;
-		
-		//relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
 		
 		//if(i>=1)
 			//build_pad_set_l(ldolist);
-		 clog<<"======== local ===== "<<endl;
-		 relocate_pads_graph(tran, ldo_vec, wspace_vec);
+		clog<<"======== local ===== "<<endl;
+		relocate_pads_graph(tran, ldo_vec, wspace_vec);
 		clog<<"======= global ==== "<<endl;
 		
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
