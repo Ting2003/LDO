@@ -2304,7 +2304,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){
-	for(int i=0;i<2;i++){	
+	for(int i=0;i<3;i++){	
 		build_map_node_pt();
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
@@ -2314,8 +2314,8 @@ void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &
 		
 		//if(i>=1)
 			//build_pad_set_l(ldolist);
-		clog<<"======== local ===== "<<endl;
-		relocate_pads_graph(tran, ldo_vec, wspace_vec);
+		 clog<<"======== local ===== "<<endl;
+		 relocate_pads_graph(tran, ldo_vec, wspace_vec);
 		clog<<"======= global ==== "<<endl;
 		
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
