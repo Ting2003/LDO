@@ -162,6 +162,7 @@ public:
 	void build_graph(vector<Pad*> &pad_set);
 	void build_graph_global();
 	void modify_graph(bool flag);
+	void print_ldo_list();
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);

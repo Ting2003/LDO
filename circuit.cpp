@@ -1388,11 +1388,11 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
 
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
-		clog<<"net: "<<*(*it)<<endl;
+		//clog<<"net: "<<*(*it)<<endl;
            if( fzero((*it)->value))
 		continue;
            if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
-           clog<<"net: "<<*(*it)<<endl;
+           //clog<<"net: "<<*(*it)<<endl;
            // node p points to X node
            if((*it)->ab[0]->rep->isS()==X){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
@@ -1400,7 +1400,7 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
            else if((*it)->ab[1]->rep->isS()==X ){
               p = (*it)->ab[1]->rep; q = (*it)->ab[0]->rep;
            }           
-           clog<<"p and q: "<<*p<<" "<<*q<<endl;
+           //clog<<"p and q: "<<*p<<" "<<*q<<endl;
 
            size_t id = q->rid;
            double G = tran.step_t / ((*it)->value*2);
@@ -2183,7 +2183,9 @@ void Circuit::save_ckt_nodes_to_tr(Tran &tran){
 double Circuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	for(size_t i=0;i<replist.size();i++){
-		double IR_drop = VDD - replist[i]->value;		
+		//double IR_drop = VDD - replist[i]->value;
+			
+		double IR_drop = 1.4 - replist[i]->value;		
 		if(IR_drop > max_IRdrop)
 			max_IRdrop = IR_drop;
 	}
@@ -4905,4 +4907,32 @@ void Circuit::modify_graph(bool flag){
 			pad_set_g[i]->visit_flag = true;
 		}
 	}	
+}
+
+// print LDO list
+void Circuit::print_ldo_list(){
+	for(size_t i=0;i<ldolist.size();i++){
+		cout<<"W"<<i<<" "<<ldolist[i]->A->pt.x+1<<" "<<ldolist[i]->A->pt.y+1;
+		for(size_t j=0;j<ldolist[i]->node.size();j++){
+			cout<<"("<<ldolist[i]->node[j]->x+1<<","<<ldolist[i]->node[j]->y+1<<")";	
+		}
+		cout<<endl;
+	}
+}
+
+// print_nodes for matlab
+void Circuit::print_matlab(){
+	// uncomment this if want to output to a file
+	//freopen("output.txt","w",stdout);
+	FILE *f;
+	f = fopen("out_matlab_512", "w");	
+
+	// don't output ground node
+	for(size_t i=0;i<replist.size();i++){
+		if(replist[i]->pt.z !=4) continue;
+		if(replist[i]->isS()==Z) continue;
+		fprintf(f, "%ld %ld  %.5e\n", replist[i]->pt.y+1, replist[i]->pt.x+1, 
+				VDD-nodelist[i]->value);
+	}
+	fclose(f);
 }

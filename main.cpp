@@ -81,6 +81,8 @@ int main(int argc, char * argv[]){
 		ckt->relocate_pads(tran, chip.ldolist, chip.wspacelist);
 		ckt->compute_ldo_current();
 		ckt->verify_ldo(tran, spicefile);
+		//ckt->print_ldo_list();
+		//ckt->print_matlab();
 		//delete ckt;
 	}
 	//tran.print_tr_nodes();
