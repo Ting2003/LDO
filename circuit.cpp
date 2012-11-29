@@ -216,10 +216,11 @@ void Circuit::solve_init(){
 		if(nd->name == ldo_ptr->A->name)
 			nd = net->ab[1];
 		nd->enableLDO();
+		//clog<<"nd is LDO: "<<*nd<<endl;
 	}
-	
-	//clog<<"before build pad set. "<<endl;	
-	build_pad_set();
+	//clog<<"before build pad set. "<<endl;
+	if(pad_set_g.size()==0)	
+		build_pad_set();
 	
 	mark_special_nodes();
 }
@@ -2230,7 +2231,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 	for(size_t i=0;i<pad_set_best.size();i++){
 		pad_set_best[i] = new Node();
 		pad_set_best[i]->name = pad_set_g[i]->node->name;
-		//clog<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
+		clog<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
 		pad_set_best[i]->pt = pad_set_g[i]->node->pt; 
 	}
 	clog<<"max_IR is: "<<max_IRdrop<<endl;
@@ -2293,7 +2294,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 			for(size_t i=0;i<pad_set_g.size();i++){
 				pad_set_best[i]->name = pad_set_g[i]->node->name;	
 				pad_set_best[i]->pt = pad_set_g[i]->node->pt;
-				//cout<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
+				clog<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
 			}
 		}
 		// need to add the best case for global pads
@@ -2728,15 +2729,15 @@ Node * Circuit::pad_projection(
 				if(nb == NULL)
 					return nd;
 				else{
-					Node *nd_new_adjust = adjust_pads(nb);
-					if(nd_new_adjust != NULL){
+					//Node *nd_new_adjust = adjust_pads(nb);
+					//if(nd_new_adjust != NULL){
 
 					nd->disableX();
 					nd->value = 0;
 					return nb;
-					}else{
-						return nd;
-					}
+					//}else{
+					//	return nd;
+					//}
 				}
 			}else if(local_flag == false){
 				//clog<<"nd, nd_new: "<<*nd<<" "<<*nd_new<<endl;
@@ -2925,8 +2926,8 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		count++;
 		// clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
-		for(size_t i=0;i<net_set[type].size();i++){
-			net = net_set[type][i];
+		for(size_t k=0;k<net_set[type].size();k++){
+			net = net_set[type][k];
 			//clog<<"id, net: "<<net->id<<" "<<*net<<endl;
 
 			if(net->ab[0]->name == rm_node->name ||
@@ -3004,6 +3005,7 @@ void Circuit::rebuild_voltage_nets_l(vector<Pad*>pad_set, vector<Node*> pad_set_
 		rm_node->disableX();
 		rm_node->disableLDO();
 		rm_node->value = 0;
+		pad_set[i]->node = pad_set_best[j];
 		 delete rm_node;
 	}
 	rm_net.clear();
@@ -3094,8 +3096,8 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		count++;
 		//clog<<endl<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
-		for(size_t i=0;i<net_set[type].size();i++){
-			net = net_set[type][i];
+		for(size_t k=0;k<net_set[type].size();k++){
+			net = net_set[type][k];
 			//clog<<"id, net: "<<net->id<<" "<<*net<<endl;
 
 			if(net->ab[0]->name == rm_node->name ||
@@ -3170,6 +3172,7 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 		rm_node->nbr[BOTTOM] = NULL;
 		rm_node->nbr[TOP] = NULL;
 		na->nbr[TOP] = NULL;
+		pad_set[i]->node = pad_set_best[j];
 		 delete rm_node;
 	}
         //clog<<"before delete rm_net. "<<endl;
@@ -3223,7 +3226,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		Net *net = rm_node->nbr[BOTTOM];
 		// use name to find the node
 		if(net == NULL){
-			//clog<<"rm_node: "<<*rm_node<<endl;
+			clog<<"rm_node: "<<*rm_node<<endl;
 			stringstream sstream;
 			sstream<<"n"<<rm_node->pt.z<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y<<endl;
 			//clog<<"name: "<<sstream.str()<<endl;
@@ -3255,7 +3258,7 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
 			continue;
 		count++;
-		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
@@ -4089,7 +4092,7 @@ void Circuit::release_resource(){
 }
 
 void Circuit::pad_solve_DC(Tran &tran){ 
-   solve_init(); 
+   solve_init();
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node   
     
@@ -4841,11 +4844,11 @@ bool Circuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double 
 void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){	
 	clock_t t1, t2;
 	t1 = clock();
-	
 	rebuild_voltage_nets_g(pad_set_g, pad_set_best);
 	
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
+	
 	
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();
@@ -4854,6 +4857,7 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	worst_cur = worst_cur_new;
 	t2 = clock();
 	
+	clog<<"after recover: "<<*pad_set_g[0]->node<<endl;
 	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
 	//return max_IR;
 }
