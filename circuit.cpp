@@ -2433,7 +2433,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	for(size_t i=0;i<5;i++){
-		//clog<<endl<<"iter for pad move. "<<i<<endl;
+		// clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set_l.resize(pad_set_l.size());
 		
@@ -2459,19 +2459,21 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 		if(i==0){
 			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_g, true);
 		}
+		//clog<<"before move violate. "<<endl;
 		// update the old pad set value
 		assign_pad_set(pad_set_l, pad_set_old_l);
+		//clog<<"before assign pad set. "<<endl;
 		move_violate_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
 
 		// move pads according to graph contraints
 		
-		// clog<<"before graph_move. "<<endl;
+		//clog<<"before graph_move. "<<endl;
 		graph_move_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
-		// clog<<"after graph move. "<<endl;
+		//clog<<"after graph move. "<<endl;
 		clear_flags(pad_set_l);
 		// actual move pads into the new spots
 		// project_pads();
-		
+		// clog<<"before resolve direct. "<<endl;	
 		double max_IR = resolve_direct(tran, true);
 		// clog<<"after resolve direct. "<<endl;
 		if(max_IR ==0)
@@ -2726,15 +2728,30 @@ Node * Circuit::pad_projection(
 				if(nb == NULL)
 					return nd;
 				else{
+					Node *nd_new_adjust = adjust_pads(nb);
+					if(nd_new_adjust != NULL){
+
 					nd->disableX();
 					nd->value = 0;
 					return nb;
+					}else{
+						return nd;
+					}
 				}
 			}else if(local_flag == false){
+				//clog<<"nd, nd_new: "<<*nd<<" "<<*nd_new<<endl;
+				Node *nd_new_adjust = adjust_pads(nd_new);
+				if(nd_new_adjust != NULL){
+					//clog<<"nd_new_adjust: "<<*nd_new_adjust<<endl;
 				//return nd;
-				nd->disableX();
-				nd->value = 0;
-				return nd_new;
+					nd->disableX();
+					nd->value = 0;
+					return nd_new_adjust;
+				}
+				else{
+					//clog<<"no global pad. "<<endl;
+					return nd;
+				}
 			}
 		}else
 			return nd;
@@ -3166,7 +3183,7 @@ void Circuit::rebuild_voltage_nets_g(vector<Pad*>pad_set, vector<Node*> pad_set_
 }
 
 // modify voltage net set with rm_node and add_node
-void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_pad_set){
+void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_pad_set, bool local_flag){
 	int type = VOLTAGE;
 	size_t index_rm_net = 0;
 	size_t index_rm_resistor_net = 0;
@@ -3186,25 +3203,59 @@ void Circuit::rebuild_voltage_nets(vector<Pad*>&pad_set, vector<Node*> &origin_p
 		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
 	}*/
 	int count = 0;
-	Node *na;	
+	Node *na;
+	cout<<endl;	
 	// delete all origin pad set
 	// and build nets of new pad set
 	for(size_t i=0;i<origin_pad_set.size();i++){
 		rm_node = origin_pad_set[i]->rep;
+		// if local pad
+		/*if(local_flag == true){
+			if(rm_node->is_LDO() != true)
+				continue;
+		}
+		else{
+			if(rm_node->is_LDO() == true)
+				continue;
+		}
+		cout<<"rm_node: "<<*rm_node<<endl;*/
 		// reset the rep of bottom node of rm pad
 		Net *net = rm_node->nbr[BOTTOM];
-		na = net->ab[0];
-		if(na->name == rm_node->name){
-			na = net->ab[1];
+		// use name to find the node
+		if(net == NULL){
+			//clog<<"rm_node: "<<*rm_node<<endl;
+			stringstream sstream;
+			sstream<<"n"<<rm_node->pt.z<<"_"<<rm_node->pt.x<<"_"<<rm_node->pt.y<<endl;
+			//clog<<"name: "<<sstream.str()<<endl;
+			//na = get_node_pt(map_node_pt_g, sstream.str());
+			for(size_t i=0;i<nodelist.size();i++){
+				if(nodelist[i]->name == sstream.str())
+					na = nodelist[i];
+					break;
+					//clog<<"has_this node. "<<endl;
+			}
+			if(na == NULL){
+				//clog<<"no this node. "<<endl;
+				continue;
+			}
+			//net = na->nbr[TOP];
+			//if(net == NULL) clog<<"NULL top net. "<<endl;
+			//if(net->ab[0]->name == na->name)
+		}else{ 
+			na = net->ab[0];
+			if(na->name == rm_node->name){
+				na = net->ab[1];
+			}
 		}	
 		na->rep = na;
+		
 		//clog<<"na, rep: "<<*na<<" "<<*na->rep<<endl;
 		//rm_node = pad_set_old[i];
 		add_node = pad_set[i]->node->rep;
 		if(rm_node->pt == add_node->pt || rm_node == add_node || add_node->isS()==X)
 			continue;
 		count++;
-		// clog<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		//cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
 
 		for(size_t i=0;i<net_set[type].size();i++){
 			net = net_set[type][i];
@@ -3739,10 +3790,12 @@ double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	//cout<<endl;
 	//clog<<"============ a new round ======"<<endl;
 	if(local_flag == false)
-		rebuild_voltage_nets(pad_set_g, origin_pad_set_g);
-	else
-		rebuild_voltage_nets(pad_set_l, origin_pad_set_l);
-	//clog<<"========== finish net building. ==="<<endl;	
+		rebuild_voltage_nets(pad_set_g, origin_pad_set_g, local_flag);
+	else{
+		//clog<<"before rebuild_voltage_nets. "<<endl;
+		rebuild_voltage_nets(pad_set_l, origin_pad_set_l, local_flag);
+		//clog<<"========== finish net building. ==="<<endl;	
+	}
 	// need to repeat solve_init and stamp matrix, decomp matrix process
 	pad_solve_DC(tran);
 	
@@ -4935,4 +4988,91 @@ void Circuit::print_matlab(){
 				VDD-nodelist[i]->value);
 	}
 	fclose(f);
+}
+
+// adjust pad positions to candidate locations
+// gap of candidate grid is x=3, y=3.
+// new_pad is the projection pad
+Node * Circuit::adjust_pads(Node *nd){
+	Node * nd_new;
+	stringstream sstream;
+	Node * na;
+	int Gap = 3;
+	int adjust_dist = 1;
+	// if satisfied, already pad node
+	if(nd->pt.x% Gap==0 && nd->pt.y %Gap ==0)
+		return nd;
+	
+	// else start to project the node
+	int newx = (nd->pt.x+1)/Gap*Gap;
+	int newy = (nd->pt.y+1)/Gap*Gap;
+	
+	sstream<<"n"<<nd->pt.z<<"_"<<newx<<"_"<<newy;
+	if(has_node_pt(map_node_pt_g, sstream.str())){
+		nd_new = get_node_pt(map_node_pt_g, sstream.str());
+		Net *net = nd_new->nbr[TOP];
+		// can set pad node here
+		if(net == NULL){
+			//clog<<"new_node: "<<*nd_new<<endl;
+			return nd_new;
+		}else{
+			//clog<<"expand. "<<endl;
+			na = expand_candi_pads(nd_new);
+			//clog<<"new_node after expand: "<<*na<<endl;
+			return na;
+		}
+		// if not, set pad at nd_new
+		return nd_new;
+	}
+	return NULL;	
+}
+
+// use queue to search for candi pads around nd
+Node * Circuit::expand_candi_pads(Node *nd){
+	Node *na;
+	Node *nd_new;
+	queue<Point> q;
+	Point pt;
+	Point pt_cur;
+	stringstream sstream;
+	string pt_name;
+	bool return_flag = false;
+	q.push(nd->pt);
+	
+	double dx[4] = {3, 0, -3, 0};
+	double dy[4] = {0, 3, 0, -3};
+	// if not, expand it to neighboring area
+	while(!q.empty()&& return_flag == false){
+		pt_cur = q.front();
+		Point pt_nbr = pt_cur;
+		//expand_pad_pos(q, pt_cur);	
+		for(size_t i=0;i<4;i++){
+			pt_nbr.x = pt_cur.x + dx[i];
+			pt_nbr.y = pt_cur.y + dy[i];
+			stringstream sstream;
+			string pt_name;
+			sstream <<"n"<<pt_nbr.z<<"_"<<
+				pt_nbr.x<<"_"<<
+				pt_nbr.y;
+			pt_name = sstream.str();
+			if(has_node_pt(map_node_pt_g, pt_name)){
+				nd_new = get_node_pt(map_node_pt_g, pt_name);
+				Net *net = nd_new->nbr[TOP];
+				if(net == NULL){
+					return_flag = true;
+					break;
+				}	
+			}
+			q.push(pt_nbr);
+		}
+		q.pop();
+	}
+	while(!q.empty()){
+		q.pop();
+	}
+	if(return_flag == true){
+		return nd_new;
+	}
+	clog<<"no point for new pad. return. "<<endl;
+	return NULL;
 }

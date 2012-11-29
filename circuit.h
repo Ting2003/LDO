@@ -145,7 +145,7 @@ public:
 
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
-	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set);
+	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set, bool local_flag);
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void compute_ldo_current();
@@ -163,6 +163,8 @@ public:
 	void build_graph_global();
 	void modify_graph(bool flag);
 	void print_ldo_list();
+	Node * adjust_pads(Node *nd);
+	Node * expand_candi_pads(Node *na);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
