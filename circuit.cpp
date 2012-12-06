@@ -447,7 +447,8 @@ void Circuit::solve_LU_core(Tran &tran){
 	nodelist[i]->value = nodelist[i]->rep->value;
 
    double IRdrop_final = locate_maxIRdrop();
-   clog<<"recovered IRdrop is: "<<IRdrop_final<<endl;
+   double dev = compute_stand_dev();
+   clog<<"recovered IRdrop, dev is: "<<IRdrop_final<<" "<<dev<<endl;
    // recover worst_cur into original state
    //worst_cur = worst_cur_new;
 
@@ -2234,7 +2235,7 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 		//clog<<"i, pad_best: "<<i<<" "<<pad_set_best[i]->name<<endl;	
 		pad_set_best[i]->pt = pad_set_g[i]->node->pt; 
 	}
-	clog<<"max_IR is: "<<max_IRdrop<<endl;
+	//clog<<"max_IR is: "<<max_IRdrop<<endl;
 	// build up the global and local map for nodes concering of global and local pads
 	// build_map_node_pt();
 		
@@ -2311,16 +2312,16 @@ void Circuit::relocate_pads_graph_global(Tran &tran,
 
 // top level function for global and local pad movement
 void Circuit::relocate_pads(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec){	
-	for(int i=0;i<3;i++){	
+	for(int i=0;i<8;i++){	
 		build_map_node_pt();
 		
 		clog<<endl;
 		clog<<"================ iter "<<i <<" ============"<<endl;
-		clog<<"======== local ===== "<<endl;
+		//clog<<"======== local ===== "<<endl;
 		relocate_pads_graph(tran, ldo_vec, wspace_vec);
 		// clear global fix flag
 		clear_flags(pad_set_g);
-		clog<<"======= global ==== "<<endl;
+		//clog<<"======= global ==== "<<endl;
 		relocate_pads_graph_global(tran, ldo_vec, wspace_vec);
 		// clear local fix flag
 		clear_flags(pad_set_l);
@@ -2337,7 +2338,7 @@ void Circuit::compute_ldo_current(){
 	//cout<<"ldolist.size: "<<ldolist.size()<<endl;
 	for(size_t i=0;i<ldolist.size();i++){
 		nA = ldolist[i]->A;
-		clog<<"nA: "<<*nA<<" ";
+		//clog<<"nA: "<<*nA<<" ";
 		current_sum =0;
 		DIRECTION d = TOP;	
 		/*double resistor_val = 0.1;
@@ -2363,7 +2364,7 @@ void Circuit::compute_ldo_current(){
 			//clog<<"cur, sum: "<<current<<" "<<current_sum<<endl;
 		//}
 		ldolist[i]->current = current_sum;
-		clog<<"cur: "<<current_sum<<endl;
+		// clog<<"cur: "<<current_sum<<endl;
 	}
 }
 
@@ -2427,7 +2428,7 @@ void Circuit::relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODU
 	
 	vector<double> ref_drop_vec_l;
 	double min_IR = max_IRdrop;	
-	clog<<"min_IR initial is: "<<min_IR<<endl;
+	//clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	for(size_t i=0;i<5;i++){
 		// clog<<endl<<"iter for pad move. "<<i<<endl;
@@ -3800,7 +3801,7 @@ double Circuit::resolve_direct(Tran &tran, bool local_flag){
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();	
 	//double max_IRS = locate_special_maxIRdrop();
-	clog<<"max_IR by cholmod is: "<<max_IR<<endl;
+	// clog<<"max_IR by cholmod is: "<<max_IR<<endl;
 	worst_cur = worst_cur_new;
 	t2 = clock();
 	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
@@ -4847,8 +4848,9 @@ void Circuit::recover_global_pad(Tran &tran, vector<Node*> &pad_set_best){
 	
 	//solve_LU_core();
 	double max_IR = locate_maxIRdrop();
+	double dev = compute_stand_dev();
 	//double max_IRS = locate_special_maxIRdrop();
-	clog<<"recovered global max_IR is: "<<max_IR<<endl;
+	clog<<"recovered global max_IR, dev is: "<<max_IR<<" "<<dev<<endl;
 	worst_cur = worst_cur_new;
 	t2 = clock();
 	
@@ -4899,9 +4901,10 @@ void Circuit::recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best){
 	//build_pad_set_l(ldolist);
 	
 	//solve_LU_core();
-	double max_IR = locate_maxIRdrop();	
+	double max_IR = locate_maxIRdrop();
+	double dev = compute_stand_dev();	
 	//double max_IRS = locate_special_maxIRdrop();
-	clog<<"recovered local max_IR is: "<<max_IR<<endl;
+	clog<<"recovered local max_IR, dev is: "<<max_IR<<" "<<dev<<endl;
 	worst_cur = worst_cur_new;
 	t2 = clock();
 
@@ -5073,4 +5076,23 @@ Node * Circuit::expand_candi_pads(Node *nd){
 	}
 	clog<<"no point for new pad. return. "<<endl;
 	return NULL;
+}
+
+double Circuit::compute_stand_dev(){
+	double stand_dev = 0;
+	double average = 0;
+	double sum = 0;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		double IR_value = VDD - nodelist[i]->value;
+		sum += IR_value;
+	}
+	average = sum / nodelist.size()-1;
+	sum = 0;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		double IR_value = VDD - nodelist[i]->value;
+		sum += (IR_value - average)*
+			(IR_value - average);
+	}
+	stand_dev = sqrt(sum / (nodelist.size()-1));
+	return stand_dev;
 }

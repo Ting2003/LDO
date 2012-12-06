@@ -146,6 +146,7 @@ public:
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set, bool local_flag);
+	double compute_stand_dev();
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void compute_ldo_current();
