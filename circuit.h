@@ -191,7 +191,10 @@ private:
 	// member functions
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
-	
+
+	// add solve with ADI method
+	void solve_ADI();
+	void solve_ADI_DC(bool flag);
 	// initialize things before solve_iteration
 	void solve_init();
 	void count_merge_nodes();
@@ -281,10 +284,14 @@ private:
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
+	vector<LDO*> ldolist;
+	vector<MODULE*> wspacelist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
 	vector<int> layers;
+	vector<bool> local_layers;
+	vector<bool> global_layers;
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;

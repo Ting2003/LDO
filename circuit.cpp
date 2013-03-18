@@ -184,8 +184,29 @@ void Circuit::solve_init(){
 			p->rid = nr;
 			++nr;
 		}
+		else
+			p->rid = p->rep->rid;
 		//clog<<"p->rep: "<<*p->rep<<endl;
 	}
+	Node *nd;
+	for(size_t i=0;i<ldolist.size();i++){
+		LDO *ldo_ptr = ldolist[i];
+		//clog<<"ldo node: "<<*ldo_ptr->A<<endl;
+		Net *net = ldo_ptr->A->nbr[TOP];
+		if(net == NULL) {
+			//clog<<"null net. "<<endl;
+			continue;
+		}
+		nd = net->ab[0];
+		if(nd->name == ldo_ptr->A->name)
+			nd = net->ab[1];
+		nd->enableLDO();
+		//clog<<"nd is LDO: "<<*nd<<endl;
+	}
+	//clog<<"before build pad set. "<<endl;
+	if(pad_set_g.size()==0)	
+		build_pad_set();
+
 	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
 	//clog<<"replist.size: "<<replist.size()<<endl;
 }
@@ -2068,3 +2089,94 @@ void Circuit::save_ckt_nodes_to_tr(Tran &tran){
 		}
 	}	
 }
+
+void Circuit::build_pad_set_l(vector<LDO*> ldolist){
+	pad_set_l.clear();
+	Node *nd;
+	for(size_t i=0;i<ldolist.size();i++){
+		Pad *pad_ptr  = new Pad();
+		pad_ptr->node = ldolist[i]->A;
+		pad_set_l.push_back(pad_ptr);
+	}
+}
+
+void Circuit::build_pad_set(){
+	pad_set_g.resize(0);
+	pad_set_l.resize(0);
+	//static Pad pad_a;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		if(nodelist[i]->isS()==X){
+			Pad *pad_ptr = new Pad();
+			pad_ptr->node = nodelist[i];
+			if(nodelist[i]->is_LDO() == false){
+			//if(nodelist[i]->get_layer()== global_layers[0])
+				//cout<<"global pad: "<<*nodelist[i]<<endl;
+				pad_set_g.push_back(pad_ptr);
+			}
+			else{
+				//cout<<"local pad: "<<*nodelist[i]<<endl;
+				pad_set_l.push_back(pad_ptr);
+			}
+		}
+	}
+}
+
+// solve grid with ADI method
+void Circuit::solve_ADI(){
+	solve_init();
+	double diff1 = 1;
+	double diff2 = 1;
+	// first solve DC
+	while(diff1 > 1e-3 && diff2 > 1e-3 
+		&& iter <100){
+		// update local grid
+		diff = solve_ADI_DC(false);
+		// update global grid
+		diff = solve_ADI_DC(true);
+	}
+}
+
+// DC, can be parallelized with OpenMP
+// solve local grid first with LDO as voltage sourses
+void Circuit::solve_ADI_DC(bool flag){
+	// solve along z direction, top to down
+	if(flag == true){
+		// first assign equal value for inductance
+		NetPtrVector &ns = net_set[INDUCTANCE];
+		Node *nk,*nl;
+		for(size_t i=0;i<ns.size();i++){
+			Net * net = ns[i];
+			nk = net->ab[0]->rep;
+			if(nk->isS()==Y)
+				nk = net->ab[1]->rep;
+			if(nk->is_ground) continue;
+			Net *nbr_net = nk->nbr[TOP];
+			if(nbr_net !=NULL){
+				nl = nbr_net->ab[0]->rep;
+				if(nl->isS()!=Y)
+					nl = nbr_net->ab[1]->rep;
+			}
+			nk->value = nl->value;
+			// then track along nk
+			// solve a z dir line
+		}
+	}else{
+
+		for(size_t i=0;i<pad_set_l.size();i++){
+		
+		}
+	}
+
+	// solve a line along x direction
+	for(double i=lx;i<gx;i++){
+		
+	}
+	// then solve a line along y direction
+	for(double i=ly;i<gy;i++){
+	}
+}
+
+// the cap and induc net are replaced with R and I
+//void Circuit::solve_ADI_TR(vector<Pad*> pad_set, Tran &tran){
+
+//}
