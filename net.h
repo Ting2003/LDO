@@ -17,10 +17,7 @@ public:
 	NET_TYPE type;	// identify the type
 	//string name;
 	double value; // dc value
-	double Geq; // eq value for cap
-	double value_cur; // store worst cur for current nets
 	Node* ab[2];	// two connection node
-	int id;	// index of each net
 	// store the pulse parameter for current net
 	double V1, V2, TD, Tr, Tf, PW, Period;
 };

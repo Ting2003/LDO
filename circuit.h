@@ -16,7 +16,6 @@
 #define __CIRCUIT_H__
 
 #include <string>
-#include <sstream>
 #include <vector>
 #include <tr1/unordered_map>
 #include <map>
@@ -30,10 +29,6 @@
 #include <algorithm>
 #include "sp_graph_table.h"
 #include "sp_node.h"
-#include "pad.h"
-#include "ldo.h"
-#include "common.h"
-#include <queue>
 
 using namespace std;
 using namespace std::tr1;
@@ -78,116 +73,17 @@ public:
 	// sort nodes according to predefined order
 	void sort_nodes();
         
-        void make_A_symmetric(double *bp, bool flag);
+        void make_A_symmetric(double *bp);
 	void make_A_symmetric_tr(double *b, double *x, Tran &tran);
 	//void make_A_symmetric_block();
       //void make_A_symmetric_block_tr(Tran &tran);
 
       // solve for node voltage
 	void solve(Tran &tran);
-
-	void solve_DC();
-	void pad_solve_DC(Tran &tran);
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
 	friend class Parser;
-
-	////// new functions for pad /////
-	double locate_maxIRdrop();
-	double locate_maxIRdrop(double *x, size_t n);
-	double locate_maxIRdrop_tr(Tran &tran);
-	double locate_special_maxIRdrop();
-	void mark_special_nodes();
-	bool set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
-	void recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best);
-	void recover_global_pad(Tran &tran, vector<Node*> &pad_set_best);
-	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
-	void build_pad_set();
-	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
-	void build_pad_set_l(vector<LDO*> ldolist);
-	////// new member for pad //////
-	
-	double max_IRdrop;
-	vector<Pad*> pad_set_g;
-	vector<Pad*> pad_set_l;
-	vector<Node*> origin_pad_set_g;
-	vector<Node*> origin_pad_set_l;
-	vector<Node*> special_nodes;
-	// size = replist
-	// record -current that has the worst IR drop values
-	vector<double> worst_cur;
-	vector<double> worst_cur_new;
-	// mapping from name to Node object pointer
-	// two map node_pt lists: global and local
-	unordered_map<string, Node*> map_node_pt_g;
-	unordered_map<string, Node*> map_node_pt_l;
-
-	////// new functions for pad /////
-	void assign_distance(Node *nds, Node *nd, double dist);
-	void print_pad_map(vector<Pad*> &pad_set);
-	void release_resource();
-	void clear_flags(vector<Pad*> &pad_set);
-	double update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, size_t i);
-	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
-	void round_data(double &data);
-	Node * pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd, bool local_flag);
-	void project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
-	bool has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const;
-	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
-	void build_map_node_pt();
-	void build_ldolist(vector<LDO*> ldo_vec);
-	void build_wspacelist(vector<MODULE*> wspace_vec);
-	void relocate_pads();
-	void relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
-	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
-	void relocate_pads(Tran &tran, vector<LDO*> &ldolist, vector<MODULE*> &wspace_vec);
-
-	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
-	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
-	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set, bool local_flag);
-	double compute_stand_dev();
-	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
-	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
-	void compute_ldo_current();
-	void update_ldo_voltage(char *filename);
-	void verify_ldo(Tran &tran, char *filename);
-	void print_pad_set(vector<Pad*> &pad_set);
-	void extract_pads(vector<Pad*> &pad_set, int pad_number);
-	void print_matlab();
-	void clear_pad_control_nodes(vector<Pad*> &pad_set);
-	void update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_vec, size_t iter);
-	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
-	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
-
-	void build_graph(vector<Pad*> &pad_set);
-	void build_graph_global();
-	void modify_graph(bool flag);
-	void print_ldo_list();
-	Node * adjust_pads(Node *nd);
-	Node * expand_candi_pads(Node *na);
-	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
-	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
-	int locate_max_drop_pad(vector<Pad*> &pad_set, vector<double> vec);
-	double calc_avg_ref_drop(vector<Pad*> &pad_set, vector<double> &ref_drop_vec);
-	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
-	double locate_ref(vector<Pad*> &pad_set, size_t i);
-	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec,unordered_map<string, Node*> map_node_pt, bool local_flag);
-	bool print_flag(Node *nd);
-	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
-	void modify_newxy(vector<Pad*> &pad_set);
-	double resolve_direct(Tran &tran, bool local_flag);
-	void resolve_queue(vector<Node *> origin_pad_set);
-	void solve_queue(vector<Node *> pad_set_old);
-	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
-	double update_single_iter(vector<Node *> pad_set_old);
-	double update_value(Node *nd);
-	size_t update_queue(queue<Node *>&q, Node *nd);
-	void solve_GS();
-	void print_all_control_nodes();
-	//////// end functions for pad ////////
-
 
 	// C style output
 	void print();
@@ -196,22 +92,17 @@ private:
 	// member functions
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
-
+	
 	// initialize things before solve_iteration
 	void solve_init();
 	void count_merge_nodes();
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
-	void stamp_by_set_pad(Matrix & A, Tran &tran);
-	void assign_net_worst_cur();
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
-	void stamp_current_pad(double * b, Net * net);
-	void stamp_worst_cur(double *bnewp);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
-	void stamp_VDD_pad(Matrix & A, Net * net);
-	void stamp_VDD_tr(double *b, Net * net, bool flag);
+	void stamp_VDD_tr(double *b, Net * net);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);
 
@@ -236,25 +127,14 @@ private:
 
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
-	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
-	void locate_ldo_region_bound(int a, int b, int &min, int &max);
-	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
-	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
-	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
-	//bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);
-	bool place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, LDO &ldo_ptr, MODULE *module);
-	bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
-	bool place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr, MODULE * module);
-	bool move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module);
-	Point *shortest_point(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module);
 	void release_tr_nodes(Tran &tran);
-	void release_ckt_nodes();
+	void release_ckt_nodes(Tran &tran);
 	void print_ckt_nodes(Tran &tran);
 	void save_ckt_nodes_to_tr(Tran &tran);
 	void link_tr_nodes(Tran &tran);
 	void link_ckt_nodes(Tran &tran);
 	void save_tr_nodes(Tran &tran, double *x);
-	void save_ckt_nodes(double *x);
+	void save_ckt_nodes(Tran &tran, double *x);
 
 	void print_tr_nodes(Tran &tran);
 
@@ -302,14 +182,10 @@ private:
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
-	vector<LDO*> ldolist;
-	vector<MODULE*> wspacelist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
 	vector<int> layers;
-	vector<int> global_layers;
-	vector<int> local_layers;
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;
@@ -323,8 +199,6 @@ private:
 
 	// circuit name
 	string name;
-	// boundary of the circuit
-	double lx, ly, gx, gy;
 
 	// blocks
 	//BlockInfo block_info;
@@ -358,18 +232,6 @@ inline bool Circuit::add_net(Net * net){
 inline bool Circuit::has_node(string name) const{
 	if( map_node.find(name) != map_node.end() ) return true;
 	return false;
-}
-
-inline bool Circuit::has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const{
-	if( map_node_pt.find(pt_name) != map_node_pt.end() ) return true;
-	return false;
-}
-
-// get a node by pt
-inline Node * Circuit::get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name){
-	unordered_map<string, Node*>::const_iterator it = map_node_pt.find(pt_name);
-	if( it != map_node_pt.end() ) return it->second;
-	else return NULL;
 }
 
 // get a node by name

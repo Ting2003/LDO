@@ -15,7 +15,6 @@ using namespace std;
 // important: each node has at most 4 connected nets
 enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, UNDEFINED};
 enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE};
-// three types of special nodes
 enum S_NODE{X, Y, Z};
 const int NUM_NET_TYPE = 5;
 enum LAYER_DIR{HR, VT, NA}; // NA means not available
@@ -33,11 +32,11 @@ const int OUTPUT_WIDTH_STRING = 10;
 // overlap_ratio should < 0.45, or will be divergence
 //const size_t X_BLOCKS = 2; // # of blocks along x axis
 //const size_t Y_BLOCKS = 1; // # of blocks along y axis
-const int THRESHOLD = 1e6;
+
+//const int THRESHOLD = 1e6;
 const int NTHREADS=16;
 typedef pair<size_t,size_t> SizeTPair;
 class Triplet;
 typedef Triplet Matrix;
-const double VDD_G = 1.4;
 //typedef vector<Net *> NetPtrVector;
 #endif

@@ -31,5 +31,6 @@ inline void Point::set(long _x, long _y, long _z){
 	y=_y;
 	z=_z;
 }
+
 #endif
 

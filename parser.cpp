@@ -19,7 +19,7 @@
 using namespace std;
 
 // store the pointer to circuits
-Parser::Parser(Chip *chip):n_layer(0), p_chip(chip){
+Parser::Parser(vector<Circuit*> * ckts):n_layer(0), p_ckts(ckts){
 	layer_in_ckt=vector<int>(MAX_LAYER);
 }
 
@@ -66,7 +66,7 @@ void Parser::extract_node(char * str, Node & nd){
 }
 
 // given a line, extract net and node information
-void Parser::insert_net_node(char * line, int *count){
+void Parser::insert_net_node(char * line){
 	char *chs, *saveptr;
 	const char* sep = " (),\n";
 	char sname[MAX_BUF];
@@ -93,29 +93,20 @@ void Parser::insert_net_node(char * line, int *count){
 		layer = nd[0].get_layer();
 
 	ckt_id = layer_in_ckt[layer];
-	Circuit *ckt = p_chip->cktlist[ckt_id];
-	// Circuit * ckt = (*p_ckts)[ckt_id];
+	Circuit * ckt = (*p_ckts)[ckt_id];
 	for(int i=0;i<2;i++){
 		if ( (nd_ptr[i] = ckt->get_node(nd[i].name) ) == NULL ){
 			// create new node and insert
 			nd_ptr[i] = new Node(nd[i]); // copy constructor
 			nd_ptr[i]->rep = nd_ptr[i];  // set rep to be itself
 			ckt->add_node(nd_ptr[i]);
-			//locate_circuit_boundary
-			if(nd_ptr[i]->pt.x > ckt->gx)
-				ckt->gx = nd_ptr[i]->pt.x;
-			if(nd_ptr[i]->pt.y > ckt->gy)
-				ckt->gy = nd_ptr[i]->pt.y;
-			if(nd_ptr[i]->pt.x < ckt->lx)
-				ckt->lx = nd_ptr[i]->pt.x;
-			if(nd_ptr[i]->pt.y < ckt->ly)
-				ckt->ly = nd_ptr[i]->pt.y;
-
-			if( nd_ptr[i]->isS()== X)    // determine circuit type
+			if( nd_ptr[i]->isS()== Y)    // determine circuit type
 				ckt->set_type(WB);
+
 			// find the coordinate max and min	
 		}
 	}
+
 
 	NET_TYPE net_type = RESISTOR;
 	// find net type
@@ -147,7 +138,6 @@ void Parser::insert_net_node(char * line, int *count){
 	// create a Net
 	//Net * net = new Net(net_type, name, value, nd_ptr[0], nd_ptr[1]);
 	Net * net = new Net(net_type, value, nd_ptr[0], nd_ptr[1]);
-	net->id = count[net_type] ++;
 	// assign pulse paramter for pulse input
 	chs = strtok_r(line, sep, &saveptr);
 	for(int i=0;i<3;i++)
@@ -199,8 +189,7 @@ void Parser::update_node(Net * net){
 	
 	if(net->type == CAPACITANCE){
 		// make sure a is the Z node, b is ground
-		if(a->is_ground()) swap<Node*>(a,b);
-		a->flag = Z;
+		if(a->isS() != Z) swap<Node*>(a,b);
 		// only needs single dir nbr net for index
 		// TOP for resistance
 		// BOTTOM for capacitance
@@ -211,18 +200,6 @@ void Parser::update_node(Net * net){
 		if(a->isS()== X) swap<Node*>(a,b);
 		a->set_nbr(BOTTOM, net);
 		b->set_nbr(TOP, net);
-	}
-	// resistance type net with special nodes
-	else if(net->type == RESISTOR && a->isS()!= -1 
-		&& b->isS() != -1){
-		if(a->isS()== X){
-			a->set_nbr(BOTTOM, net);
-			b->set_nbr(TOP, net);
-		}
-		else if(b->isS() == X){
-			b->set_nbr(BOTTOM, net);
-			a->set_nbr(TOP, net);
-		}	
 	}
 	// resistance type net with special nodes
 	else if(net->type == RESISTOR && a->isS()!= -1 
@@ -277,7 +254,7 @@ void Parser::update_node(Net * net){
 		// one is X node, one is ground node
 		// Let a be X node, b be another
 		if( a->is_ground() ) swap<Node*>(a,b);
-		a->flag = X;		// set a to be X node
+		a->flag = Y;		// set a to be X node
 		a->set_nbr(TOP, net);	// X -- VDD -- Ground
 		a->set_value(net->value);
 	}
@@ -294,8 +271,8 @@ int Parser::create_circuits(){
 	FILE * fp;		// used for popen/pclose
 	int status;		// return status of popen/pclose
 	const char grep[]="grep 'layer' ";
-	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3,4";
-	char cmd[MAX_BUF], name[MAX_BUF]="", GL[MAX_BUF]= "";
+	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3";
+	char cmd[MAX_BUF], name[MAX_BUF]="";
 	string prev_ckt_name("");
 	int layer, n_circuit=0;
 
@@ -305,26 +282,20 @@ int Parser::create_circuits(){
 
 	Circuit * p_last_circuit=NULL;
 	// now read filename.info to create circuits (they are SORTED)
-	while( fscanf(fp, "%s %d %s", name, &layer, GL) != EOF ){
+	while( fscanf(fp, "%s %d", name, &layer) != EOF ){
 		string name_string(name);
-		string GL_string(GL);
 		//cout<<name_string<<":"<<layer<<endl;
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
 		    name_string != prev_ckt_name ){
 			Circuit * circuit = new Circuit(name_string);
-			//(*p_ckts).push_back(circuit);
-			p_chip->cktlist.push_back(circuit);
+			(*p_ckts).push_back(circuit);
 			++n_circuit;
 			prev_ckt_name = name_string;
 			p_last_circuit = circuit;
 		}
 
 		p_last_circuit->layers.push_back(layer);
-		if(GL_string == "GLOBAL")
-			p_last_circuit->global_layers.push_back(layer);
-		if(GL_string == "LOCAL")
-			p_last_circuit->local_layers.push_back(layer);
 
 		// note that initial size may not be accurate
 		if( layer > (int)layer_in_ckt.size()-1 ) 
@@ -343,49 +314,13 @@ int Parser::create_circuits(){
 	return n_circuit;
 }
 
-// parse ldo file
-void Parser::parse_ldo(char *filename, int *count){
-	FILE * f;
-	f = fopen(filename, "r");
-	if( f == NULL ) 
-		report_exit("Input file not exist!\n");
-		
-	char line[MAX_BUF];
-	clog<<"before parse ldo. "<<endl;
-	while( fgets(line, MAX_BUF, f) != NULL ){
-		char type = line[0];
-		switch(type){	
-		// skip the * line
-		case '*':
-			break;
-		case 'l':
-		case 'L':
-			parse_ldo_line(line, count);
-			break;
-		case 'w':
-		case 'W':
-			// parse white space
-			parse_wspace(line);
-			break;
-		default:
-			printf("Unknown input line: ");
-			report_exit(line);
-			break;
-		}
-	}
-	fclose(f);
-}
-
 // parse the file
 // Note: the file will be parsed twice
 // the first time is to find the layer information
 // and the second time is to create nodes
-void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
+void Parser::parse(char * filename, Tran & tran){
 	//filename = "../data/netlist_2M.txt";
 	this->filename = filename;
-	int count[6];
-	for(size_t i=0;i<6;i++)
-		count[i] = 0;
 	//clog<<"open "<<filename<<endl;
 
 	FILE * f;
@@ -411,7 +346,7 @@ void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
 		case 'C':
 		case 'l':
 		case 'L':
-			insert_net_node(line, count);
+			insert_net_node(line);
 			break;
 		case '.': // command
 			parse_dot(line, tran);	
@@ -426,12 +361,12 @@ void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
 		}
 	}
 	fclose(f);
-	parse_ldo(filename_ldo, count);
+
 	// release map_node resource
-	/*for(size_t i=0;i<(*p_ckts).size();i++){
+	for(size_t i=0;i<(*p_ckts).size();i++){
 		Circuit * ckt = (*p_ckts)[i];
 		ckt->map_node.clear();
-	}*/
+	}
 }// end of parse
 
 int Parser::get_num_layers() const{ return n_layer; }
@@ -463,117 +398,10 @@ void Parser::parse_dot(char *line, Tran &tran){
 				chs = strtok_r(NULL, sep, &saveptr);
 				if(chs == NULL) break;
 				item.name = chs;
-				//item.node = get_node(chs);
 				tran.nodes.push_back(item);
 			};
 			break;
 		default: 
 			break;
 	}
-}
-
-void Parser::parse_ldo_line(char *line, int *count){
-	LDO *ldo_ptr;
-	int x, y;
-	char *chs;
-	char *saveptr;
-	char sA[MAX_BUF];
-	const char *sep = "() \n";
-	stringstream sstream;
-	Node sA_X; // the X node on top of sA
-	static Node nd;
-	Node * nd_ptr;
-	string l;
-	int layer, ckt_id;
-	layer = nd.get_layer();
-	ckt_id = layer_in_ckt[layer];
-	Circuit *ckt = p_chip->cktlist[ckt_id];
-	//char name[MAX_BUF];
-
-	ldo_ptr = new LDO();
-	Point *pt;
-	
-	chs = strtok_r(line, sep, &saveptr);
-	ldo_ptr->name = chs;
-	chs = strtok_r(NULL, sep, &saveptr);
-	string name = chs;
-	strcpy(sA, name.c_str());
-	while(chs != NULL){
-		chs = strtok_r(NULL, sep, &saveptr);	
-		if(chs == NULL)	break;
-		//clog<<"chs: "<<chs<<endl;
-		sscanf(chs, "%d,%d", &x,&y);
-		pt = new Point(x, y, -1);
-		ldo_ptr->node.push_back(pt);
-	}
-	// compute width and height
-	ldo_ptr->width = ldo_ptr->node[2]->x - ldo_ptr->node[0]->x+1;
-	ldo_ptr->height = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y+1;
-	p_chip->ldolist.push_back(ldo_ptr);
-
-	// build node and net
-	extract_node(sA, nd);
-	nd_ptr = ckt->get_node(nd.name);
-	if(nd_ptr==NULL)
-		report_exit("LDO node error!");	
-	ldo_ptr->A = nd_ptr;
-	// initiallize voltage
-	ldo_ptr->voltage = VDD_G;
-
-	// produce an extra voltage net and resistor net for LDO
-	// first create the X node
-	sA_X = *nd_ptr;
-	sstream.str("");
-	sstream<<"_X_"<<sA_X.name;
-	sA_X.name = sstream.str();
-	if(ckt->get_node(sA_X.name)==NULL){
-		Node *sA_Xptr = new Node(sA_X);
-		sA_Xptr->rep = sA_Xptr;
-		sA_Xptr->flag = X;
-		sA_Xptr->value = VDD_G;
-		ckt->add_node(sA_Xptr);
-		//ldo_ptr->A = sA_Xptr;
-		// start to add net
-		Net *net;
-		double value = 0.1;
-		// then add net
-		net = new Net(RESISTOR, value, nd_ptr, sA_Xptr);
-		net->id = count[RESISTOR]++;
-		ckt->add_net(net);	
-		// updating the neighboring net	
-		sA_Xptr->nbr[BOTTOM] = net;
-		nd_ptr->nbr[TOP] = net;
-
-		net = new Net(VOLTAGE, VDD_G, sA_Xptr, ckt->nodelist[0]);
-		net->id = count[VOLTAGE]++;
-		ckt->add_net(net);
-		// update the neighboring net
-		sA_Xptr->nbr[TOP] = net;
-	}
-}
-
-void Parser::parse_wspace(char *line){
-	MODULE *wspace_ptr;
-	int x, y;
-	char *chs;
-	char *saveptr;
-	const char *sep = "() \n";
-	
-	wspace_ptr = new MODULE();
-	Point * pt;
-
-	chs = strtok_r(line, sep, &saveptr);
-	//clog<<"chs: "<<chs<<endl;
-	wspace_ptr->name = chs;
-	while(chs != NULL){
-		chs = strtok_r(NULL, sep, &saveptr);	
-		if(chs == NULL)	break;
-		//clog<<"chs: "<<chs<<endl;
-		sscanf(chs, "%d,%d", &x,&y);
-		//clog<<"x, y: "<<x<<" "<<y<<endl;
-		pt = new Point(x, y, -1);
-		//pt->x = x;	pt->y = y;
-		wspace_ptr->node.push_back(pt);
-	}
-	p_chip->wspacelist.push_back(wspace_ptr);
 }
