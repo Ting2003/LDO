@@ -485,10 +485,10 @@ void Parser::parse_ldo_line(char *line, int *count){
 	ldo_ptr->name = chs;
 	chs = strtok_r(NULL, sep, &saveptr);
 	string name = chs;
-	strcpy(sA, name.c_str());
+	strcpy(sA_in, name.c_str());
 	chs = strtok_r(NULL, sep, &saveptr);
-	string name_in = chs;
-	strcpy(sA_in, name_in.c_str());
+	name = chs;
+	strcpy(sA, name.c_str());
 
 	while(chs != NULL){
 		chs = strtok_r(NULL, sep, &saveptr);	

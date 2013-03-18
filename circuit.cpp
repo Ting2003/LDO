@@ -235,7 +235,7 @@ void Circuit::count_merge_nodes(){
 void Circuit::solve(Tran &tran){
 	// assign nodes and nets into ckt_g and ckt_l
 	build_subcircuit();
-	bool local_flag = false;
+	bool local_flag = true;
 	ckt_l.solve(tran, local_flag);
 }
 //endif
