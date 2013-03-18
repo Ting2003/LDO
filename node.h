@@ -60,6 +60,10 @@ public:
 	void disableX();
 	// enable the flag of some pad node
 	void enableX();
+	void disableY();
+	// enable the flag of some pad node
+	void enableY();
+
 	void enableLDO();
 	void disableLDO();
 
@@ -77,6 +81,8 @@ private:
 inline int Node::isS() const{return flag;}
 inline void Node::disableX() {flag = -1;}
 inline void Node::enableX() {flag = 0;}
+inline void Node::disableY() {flag = -1;}
+inline void Node::enableY() {flag = 1;}
 inline void Node::enableLDO() {flag_LDO = true;}
 inline void Node::disableLDO() {flag_LDO = false;}
 

@@ -468,7 +468,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	char sA_in[MAX_BUF];
 	const char *sep = "() \n";
 	stringstream sstream;
-	Node sA_X; // the X node on top of sA
+	// Node sA_X; // the X node on top of sA
 	static Node nd;
 	Node * nd_ptr;
 	string l;
@@ -509,6 +509,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	if(nd_ptr==NULL)
 		report_exit("LDO node error!");	
 	ldo_ptr->A = nd_ptr;
+	nd_ptr->enableY(); // make this node VDD source
 	// initiallize voltage
 	ldo_ptr->voltage = VDD_G;
 
@@ -518,6 +519,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	if(nd_ptr==NULL)
 		report_exit("LDO node error!");	
 	ldo_ptr->nd_in = nd_ptr;
+	//nd_ptr->enableY(); // set this node to be Y
 	// initiallize voltage
 	//ldo_ptr->vin = VDD;
 
