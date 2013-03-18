@@ -86,6 +86,7 @@ public:
 
       // solve for node voltage
 	void solve(Tran &tran);
+	void build_subcircuit();
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);
@@ -294,8 +295,8 @@ private:
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
 	vector<int> layers;
-	vector<bool> local_layers;
-	vector<bool> global_layers;
+	vector<int> local_layers;
+	vector<int> global_layers;
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;

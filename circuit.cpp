@@ -233,9 +233,45 @@ void Circuit::count_merge_nodes(){
 }
 //if 0
 void Circuit::solve(Tran &tran){
+	// assign nodes and nets into ckt_g and ckt_l
+	build_subcircuit();
 	ckt_g.solve_LU(tran);
 }
 //endif
+
+// build nodelist and netlist in subcircuit
+void Circuit::build_subcircuit(){
+	int layer_l = local_layers[0];
+	int layer_g = global_layers[0];
+	//clog<<"layer_l and g: "<<layer_l<<" "<<layer_g<<endl;
+	// build nodelist
+	for(size_t i=0;i<nodelist.size();i++){
+		if(nodelist[i]->is_ground())
+			continue;
+		int layer = nodelist[i]->get_layer();
+		if(layer_l == layer)
+			ckt_l.nodelist.push_back(nodelist[i]);
+		else
+			ckt_g.nodelist.push_back(nodelist[i]);
+	}
+	// then build net_set
+	Node *nd;
+	Net *net;
+	for(int type =0;type<NUM_NET_TYPE;type++){
+		NetPtrVector &ns = net_set[type];
+		for(size_t i=0;i<ns.size();i++){
+			net = ns[i];
+			if(net == NULL) continue;
+			nd = net->ab[0];
+			if(nd->is_ground())
+				nd = net->ab[1];
+			if(nd->get_layer()==layer_l)
+				ckt_l.net_set[type].push_back(net);
+			else
+				ckt_g.net_set[type].push_back(net);
+		}
+	}
+}
 
 #if 0
 // stamp the matrix and solve
