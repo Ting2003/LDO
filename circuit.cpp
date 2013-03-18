@@ -16,6 +16,7 @@
 
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <algorithm>
 #include <iostream>
 #include <ctime>
@@ -430,6 +431,24 @@ void Circuit::solve_LU_core(Tran &tran){
    delete [] s_col_FBS;
 }
 
+// change the wspace into a local variable
+// here is simply copy
+void Circuit::build_wspacelist(vector<MODULE*> wspace_vec){
+	wspacelist.clear();
+	wspacelist = wspace_vec;
+}
+
+void Circuit::build_ldolist(vector<LDO*> ldo_vec){
+	Node *nd;
+	ldolist.clear();
+	for(size_t i=0;i<ldo_vec.size();i++){
+		nd = ldo_vec[i]->A;
+		if(has_node(nd->name))
+			ldolist.push_back(ldo_vec[i]);
+	}
+	// clog<<"ldolist.size: "<<ldolist.size()<<endl;
+	//clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
+}
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
@@ -2122,61 +2141,88 @@ void Circuit::build_pad_set(){
 }
 
 // solve grid with ADI method
-void Circuit::solve_ADI(){
+/*void Circuit::solve_partial_ADI(){
 	solve_init();
 	double diff1 = 1;
 	double diff2 = 1;
+	int iter = 0;
 	// first solve DC
-	while(diff1 > 1e-3 && diff2 > 1e-3 
+	while((diff1 > 1e-3 || diff2 > 1e-3)
 		&& iter <100){
 		// update local grid
-		diff = solve_ADI_DC(false);
-		// update global grid
-		diff = solve_ADI_DC(true);
+		diff1 = solve_ADI_DC();
+		// restamp b and update global grid
+		//diff2 = solve_global();
+		iter ++;
 	}
 }
 
 // DC, can be parallelized with OpenMP
-// solve local grid first with LDO as voltage sourses
-void Circuit::solve_ADI_DC(bool flag){
-	// solve along z direction, top to down
-	if(flag == true){
-		// first assign equal value for inductance
-		NetPtrVector &ns = net_set[INDUCTANCE];
-		Node *nk,*nl;
-		for(size_t i=0;i<ns.size();i++){
-			Net * net = ns[i];
-			nk = net->ab[0]->rep;
-			if(nk->isS()==Y)
-				nk = net->ab[1]->rep;
-			if(nk->is_ground) continue;
-			Net *nbr_net = nk->nbr[TOP];
-			if(nbr_net !=NULL){
-				nl = nbr_net->ab[0]->rep;
-				if(nl->isS()!=Y)
-					nl = nbr_net->ab[1]->rep;
-			}
-			nk->value = nl->value;
-			// then track along nk
-			// solve a z dir line
-		}
-	}else{
-
-		for(size_t i=0;i<pad_set_l.size();i++){
-		
-		}
-	}
-
+// solve local grid with LDO as voltage sourses
+double Circuit::solve_ADI_DC(){
+	stringstream sstream;
+	Node *nd;
 	// solve a line along x direction
 	for(double i=lx;i<gx;i++){
-		
+		sstream.str("");
+		sstream<<"n"<<local_layers[0]<<"_"<<i<<"_"<<ly<<endl;
+		nd = get_node_pt(map_node_pt_l, 
+			sstream.str());
+		// solve along vertical direction
+		solve_a_line(nd, NORTH);
 	}
 	// then solve a line along y direction
 	for(double i=ly;i<gy;i++){
+		sstream.str("");
+		sstream<<"n"<<local_layers[0]<<"_"<<lx<<"_"<<i<<endl;
+		nd = get_node_pt(map_node_pt_l, 
+			sstream.str());
+		// solve along horizontal direction
+		solve_a_line(nd, EAST);
 	}
 }
 
-// the cap and induc net are replaced with R and I
-//void Circuit::solve_ADI_TR(vector<Pad*> pad_set, Tran &tran){
+// solve a line along different dir
+void solve_a_line(Node *nd, DIRECTION d){
+	vector<double> vec_c;
+	vector<double> vec_a;
+	vector<double> vec_b;
+	vector<double> vec_rhs;
+	vector<Node *> vec_nd;
 
-//}
+	Net *net;
+	Node *nd_temp = nd;
+	double c0;
+	vec_nd.push_back(nd);
+	vec_a.push_back(-1);
+	if(nd->is_LDO()){
+		vec_b.push_back(1);
+		vec_rhs.push_back(nd->value);
+	}
+	// compute c0 and x0
+	if(nd_temp->nbr[d]!=NULL){
+		net = nd_temp->nbr[d];
+		if(net->type == RESISTOR){
+			// find conduc from resis net
+			c0 = -1.0/net->value;
+		}
+	}
+	if(nd_temp->nbr[BOTTOM]!=NULL){
+		net = nd_temp->nbr[BOTTOM];
+		if(net->type== CURRENT)
+			b0 = -1.0*net->value;
+	}
+	// compute c0=c0/b0;
+	vec_c.push_back(c0/b0);
+	// x0 = x0 / b0;
+	nd->value /= b0;	
+	while(nd_temp->nbr[d]!= NULL){
+		net = nd_temp->nbr[d];
+		if(nd_temp == net->ab[0])
+			nd_temp = net->ab[1];
+		else
+			nd_temp = net->ab[0];
+
+	c_temp.clear();
+}
+*/

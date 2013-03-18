@@ -193,8 +193,8 @@ private:
 	void solve_LU_core(Tran &tran);
 
 	// add solve with ADI method
-	void solve_ADI();
-	void solve_ADI_DC(bool flag);
+	//void solve_partial_ADI();
+	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init();
 	void count_merge_nodes();

@@ -282,7 +282,7 @@ int Parser::create_circuits(){
 	int status;		// return status of popen/pclose
 	const char grep[]="grep 'layer' ";
 	const char rest[]="|sort -t ',' -k 2 -r |cut -d ',' -f 2 |cut -d ' ' -f 1,3,4";
-	char cmd[MAX_BUF], name[MAX_BUF]="";
+	char cmd[MAX_BUF], name[MAX_BUF]="", GL[MAX_BUF]="";
 	string prev_ckt_name("");
 	int layer, n_circuit=0;
 
@@ -292,9 +292,10 @@ int Parser::create_circuits(){
 
 	Circuit * p_last_circuit=NULL;
 	// now read filename.info to create circuits (they are SORTED)
-	while( fscanf(fp, "%s %d", name, &layer) != EOF ){
+	while( fscanf(fp, "%s %d %s", name, &layer, GL) != EOF ){
 		string name_string(name);
-		//cout<<name_string<<":"<<layer<<endl;
+		string GL_string(GL);
+		//cout<<name_string;<<":"<<layer<<endl;
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
 		    name_string != prev_ckt_name ){
