@@ -241,6 +241,8 @@ void Circuit::solve(Tran &tran){
 
 // build nodelist and netlist in subcircuit
 void Circuit::build_subcircuit(){
+	ckt_l.ldolist = ldolist;
+	ckt_g.ldolist = ldolist;
 	int layer_l = local_layers[0];
 	int layer_g = global_layers[0];
 	//clog<<"layer_l and g: "<<layer_l<<" "<<layer_g<<endl;
