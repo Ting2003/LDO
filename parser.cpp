@@ -298,7 +298,7 @@ int Parser::create_circuits(){
 		//cout<<name_string;<<":"<<layer<<endl;
 		// compare with previous circuit name 
 		if( prev_ckt_name == "" ||
-		    name_string != prev_ckt_name ){
+		    name_string != prev_ckt_name){
 			Circuit * circuit = new Circuit(name_string);
 			//(*p_ckts).push_back(circuit);
 			p_chip->cktlist.push_back(circuit);

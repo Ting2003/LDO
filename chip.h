@@ -9,6 +9,8 @@ private:
 public:
 	Chip();
 	friend class Parser;
+	// stores the circuit from different domain
+	// including a global and several local
 	vector<Circuit *>cktlist;
 	vector<LDO*> ldolist;
 	vector<MODULE*> wspacelist;

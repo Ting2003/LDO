@@ -31,12 +31,14 @@ public:
 	int isS() const;
 	bool is_LDO() const;
 	bool is_ground() const;
+	bool is_global() const;
 
 	double get_value() const;
 	void set_value(double v);
 
 	friend ostream & operator << (ostream & os, const Node & node);
 	friend class Circuit;
+	//friend class SubCircuit;
 	friend class Parser;
 
 	////////////////////////////////////////////////////////////
@@ -53,6 +55,7 @@ public:
 	bool flag_visited;
 	bool flag_qualified;
 	bool flag_LDO; 	// whether this node is LDO node
+	bool flag_global; // whether the node is global
 	//////// member and function for pad //////
 
 	// disable the flag of some pad node
@@ -60,7 +63,8 @@ public:
 	// enable the flag of some pad node
 	void enableX();
 	void enableLDO();
-	void disableLDO();	
+	void disableLDO();
+	void enableGlobal();
 
 private:
 	double value;		// voltage
@@ -77,11 +81,13 @@ inline int Node::isS() const{return flag;}
 inline void Node::disableX() {flag = -1;}
 inline void Node::enableX() {flag = 0;}
 inline void Node::enableLDO() {flag_LDO = true;}
+inline void Node::enableGlobal() {flag_global = true;}
 inline void Node::disableLDO() {flag_LDO = false;}
 
 //inline bool Node::is_ground() const{return name == "0";}
 // use a tricky way to speed up
 inline bool Node::is_ground() const{return pt.x<0;}
+inline bool Node::is_global() const{return flag_global;}
 inline bool Node::is_LDO() const{return flag_LDO;}
 inline int Node::get_layer() const{ return pt.z; }
 

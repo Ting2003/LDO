@@ -19,8 +19,14 @@ public:
 	double value; // dc value
 	Node* ab[2];	// two connection node
 	int id;		// index of each net
+	bool flag_global; // see if the net is global
 	// store the pulse parameter for current net
 	double V1, V2, TD, Tr, Tf, PW, Period;
+
+	void enableGlobal();
+	bool is_global() const;
 };
 
+inline void Net::enableGlobal() {flag_global = true;}
+inline bool Net::is_global() const{return flag_global;}
 #endif

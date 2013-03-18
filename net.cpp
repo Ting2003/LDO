@@ -11,6 +11,7 @@ Net::Net(NET_TYPE t, double v, Node * a, Node * b):
 	type(t),value(v){
 	ab[0]=a;
 	ab[1]=b;
+	flag_global = false;
 	V1=0; V2=0; TD=0; Tr=0; Tf=0; PW =0; Period =0; 
 }
 
