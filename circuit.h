@@ -32,6 +32,7 @@
 #include "pad.h"
 #include "ldo.h"
 #include "common.h"
+#include "subcircuit.h"
 #include <queue>
 
 using namespace std;
@@ -43,6 +44,7 @@ typedef vector<Node *> NodePtrVector;
 typedef NetPtrVector NetList;
 
 // functor of translating Node * to void *
+#if 0
 namespace std{ 
 	namespace tr1{
 		template<> struct hash< Node * >{
@@ -52,7 +54,7 @@ namespace std{
 		};
 	}
 }
-
+#endif
 class Circuit{
 public:
 	Circuit(string name="");
@@ -284,6 +286,8 @@ private:
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
+	SubCircuit ckt_g;	// global subcircuit
+	SubCircuit ckt_l;	// local subcircuit
 	vector<LDO*> ldolist;
 	vector<MODULE*> wspacelist;
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
@@ -362,7 +366,7 @@ inline Net * Circuit::get_net(string name){return map_net[name];}
 */
 
 
-ostream & operator << (ostream & os, const NodePtrVector & nodelist);
-ostream & operator << (ostream & os, const NetPtrVector & nets);
+//ostream & operator << (ostream & os, const NodePtrVector & nodelist);
+//ostream & operator << (ostream & os, const NetPtrVector & nets);
 //ostream & operator << (ostream & os, const vector<Block > & block_info);
 #endif

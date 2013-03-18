@@ -80,6 +80,7 @@ void Circuit::check_sys() const{
 // input: two node a, b
 // return true if a < b, false o/w
 // note that ground note are put to last
+# if 0
 bool compare_node_ptr(const Node * a, const Node * b){
 	if( a->is_ground() ) return false;
 	if (b->is_ground() ) return true;
@@ -112,9 +113,10 @@ void Circuit::sort_nodes(){
 	   node_id[p] = i;
    }
 }
-
+#endif
 string Circuit::get_name() const{return this->name;}
 
+#if 0
 ostream & operator << (ostream & os, const NodePtrVector & nodelist){
 	for(size_t i=0;i<nodelist.size();i++)
 		os<<*nodelist[i]<<endl;
@@ -138,7 +140,7 @@ ostream & operator << (ostream & os, const Circuit & ckt){
 
 	return os;
 }
-
+#endif
 void Circuit::print(){
 	// uncomment this if want to output to a file
 	//freopen("output.txt","w",stdout);
@@ -158,6 +160,7 @@ void Circuit::print(){
 // 2. set node representatives
 // 3. find node in which block, update count
 // 4. get representative lists
+#if 0
 void Circuit::solve_init(){
         sort_nodes();
 	size_t size = nodelist.size()-1; // exclude ground node!!
@@ -211,7 +214,7 @@ void Circuit::solve_init(){
 	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
 	//clog<<"replist.size: "<<replist.size()<<endl;
 }
-
+#endif
 // count number of nodes that can be merged
 void Circuit::count_merge_nodes(){
 	size_t size = replist.size();
@@ -228,12 +231,13 @@ void Circuit::count_merge_nodes(){
 	}
 	//clog<<"number of nodes can be merged is: "<<count<<endl;
 }
-
+#if 0
 void Circuit::solve(Tran &tran){
 	solve_LU(tran);
 }
+#endif
 
-
+#if 0
 // stamp the matrix and solve
 void Circuit::solve_LU_core(Tran &tran){
    size_t n = replist.size();	// replist dosn't contain ground node
@@ -430,7 +434,7 @@ void Circuit::solve_LU_core(Tran &tran){
    delete [] s_col_FFS;
    delete [] s_col_FBS;
 }
-
+#endif
 // change the wspace into a local variable
 // here is simply copy
 void Circuit::build_wspacelist(vector<MODULE*> wspace_vec){
@@ -449,11 +453,13 @@ void Circuit::build_ldolist(vector<LDO*> ldo_vec){
 	// clog<<"ldolist.size: "<<ldolist.size()<<endl;
 	//clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
 }
+#if 0
 // solve the node voltages using direct LU
 void Circuit::solve_LU(Tran &tran){
         solve_init();
 	solve_LU_core(tran);
 }
+#endif
 
 // given vector x that obtained from LU, set the value to the corresponding
 // node in nodelist
@@ -1363,10 +1369,12 @@ void Circuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
         }
 }
 
+#if 0
 bool compare_Node_G(const Node_G *nd_1, const Node_G *nd_2){
    return (nd_1->value < nd_2->value);
  }
-
+#endif
+# if 0
 void Circuit::update_node_set_bx(){
     int id = 0;
     //clog<<"len_node_set_b. "<<pg.node_set_b.size();
@@ -1470,7 +1478,8 @@ void Circuit::set_up_path_table(){
          pg.nodelist[s]->next = pg.nodelist[e];
    }
 }
-
+#endif
+#if 0
 void Circuit::find_path(vector<size_t> &node_set, List_G &path){
    Node_G* ne = pg.nodelist[pg.nodelist.size()-1];
    vector <Node_G *> insert_list;
@@ -1527,7 +1536,7 @@ void Circuit::find_path(vector<size_t> &node_set, List_G &path){
    //clog<<endl;
    insert_list.clear();
 }
-
+#endif
 #if 0
 void Circuit::solve_eq_set(){
    int p, q, r, lnz, pend;
