@@ -13,6 +13,8 @@ public:
 	vector<Point*> node;
 	int width;
 	int height;
+	// stores the input voltage
+	double vin;
 	// stores the output voltage
 	double voltage;
 	// current extracted from this LDO
