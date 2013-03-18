@@ -231,11 +231,11 @@ void Circuit::count_merge_nodes(){
 	}
 	//clog<<"number of nodes can be merged is: "<<count<<endl;
 }
-#if 0
+//if 0
 void Circuit::solve(Tran &tran){
-	solve_LU(tran);
+	ckt_g.solve_LU(tran);
 }
-#endif
+//endif
 
 #if 0
 // stamp the matrix and solve
