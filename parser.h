@@ -12,7 +12,7 @@
 
 #include <vector>
 #include "global.h"
-#include "circuit.h"
+#include "chip.h"
 #include "transient.h"
 using std::vector;
 
@@ -20,12 +20,14 @@ using std::vector;
 class Parser{
 public:
 	// supply Circuit objects
-	Parser(vector<Circuit*> * ckts);
+	Parser(Chip *chip);
 	~Parser();
 
 	// parser a input file and construct the circuit
-	void parse(char * filename, Tran &tran);
-
+	void parse(char * filename, char *filename_ldo, Tran &tran);
+	void parse_ldo(char *filename, int *count);
+	void parse_ldo_line(char *line, int *count);
+	void parse_wspace(char *line);
 	int get_num_layers() const;
 
 private:
@@ -34,7 +36,7 @@ private:
 	void try_change_via(Net *);
 
 	//void insert_net_node(string line);
-	void insert_net_node(char * line);
+	void insert_net_node(char * line, int *count);
 	void extract_node(char * str, Node & nd);
 	void update_node(Net * net);
 	void parse_dot(char *line, Tran &tran);
@@ -42,7 +44,7 @@ private:
 	char * filename;		  // input file name
 	int n_layer;			  // total number of layers
 	vector<int> layer_in_ckt;	  // which circuit a layer belong
-	vector<Circuit*> * p_ckts;	  // pointer to circkt list
+	Chip *p_chip;
 };
 
 // Trick: try to modify the net

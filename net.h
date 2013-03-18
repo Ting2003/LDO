@@ -18,6 +18,7 @@ public:
 	//string name;
 	double value; // dc value
 	Node* ab[2];	// two connection node
+	int id;		// index of each net
 	// store the pulse parameter for current net
 	double V1, V2, TD, Tr, Tf, PW, Period;
 };

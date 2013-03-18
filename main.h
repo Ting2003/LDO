@@ -11,6 +11,7 @@
 #include "triplet.h"
 #include "parser.h"
 #include "circuit.h"
+#include "chip.h"
 //#include "hash_mat.h"
 using namespace std;
 
