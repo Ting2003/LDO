@@ -465,6 +465,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	char *chs;
 	char *saveptr;
 	char sA[MAX_BUF];
+	char sA_in[MAX_BUF];
 	const char *sep = "() \n";
 	stringstream sstream;
 	Node sA_X; // the X node on top of sA
@@ -485,6 +486,10 @@ void Parser::parse_ldo_line(char *line, int *count){
 	chs = strtok_r(NULL, sep, &saveptr);
 	string name = chs;
 	strcpy(sA, name.c_str());
+	chs = strtok_r(NULL, sep, &saveptr);
+	string name_in = chs;
+	strcpy(sA_in, name_in.c_str());
+
 	while(chs != NULL){
 		chs = strtok_r(NULL, sep, &saveptr);	
 		if(chs == NULL)	break;
@@ -498,7 +503,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	ldo_ptr->height = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y+1;
 	p_chip->ldolist.push_back(ldo_ptr);
 
-	// build node and net
+	// build output node and net
 	extract_node(sA, nd);
 	nd_ptr = ckt->get_node(nd.name);
 	if(nd_ptr==NULL)
@@ -507,6 +512,16 @@ void Parser::parse_ldo_line(char *line, int *count){
 	// initiallize voltage
 	ldo_ptr->voltage = VDD_G;
 
+	// build input node and net
+	extract_node(sA_in, nd);
+	nd_ptr = ckt->get_node(nd.name);
+	if(nd_ptr==NULL)
+		report_exit("LDO node error!");	
+	ldo_ptr->nd_in = nd_ptr;
+	// initiallize voltage
+	//ldo_ptr->vin = VDD;
+
+#if 0
 	// produce an extra voltage net and resistor net for LDO
 	// first create the X node
 	sA_X = *nd_ptr;
@@ -537,6 +552,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 		// update the neighboring net
 		sA_Xptr->nbr[TOP] = net;
 	}
+#endif
 }
 
 void Parser::parse_wspace(char *line){

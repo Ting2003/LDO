@@ -7,7 +7,8 @@ private:
 public:
 	LDO();
 	string name;	
-	Node*A;
+	Node * A; // output node
+	Node * nd_in; // input node
 	// 4 corners
 	// first node is the pin for VDD
 	vector<Point*> node;
