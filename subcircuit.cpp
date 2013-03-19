@@ -273,18 +273,8 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    return; 
    // A is already being cleared   
    size_t i=0;
-   //if(replist.size()<THRESHOLD){
-   	for(i=0;i<replist.size();i++)
-		bp[i] = 0;
-   //}
-#if 0
-   else{
-#pragma omp parallel for private(i)
-	for(i=0;i<replist.size();i++)
-		bp[i] = 0;
-   }
-#endif
-   //link_tr_nodes(tran);
+   for(i=0;i<replist.size();i++)
+	bp[i] = 0;
    link_ckt_nodes(tran);
 
    bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
