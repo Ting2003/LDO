@@ -467,6 +467,8 @@ void SubCircuit::solve_LU(Tran &tran, bool local_flag){
 	if(local_flag == true)
 		// build local VDD nets
 		build_local_nets();
+	else    // build global current nets
+		build_global_nets();
 	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
 		NetList::iterator it;
@@ -1192,7 +1194,7 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 // no current source at voltage source, save
 void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 	// find the non-ground node
-	//clog<<"net: "<<*net<<endl;
+	// clog<<"net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
@@ -2268,6 +2270,22 @@ void SubCircuit::build_local_nets(){
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
+		//clog<<"add net: "<<*net<<endl;
+	}
+}
+
+// build global current nets from LDO
+// only one time step
+void SubCircuit::build_global_nets(){
+	Node *nd;
+	double current;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->nd_in;
+		current = ldolist[i]->current;
+		Net *net = new Net(CURRENT, current, nd, nodelist[nodelist.size()-1]);
+		add_net(net);
+		// update top nbr net
+		nd->rep->nbr[BOTTOM] = net;
 		//clog<<"add net: "<<*net<<endl;
 	}
 }

@@ -188,6 +188,7 @@ private:
 	void solve_LU(Tran &tran, bool flag);
 	void solve_LU_core(Tran &tran, bool flag);
 	void build_local_nets();
+	void build_global_nets();
 
 	// add solve with ADI method
 	//void solve_partial_ADI();
