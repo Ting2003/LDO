@@ -705,8 +705,7 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
       //clog<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
       //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-      if(!nl->is_ground() && nl->isS()!=Y 
-		      && (nl->nbr[TOP]==NULL || 
+      if(!nl->is_ground() && (nl->nbr[TOP]==NULL || 
            nl->nbr[TOP]->type != INDUCTANCE)){
          if(l < k){
             A.push_back(k,l,-G);
@@ -726,8 +725,7 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
       //clog<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
       //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-      if(!nk->is_ground()&& nk->isS()!=Y
-		      && (nk->nbr[TOP]==NULL ||
+      if(!nk->is_ground() && (nk->nbr[TOP]==NULL ||
            nk->nbr[TOP]->type != INDUCTANCE)){
          if(k < l){
             A.push_back(l,k,-G);
