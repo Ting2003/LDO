@@ -460,6 +460,7 @@ void SubCircuit::build_ldolist(vector<LDO*> ldo_vec){
 	// clog<<"ldolist.size: "<<ldolist.size()<<endl;
 	//clog<<"gx, gy: "<<gx<<" "<<gy<<endl; 
 }
+
 // solve the node voltages using direct LU
 void SubCircuit::solve_LU(Tran &tran, bool local_flag){
         solve_init(local_flag);
@@ -475,9 +476,6 @@ void SubCircuit::solve_LU(Tran &tran, bool local_flag){
 		for(it = ns.begin();it!=ns.end();++it)
 			cout<<*(*it)<<endl;
 	}*/
-	// else
-		// build global current nets
-		// build_global_nets();
 	solve_LU_core(tran, local_flag);
 }
 

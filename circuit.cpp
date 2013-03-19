@@ -236,11 +236,24 @@ void Circuit::solve(Tran &tran){
 	// assign nodes and nets into ckt_g and ckt_l
 	build_subcircuit();
 	// solve local
-	bool local_flag = true;
-	//ckt_l.solve(tran, local_flag);
-	// solve global
-	local_flag = false;
-	ckt_g.solve(tran, local_flag);
+	bool local_flag;
+	double diff_local = 1;
+	double diff_global = 1;
+	int iter = 0;
+	// solves one time step
+	while((diff_local >1e-3 ||
+		diff_global >1e-3) && iter++ <1){	
+		// solve local grid to get ldo current
+		local_flag = true;
+		ckt_l.solve(tran, local_flag);
+		// solve global grid to get ldo input 
+		// voltage
+		local_flag = false;
+		ckt_g.solve(tran, local_flag);
+		// then throw into LDO model / 
+		// lookup table to get LDO output vol
+		check_ldo_table();
+	}
 }
 //endif
 
@@ -2278,3 +2291,6 @@ void solve_a_line(Node *nd, DIRECTION d){
 	c_temp.clear();
 }
 */
+
+void Circuit::check_ldo_table(){
+}
