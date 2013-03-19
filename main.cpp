@@ -86,7 +86,7 @@ int main(int argc, char * argv[]){
  		//ckt->print_matlab();
  		delete ckt;
 	}
-	tran.print_tr_nodes();
+	//tran.print_tr_nodes();
 
 	close_logfile();
 
