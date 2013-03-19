@@ -469,12 +469,12 @@ void SubCircuit::solve_LU(Tran &tran, bool local_flag){
 		build_local_nets();
 	else    // build global current nets
 		build_global_nets();
-	for(int type =0 ;type <NUM_NET_TYPE;type++){
+	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
 		NetList::iterator it;
 		for(it = ns.begin();it!=ns.end();++it)
 			cout<<*(*it)<<endl;
-	}
+	}*/
 	// else
 		// build global current nets
 		// build_global_nets();
@@ -2282,7 +2282,7 @@ void SubCircuit::build_global_nets(){
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
 		current = ldolist[i]->current;
-		//current = 0.3;
+		// current = 0.3;
 		Net *net = new Net(CURRENT, current, nd, nodelist[nodelist.size()-1]);
 		add_net(net);
 		// update top nbr net
