@@ -245,7 +245,7 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 
-   Matrix A;
+   //Matrix A;
    stamp_by_set(A, bp);
 
    if(local_flag == false)

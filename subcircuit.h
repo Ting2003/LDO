@@ -249,6 +249,7 @@ private:
 
         double *temp;	
         int *id_map;
+	Matrix A;
         cholmod_factor *L;
 	double *Lx;
 	int *Li, *Lp, *Lnz;
