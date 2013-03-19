@@ -53,11 +53,11 @@ SubCircuit::SubCircuit(string _name):name(_name),
 
 // Trick: do not release memory to increase runtime
 SubCircuit::~SubCircuit(){
-	for(size_t i=0;i<nodelist.size();i++) delete nodelist[i];
+	/*for(size_t i=0;i<nodelist.size();i++) delete nodelist[i];
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		for(size_t j=0;j<ns.size();j++) delete ns[j];
-	}
+	}*/
 	//delete [] id_map;
 	Lx = NULL;
 	Li = NULL;
@@ -403,7 +403,7 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    //save_tr_nodes(tran, xp);
    save_ckt_nodes(tran, xp);
    time += tran.step_t;
-   //clog<<"before tr solve."<<endl;
+   // clog<<"before tr solve."<<endl;
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
 	// bnewp[i] = bp[i];
@@ -442,7 +442,7 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    cholmod_free_factor(&L, cm);
    cholmod_free_dense(&x, cm);
    cholmod_finish(&c);
-   
+  
    delete [] s_col_FFS;
    delete [] s_col_FBS;
 }
