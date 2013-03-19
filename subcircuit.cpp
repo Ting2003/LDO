@@ -53,11 +53,6 @@ SubCircuit::SubCircuit(string _name):name(_name),
 
 // Trick: do not release memory to increase runtime
 SubCircuit::~SubCircuit(){
-	/*for(size_t i=0;i<nodelist.size();i++) delete nodelist[i];
-	for(int type=0;type<NUM_NET_TYPE;type++){
-		NetPtrVector & ns = net_set[type];
-		for(size_t j=0;j<ns.size();j++) delete ns[j];
-	}*/
 	//delete [] id_map;
 	Lx = NULL;
 	Li = NULL;
@@ -1197,7 +1192,7 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 // no current source at voltage source, save
 void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 	// find the non-ground node
-	clog<<"net: "<<*net<<endl;
+	//clog<<"net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
