@@ -182,47 +182,17 @@ void Circuit::count_merge_nodes(){
 }
 //if 0
 void Circuit::solve(Tran &tran){
+	// assign nodes and nets to ckt_g and l
+	// config subckt, start cholmod for ckt_g and l
 	solve_init();
 	// solving LDO location with DC
 	solve_DC_LDO();
-	int iter = 0;
-	double diff_opt_ldo = 1;
 	// go along all time steps
 	for(double time =0; time < tran.tot_t; 
 			time += tran.step_t){
-		// still optimize LDO, either increase 
-		// LDO number or change their locations
-		while(diff_opt_ldo >1e-3 && iter++ < 1){
-			// for each location of LDO
-			// update and sort nodes
-			ckt_l.solve_init(true);
-			ckt_g.solve_init(false);
-			// then update netlist
-			ckt_l.build_local_nets();
-			ckt_g.build_global_nets();
-			// stamp matrix and decomp
-
-		}
-	}
-	// solve local
-	/*bool local_flag;
-	double diff_local = 1;
-	double diff_global = 1;
-	int iter = 0;
-	// solves one time step
-	while((diff_local >1e-3 ||
-		diff_global >1e-3) && iter++ <1){	
-		// solve local grid to get ldo current
-		local_flag = true;
-		ckt_l.solve(tran, local_flag);
-		// solve global grid to get ldo input 
-		// voltage
-		local_flag = false;
-		ckt_g.solve(tran, local_flag);
-		// then throw into LDO model / 
-		// lookup table to get LDO output vol
-		check_ldo_table();
-	}*/
+		// solve one time step with LDO
+		solve_TR_LDO(tran, time);	
+	}	
 }
 //endif
 
@@ -2265,4 +2235,24 @@ void Circuit::check_ldo_table(){
 }
 
 void Circuit::solve_DC_LDO(){
+}
+
+// LDO optimization for one time step
+void Circuit::solve_TR_LDO(Tran &tran, double time){
+	int iter;
+	double diff_opt_ldo=1;
+	// still optimize LDO, either increase 
+	// LDO number or change their locations
+	while(diff_opt_ldo >1e-3 && iter++ < 1){
+		// for each location of LDO
+		// update and sort nodes
+		ckt_l.solve_init(true);
+		ckt_g.solve_init(false);
+		// then update netlist
+		ckt_l.build_local_nets();
+		ckt_g.build_global_nets();
+		// stamp matrix, b and decomp matrix
+		ckt_l.stamp_decomp_matrix_TR(tran, time);
+		ckt_g.stamp_decomp_matrix_TR(tran, time);
+	}
 }

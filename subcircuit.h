@@ -189,13 +189,15 @@ private:
 	void solve_LU_core(Tran &tran, bool flag);
 	void build_local_nets();
 	void build_global_nets();
-
+	void stamp_decomp_matrix_DC(bool local_flag);
+	void stamp_decomp_matrix_TR(Tran &tran, double time);
 	// add solve with ADI method
 	//void solve_partial_ADI();
 	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init(bool flag);
 	void configure_init();
+
 	void count_merge_nodes();
 
 	// methods of stamping the matrix

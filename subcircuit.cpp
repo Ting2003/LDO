@@ -239,15 +239,16 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    size_t n = replist.size();	// replist dosn't contain ground node
    if( n == 0 ) return;		// No node  
 
-   configure_init();
-   /*cm = &c;
+   // configure_init();
+   cm = &c;
    cholmod_start(cm);
    cm->print = 5;
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);*/
+   bp = static_cast<double *> (b->x);
 
    // Matrix A;
+   A.clear();
    stamp_by_set(A, bp);
 
    if(local_flag == false)
@@ -2254,4 +2255,31 @@ void SubCircuit::configure_init(){
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
+}
+
+// stmap matrix and rhs, decomp matrix for DC
+void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
+   A.clear();
+   stamp_by_set(A, bp);
+
+   if(local_flag == false)
+   	make_A_symmetric(bp);
+   else
+	make_A_symmetric_local(bp);
+
+   A.set_row(replist.size());
+   Algebra::CK_decomp(A, L, cm);
+   A.clear();
+}
+
+// stamp matrix and rhs, decomp matrix for TR
+void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
+   A.clear();
+   stamp_by_set_tr(A, bp, tran);
+   make_A_symmetric_tr(bp, xp, tran);
+   stamp_current_tr(bp, time);
+
+   A.set_row(replist.size());
+   Algebra::CK_decomp(A, L, cm);
+   A.clear();
 }

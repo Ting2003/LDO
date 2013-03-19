@@ -202,6 +202,7 @@ private:
 	// initialize things before solve_iteration
 	void solve_init();
 	void solve_DC_LDO();
+	void solve_TR_LDO(Tran &tran, double time);
 	void count_merge_nodes();
 
 	// methods of stamping the matrix
