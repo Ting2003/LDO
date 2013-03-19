@@ -182,6 +182,8 @@ void Circuit::count_merge_nodes(){
 }
 //if 0
 void Circuit::solve(Tran &tran){
+	// readin LDO and store and lookup table
+	Readin_LDO();
 	// assign nodes and nets to ckt_g and l
 	// config subckt, start cholmod for ckt_g and l
 	solve_init();
@@ -2275,4 +2277,28 @@ void Circuit::solve_TR_LDO(Tran &tran, double time){
 		ckt_l.stamp_decomp_matrix_TR(tran, time);
 		ckt_g.stamp_decomp_matrix_TR(tran, time);
 	}
+}
+
+// readin LDO lookup table
+void Circuit::Readin_LDO(){
+	FILE *f;
+	key_LDO key;
+	pair<key_LDO, double> LDO_pair;
+	f = fopen("../data/LDO/data/LDO_lookupTable.txt", "r");
+	if( f == NULL ) 
+		report_exit("LDO table file not exist!\n");
+	char line[MAX_BUF];
+	double vin, iout, vout;
+	while(fgets(line, MAX_BUF, f) != NULL){
+		if(line[0]== '*') continue;
+		sscanf(line, "%lf %lf %lf", &vin, &iout, &vout);
+		key.first = vin;
+		key.second = iout;
+		LDO_pair.first = key;
+		LDO_pair.second = vout;
+		clog<<"LDO_pair.second: "<<vout<<endl;
+		table_ldo.insert(LDO_pair);
+		clog<<"insert: "<<line<<endl;
+	}
+	fclose(f);
 }

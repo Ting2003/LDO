@@ -42,7 +42,8 @@ typedef vector<double> DoubleVector;
 typedef vector<Net *> NetPtrVector;
 typedef vector<Node *> NodePtrVector;
 typedef NetPtrVector NetList;
-
+typedef pair<double, double> key_LDO;
+typedef map<key_LDO, double> TABLE_LDO;
 // functor of translating Node * to void *
 #if 0
 namespace std{ 
@@ -204,6 +205,8 @@ private:
 	void solve_DC_LDO();
 	void solve_TR_LDO(Tran &tran, double time);
 	void count_merge_nodes();
+	// readin LDO and store the lookup table
+	void Readin_LDO();
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
@@ -290,6 +293,10 @@ private:
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
 	NodePtrVector replist;		// a set of representative nodes
+	
+	TABLE_LDO table_ldo;
+	// TABLE_LDO table_ldo;
+
 	SubCircuit ckt_g;	// global subcircuit
 	SubCircuit ckt_l;	// local subcircuit
 	vector<LDO*> ldolist;
