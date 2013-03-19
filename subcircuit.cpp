@@ -517,48 +517,6 @@ void SubCircuit::copy_node_voltages(double * x, size_t &size, bool from){
 
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
-void SubCircuit::stamp_by_set_local(Matrix & A, 
-	double * b){
-	for(int type=0;type<NUM_NET_TYPE;type++){
-		NetPtrVector & ns = net_set[type];
-		switch(type){
-		case RESISTOR:
-			for(size_t i=0;i<ns.size();i++){
-				assert( fzero(ns[i]->value) == false );
-				stamp_resistor(A, ns[i]);
-			}
-			break;
-		case CURRENT:
-			for(size_t i=0;i<ns.size();i++)
-				stamp_current(b, ns[i]);
-			break;
-		case VOLTAGE:
-			for(size_t i=0;i<ns.size();i++){
-				if( fzero(ns[i]->value)  && 
-				    !ns[i]->ab[0]->is_ground() &&
-				    !ns[i]->ab[1]->is_ground() )
-					continue; // it's a 0v via
-				stamp_VDD(A, b, ns[i]);
-			}
-			break;
-		case CAPACITANCE:
-			//for(size_t i=0;i<ns.size();i++)
-				//stamp_capacitance_dc(A, ns[i]);
-			break;
-		case INDUCTANCE:
-			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_dc(A, b, ns[i]);	
-			}
-			break;
-		default:
-			report_exit("Unknwon net type\n");
-			break;
-		}
-	}
-}
-
-// stamp the net in each set, 
-// *NOTE* at the same time insert the net into boundary netlist
 void SubCircuit::stamp_by_set(Matrix & A, double * b){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
@@ -747,7 +705,8 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
       //clog<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
       //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-      if(!nl->is_ground() &&(nl->nbr[TOP]==NULL || 
+      if(!nl->is_ground() && nl->isS()!=Y 
+		      && (nl->nbr[TOP]==NULL || 
            nl->nbr[TOP]->type != INDUCTANCE)){
          if(l < k){
             A.push_back(k,l,-G);
@@ -767,7 +726,8 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
       //clog<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
       //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-      if(!nk->is_ground()&& (nk->nbr[TOP]==NULL ||
+      if(!nk->is_ground()&& nk->isS()!=Y
+		      && (nk->nbr[TOP]==NULL ||
            nk->nbr[TOP]->type != INDUCTANCE)){
          if(k < l){
             A.push_back(l,k,-G);
@@ -1245,18 +1205,18 @@ void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 	size_t id = X->rep->rid;
 	A.push_back(id, id, 1.0);
 	//clog<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;
-	//Net * south = X->rep->nbr[SOUTH];
-	/*if( south != NULL &&
-	    south->type == CURRENT ){*/
+	Net * south = X->rep->nbr[SOUTH];
+	if( south != NULL &&
+	    south->type == CURRENT ){
 		// this node connects to a VDD and a current
 		// assert( feqn(1.0, b[id]) ); // the current should be stamped
 		b[id] = net->value;	    // modify it
 		//clog<<"b: ="<<id<<" "<<net->value<<endl;
-	/*}
+	}
 	else{
 		b[id] += net->value;
 		//clog<<"b: +"<<id<<" "<<net->value<<endl;
-	}*/
+	}
 }
 
 // stamp a voltage source

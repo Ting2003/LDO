@@ -198,7 +198,6 @@ private:
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
-	void stamp_by_set_local(Matrix & A, double * b);
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
