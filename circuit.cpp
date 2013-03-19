@@ -2236,7 +2236,7 @@ void Circuit::check_ldo_table(){
 }
 
 void Circuit::solve_DC_LDO(){
-	int iter;
+	int iter=0;
 	double diff_opt_ldo=1;
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
@@ -2251,6 +2251,9 @@ void Circuit::solve_DC_LDO(){
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_DC(true);
 		ckt_g.stamp_decomp_matrix_DC(false);
+		// solve eq with decomped matrix
+		ckt_l.solve_CK_with_decomp();
+		ckt_g.solve_CK_with_decomp();
 	}
 }
 

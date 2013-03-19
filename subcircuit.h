@@ -191,6 +191,8 @@ private:
 	void build_global_nets();
 	void stamp_decomp_matrix_DC(bool local_flag);
 	void stamp_decomp_matrix_TR(Tran &tran, double time);
+
+	void solve_CK_with_decomp();
 	// add solve with ADI method
 	//void solve_partial_ADI();
 	//double solve_ADI_DC();

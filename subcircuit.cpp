@@ -2222,6 +2222,12 @@ void SubCircuit::build_local_nets(){
 		nd->rep->nbr[TOP] = net;
 		//clog<<"add net: "<<*net<<endl;
 	}
+	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
+		NetList &ns = net_set[type];
+		NetList::iterator it;
+		for(it = ns.begin();it!=ns.end();++it)
+			cout<<*(*it)<<endl;
+	}*/
 }
 
 // build global current nets from LDO
@@ -2237,8 +2243,8 @@ void SubCircuit::build_global_nets(){
 	double current;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
-		current = ldolist[i]->current;
-		// current = 0.3;
+		// current = ldolist[i]->current;
+		current = 0.3;
 		Net *net = new Net(CURRENT, current, nd, nodelist[nodelist.size()-1]);
 		add_net(net);
 		// update top nbr net
@@ -2260,13 +2266,16 @@ void SubCircuit::configure_init(){
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    A.clear();
+   size_t n = replist.size();
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+
    stamp_by_set(A, bp);
 
    if(local_flag == false)
    	make_A_symmetric(bp);
    else
 	make_A_symmetric_local(bp);
-
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
@@ -2282,4 +2291,14 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
+}
+
+// solve eq with decomped matrix
+void SubCircuit::solve_CK_with_decomp(){
+	// solve the eq
+	x = cholmod_solve(CHOLMOD_A, L, b, cm);
+   	xp = static_cast<double *> (x->x);
+	// copy solution to nodes
+   	get_voltages_from_LU_sol(xp);
+	// cout<<nodelist<<endl;
 }
