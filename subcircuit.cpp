@@ -237,13 +237,15 @@ void SubCircuit::solve(Tran &tran, bool flag){
 // stamp the matrix and solve
 void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    size_t n = replist.size();	// replist dosn't contain ground node
-   if( n == 0 ) return;		// No node    
-   cm = &c;
+   if( n == 0 ) return;		// No node  
+
+   configure_init();
+   /*cm = &c;
    cholmod_start(cm);
    cm->print = 5;
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
+   bp = static_cast<double *> (b->x);*/
 
    // Matrix A;
    stamp_by_set(A, bp);
@@ -2242,4 +2244,14 @@ void SubCircuit::build_global_nets(){
 		nd->rep->nbr[BOTTOM] = net;
 		//clog<<"add net: "<<*net<<endl;
 	}
+}
+
+void SubCircuit::configure_init(){
+   cm = &c;
+   cholmod_start(cm);
+   cm->print = 5;
+   size_t n= replist.size();
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
 }

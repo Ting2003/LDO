@@ -156,65 +156,14 @@ void Circuit::print(){
 // Computation Functions
 
 // initialization before solving the circuit
-// 1. sort the nodes
-// 2. set node representatives
-// 3. find node in which block, update count
-// 4. get representative lists
-#if 0
 void Circuit::solve_init(){
-        sort_nodes();
-	size_t size = nodelist.size()-1; // exclude ground node!!
-	Node *p=NULL;
-	for(size_t i=0,nr=0;i<size;i++){
-		p=nodelist[i];
-
-		// set the representative
-		Net * net = p->nbr[TOP];
-		if( p->isS()== Y) VDD = p->get_value();
-
-		// test short circuit
-		if( p->isS() !=Y && // Y must be representative 
-		    net != NULL &&
-		    fzero(net->value) ){
-			// TODO: ensure ab[1] is not p itself
-			assert( net->ab[1] != p );
-			p->rep = net->ab[1]->rep;
-		} // else the representative is itself
-
-		// push the representatives into list
-		if( p->rep == p ) {
-			replist.push_back(p);
-			//rep_id[p] = nr; // save the id
-			p->rid = nr;
-			++nr;
-		}
-		else
-			p->rid = p->rep->rid;
-		//clog<<"p->rep: "<<*p->rep<<endl;
-	}
-	Node *nd;
-	for(size_t i=0;i<ldolist.size();i++){
-		LDO *ldo_ptr = ldolist[i];
-		//clog<<"ldo node: "<<*ldo_ptr->A<<endl;
-		Net *net = ldo_ptr->A->nbr[TOP];
-		if(net == NULL) {
-			//clog<<"null net. "<<endl;
-			continue;
-		}
-		nd = net->ab[0];
-		if(nd->name == ldo_ptr->A->name)
-			nd = net->ab[1];
-		nd->enableLDO();
-		//clog<<"nd is LDO: "<<*nd<<endl;
-	}
-	//clog<<"before build pad set. "<<endl;
-	if(pad_set_g.size()==0)	
-		build_pad_set();
-
-	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
-	//clog<<"replist.size: "<<replist.size()<<endl;
+	// assign nodes and nets into ckt_g and ckt_l
+	build_subcircuit();
+	// configure subckt, start cholmod process
+	ckt_l.configure_init();
+	ckt_g.configure_init();
 }
-#endif
+
 // count number of nodes that can be merged
 void Circuit::count_merge_nodes(){
 	size_t size = replist.size();
@@ -233,10 +182,30 @@ void Circuit::count_merge_nodes(){
 }
 //if 0
 void Circuit::solve(Tran &tran){
-	// assign nodes and nets into ckt_g and ckt_l
-	build_subcircuit();
+	solve_init();
+	// solving LDO location with DC
+	solve_DC_LDO();
+	int iter = 0;
+	double diff_opt_ldo = 1;
+	// go along all time steps
+	for(double time =0; time < tran.tot_t; 
+			time += tran.step_t){
+		// still optimize LDO, either increase 
+		// LDO number or change their locations
+		while(diff_opt_ldo >1e-3 && iter++ < 1){
+			// for each location of LDO
+			// update and sort nodes
+			ckt_l.solve_init(true);
+			ckt_g.solve_init(false);
+			// then update netlist
+			ckt_l.build_local_nets();
+			ckt_g.build_global_nets();
+			// stamp matrix and decomp
+
+		}
+	}
 	// solve local
-	bool local_flag;
+	/*bool local_flag;
 	double diff_local = 1;
 	double diff_global = 1;
 	int iter = 0;
@@ -253,7 +222,7 @@ void Circuit::solve(Tran &tran){
 		// then throw into LDO model / 
 		// lookup table to get LDO output vol
 		check_ldo_table();
-	}
+	}*/
 }
 //endif
 
@@ -2293,4 +2262,7 @@ void solve_a_line(Node *nd, DIRECTION d){
 */
 
 void Circuit::check_ldo_table(){
+}
+
+void Circuit::solve_DC_LDO(){
 }
