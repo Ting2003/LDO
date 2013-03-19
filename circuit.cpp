@@ -2296,9 +2296,11 @@ void Circuit::Readin_LDO(){
 		key.second = iout;
 		LDO_pair.first = key;
 		LDO_pair.second = vout;
-		clog<<"LDO_pair.second: "<<vout<<endl;
+		/* clog<<LDO_pair.first.first<<" "<<
+			LDO_pair.first.second<<" "<<
+			LDO_pair.second<<endl;
+		*/
 		table_ldo.insert(LDO_pair);
-		clog<<"insert: "<<line<<endl;
 	}
 	fclose(f);
 }
