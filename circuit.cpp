@@ -187,6 +187,7 @@ void Circuit::solve(Tran &tran){
 	solve_init();
 	// solving LDO location with DC
 	solve_DC_LDO();
+	return;
 	// go along all time steps
 	for(double time =0; time < tran.tot_t; 
 			time += tran.step_t){
@@ -2235,6 +2236,22 @@ void Circuit::check_ldo_table(){
 }
 
 void Circuit::solve_DC_LDO(){
+	int iter;
+	double diff_opt_ldo=1;
+	// still optimize LDO, either increase 
+	// LDO number or change their locations
+	while(diff_opt_ldo >1e-3 && iter++ < 1){
+		// for each location of LDO
+		// update and sort nodes
+		ckt_l.solve_init(true);
+		ckt_g.solve_init(false);
+		// then update netlist
+		ckt_l.build_local_nets();
+		ckt_g.build_global_nets();
+		// stamp matrix, b and decomp matrix
+		ckt_l.stamp_decomp_matrix_DC(true);
+		ckt_g.stamp_decomp_matrix_DC(false);
+	}
 }
 
 // LDO optimization for one time step
