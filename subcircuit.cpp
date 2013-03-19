@@ -2203,6 +2203,12 @@ void solve_a_line(Node *nd, DIRECTION d){
 
 // build local VDD nets from LDO
 void SubCircuit::build_local_nets(){
+	// first delete all voltage nets
+	int type = VOLTAGE;
+	NetPtrVector &ns = net_set[type];
+	for(size_t i=0;i<ns.size();i++)
+		delete ns[i];
+	// then create new ones
 	Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->A;
@@ -2218,6 +2224,12 @@ void SubCircuit::build_local_nets(){
 // build global current nets from LDO
 // only one time step
 void SubCircuit::build_global_nets(){
+	// first delete all current nets
+	int type = CURRENT;
+	NetPtrVector &ns = net_set[type];
+	for(size_t i=0;i<ns.size();i++)
+		delete ns[i];
+	// then create new ones
 	Node *nd;
 	double current;
 	for(size_t i=0;i<ldolist.size();i++){
