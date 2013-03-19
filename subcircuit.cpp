@@ -245,7 +245,7 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 
-   //Matrix A;
+   // Matrix A;
    stamp_by_set(A, bp);
 
    if(local_flag == false)
@@ -311,58 +311,24 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
 
    temp = new double [n];
    // then substitute all the nodes rid
-   //if(n<THRESHOLD){
-	   for(size_t i=0;i<n;i++){
-		   int id = id_map[i];
-		   replist[id]->rid = i;
-		   temp[i] = bp[i];
-	   }
-	   for(size_t i=0;i<n;i++)
-		   bp[i] = temp[id_map[i]];
-	   for(size_t i=0;i<n;i++)
-		   temp[i] = xp[i];
-	   for(size_t i=0;i<n;i++)
-		   xp[i] = temp[id_map[i]];
-   //}
-#if 0
-   else{
-	   size_t i=0;
-#pragma omp parallel for private(i)
-	   for(i=0;i<n;i++){
-		   int id = id_map[i];
-		   replist[id]->rid = i;
-		   temp[i] = bp[i];
-	   }
-#pragma omp parallel for private(i)
-	   for(i=0;i<n;i++)
-		   bp[i] = temp[id_map[i]];
-#pragma omp parallel for private(i)
-	   for(i=0;i<n;i++)
-		   temp[i] = xp[i];
-#pragma omp parallel for private(i)
-	   for(i=0;i<n;i++)
-		   xp[i] = temp[id_map[i]];
+   for(size_t i=0;i<n;i++){
+	   int id = id_map[i];
+	   replist[id]->rid = i;
+	   temp[i] = bp[i];
    }
-#endif
+   for(size_t i=0;i<n;i++)
+	   bp[i] = temp[id_map[i]];
+   for(size_t i=0;i<n;i++)
+	   temp[i] = xp[i];
+   for(size_t i=0;i<n;i++)
+	   xp[i] = temp[id_map[i]];
+ 
    delete [] temp;
    delete [] id_map;
    /*****************************************/ 
-//#endif
-   // bnewp[i] = bp[i]
-   //if(n<THRESHOLD){
-	for(size_t i=0;i<n;i++)
-		bnewp[i] = bp[i];
-   //}
-#if 0
-   else{
-	size_t i=0;
-#pragma omp parallel for private(i)
-	for(i=0;i<n;i++)
-		bnewp[i] = bp[i];
-   }
-#endif
-   //stamp_current_tr(bnewp, tran, time);
-   
+   for(size_t i=0;i<n;i++)
+	bnewp[i] = bp[i];
+     
    set_eq_induc(tran);
    set_eq_capac(tran);
    modify_rhs_tr_0(bnewp, xp);
@@ -401,29 +367,16 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    // clog<<"before tr solve."<<endl;
    // then start other iterations
    while(time < tran.tot_t){// && iter < 0){
-	// bnewp[i] = bp[i];
-	//if(n<THRESHOLD){
-		for(size_t i=0;i<n;i++)
-			bnewp[i] = bp[i];
-	//}
-#if 0
-	else{
-		size_t i=0;
-#pragma omp parallel for private(i)
-		for(i=0;i<n;i++)
-			bnewp[i] = bp[i];
-	}
-#endif
-      // only stamps if net current changes
+	for(size_t i=0;i<n;i++)
+		bnewp[i] = bp[i];
+       // only stamps if net current changes
       // set bp into last state
-      //stamp_current_tr(bnewp, tran, time);
       stamp_current_tr_1(bp, bnewp, time);
      // get the new bnewp
       modify_rhs_tr(bnewp, xp); 
 	
       solve_eq_sp(xp);
 
-      //save_tr_nodes(tran, xp);
       save_ckt_nodes(tran, xp);
       time += tran.step_t;
       //iter ++;
