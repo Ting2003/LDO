@@ -2380,8 +2380,8 @@ double SubCircuit::locate_maxIRdrop(){
 	return max_IRdrop;
 }
 
-// adjust ldo number and locations
-// update the ldo correlated nets
+// 1. adjust ldo locations
+// 2. update the ldo correlated nets
 void SubCircuit::relocate_pads(){
 	vector<Node*> pad_set_old;
 	double dist = 0;
@@ -2403,50 +2403,49 @@ void SubCircuit::relocate_pads(){
 		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 	}
 
-	return;
-#if 0
-	vector<double> ref_drop_vec_l;
+//#if 0
+	vector<double> ref_drop_vec;
 	double min_IR = max_IRdrop;	
 	//clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
-	for(size_t i=0;i<5;i++){
+	for(size_t i=0;i<1;i++){//5;i++){
 		// clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
 		origin_pad_set.resize(pad_set.size());
 		
 		assign_pad_set(pad_set, origin_pad_set);
 		// build pad connection graph
-		//build_graph(pad_set_l);
-		build_graph_global();
+		build_pad_graph();
+		/*
 		if(i==0)
 			modify_graph(true);
 
 		// find control nodes for each pad
 		extract_pads(pad_set, pad_number);
 		// find the tune spot for control nodes	
-		update_pad_control_nodes(pad_set, ref_drop_vec_l, i);
+		update_pad_control_nodes(pad_set, ref_drop_vec, i);
 		//print_all_control_nodes();	
 		if(i>=6){
-			dynamic_update_violate_ref(VDD_G, pad_set, ref_drop_vec_l, map_node_pt_g, true);
+			dynamic_update_violate_ref(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
 		}
 		// find new point for all pads	
-		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_l);
+		dist = update_pad_pos_all(pad_set, ref_drop_vec);
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
-			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_g, true);
+			extract_min_max_pads(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
 		}
 		//clog<<"before move violate. "<<endl;
 		// update the old pad set value
-		assign_pad_set(pad_set_l, pad_set_old_l);
+		assign_pad_set(pad_set, pad_set_old);
 		//clog<<"before assign pad set. "<<endl;
-		move_violate_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
+		move_violate_pads(map_node_pt_g, pad_set, ref_drop_vec, true);
 
 		// move pads according to graph contraints
 		
-		graph_move_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
+		graph_move_pads(map_node_pt_g, pad_set, ref_drop_vec, true);
 		//clog<<"after graph move. "<<endl;
-		clear_flags(pad_set_l);
+		clear_flags(pad_set);
 		// actual move pads into the new spots
 		// project_pads();
 		// clog<<"before resolve direct. "<<endl;	
@@ -2464,24 +2463,23 @@ void SubCircuit::relocate_pads(){
 					// clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
 				}
 			}
-		}
+		}*/
 		//clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
 	}
 	
 	//ldolist = ldolist_best;
 	// recover into old local pad status
 	//clog<<"before recover local pad. "<<endl;	
-	origin_pad_set_l.resize(pad_set_l.size());	
-	recover_local_pad(tran, ldolist_best);
+	origin_pad_set.resize(pad_set.size());	
+	//recover_local_pad(tran, ldolist_best);
 	
 	
-	ref_drop_vec_l.clear();
-	origin_pad_set_l.clear();
-	pad_set_old_l.clear();
+	ref_drop_vec.clear();
+	origin_pad_set.clear();
+	pad_set_old.clear();
 	// terminate cm and xp,bp and so on
 	//print_pad_set();
 	//cout<<nodelist<<endl;
-#endif
 }
 
 void SubCircuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
@@ -2497,3 +2495,87 @@ void SubCircuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old)
 		// cout<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
 	}
 }
+
+void SubCircuit::build_pad_graph(){
+	Pad *pad;
+	Pad *pad_nbr;
+	bool flag_pad = false;
+	bool flag_nbr = false;
+	// clear content
+	for(size_t i=0;i<pad_set.size();i++){
+		pad_set[i]->nbrs.clear();
+	}
+	// find nbr pad nodes
+	for(size_t i=0;i<pad_set.size();i++){
+		//clog<<"pad: "<<*pad->node<<endl;
+		flag_pad = false;
+		flag_nbr = false;
+		pad = pad_set[i];
+		pad_nbr = find_nbr_pad(pad_set, pad);
+		// cout<<"pad, nbr: "<<*pad->node<<" "<<*pad_nbr->node<<endl;
+		for(size_t j=0;j<pad_nbr->nbrs.size();j++){
+			if(pad_nbr->nbrs[j]->node->name== pad->node->name)
+				flag_pad = true;
+				break;
+		}
+		for(size_t j=0;j<pad->nbrs.size();j++){
+			if(pad->nbrs[j]->node->name== pad_nbr->node->name)
+				flag_nbr = true;
+				break;
+		}
+		if(flag_pad == false){
+			pad->nbrs.push_back(pad_nbr);
+		}
+		if(flag_nbr == false)
+			pad_nbr->nbrs.push_back(pad);
+	}
+	/*for(size_t i=0;i<pad_set.size();i++){
+		Pad *pad = pad_set[i];
+		cout<<"pad: "<<*pad->node<<endl;
+		for(size_t j=0;j<pad->nbrs.size();j++){
+			cout<<"nbr: "<<*pad->nbrs[j]->node<<endl;
+		}
+	}*/
+}
+
+// use Euclidiean distance to locate nearest nbr pad
+Pad * SubCircuit::find_nbr_pad(vector<Pad*> &pad_set, Pad *pad){
+	Pad * nbr;
+	double distance=-1;
+	double min_dist=0;
+	bool flag = false;
+	size_t min_index=0;
+	for(size_t i=0;i<pad_set.size();i++){
+		nbr = pad_set[i];
+		// need to make sure they are in same layer
+		if(nbr->node->pt.z != pad->node->pt.z)
+			continue;
+		if(nbr->node->name == pad->node->name)
+			continue;
+		distance = get_distance(nbr->node, pad->node);
+		if(flag == false){
+			flag = true;
+			min_dist = distance;
+			min_index = i;
+		}else{
+			if(distance < min_dist){
+				min_dist = distance;	
+				min_index = i;
+			}	
+		}
+	}
+	return pad_set[min_index];
+}
+
+double SubCircuit::get_distance(Node *na, Node *nb){
+	double distance = 0;
+	double delta_x = 0;
+	double delta_y = 0;
+	delta_x=(na->pt.x-nb->pt.x);
+	delta_y=(na->pt.y-nb->pt.y);
+	delta_x *= delta_x;
+	delta_y *= delta_y;
+	distance = sqrt(delta_x + delta_y);
+	return distance;
+}
+
