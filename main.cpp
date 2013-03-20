@@ -76,7 +76,8 @@ int main(int argc, char * argv[]){
  	for(i=0;i<1;i++){//chip.cktlist.size();i++){
  		Circuit * ckt = chip.cktlist[i];
  		// functions for transient solve
- 		ckt->build_ldolist(chip.ldolist); 
+ 		ckt->build_ldolist(chip.ldolist);
+		ckt->build_wspacelist(chip.wspacelist);
 		ckt->solve(tran);
  		//ckt->solve_DC();
  		/*ckt->relocate_pads(tran, chip.ldolist, chip.wspacelist);

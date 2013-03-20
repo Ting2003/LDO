@@ -192,6 +192,7 @@ void Circuit::solve(Tran &tran){
 	solve_init();
 	// solving LDO location with DC
 	solve_DC_LDO();
+	
 	return;
 	// go along all time steps
 	for(double time =0; time < tran.tot_t; 
@@ -2237,14 +2238,13 @@ void solve_a_line(Node *nd, DIRECTION d){
 }
 */
 
-void Circuit::solve_DC_LDO(){
+// solve_DC with LDO locations
+void Circuit::solve_DC(){
 	int iter=0;
-	double diff_opt_ldo=1;
 	double diff_l = 1;
 	double diff_g = 1;
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
-	// while(diff_opt_ldo >1e-3 && iter++ < 1){
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
 		// for each location of LDO
 		// update and sort nodes
@@ -2439,4 +2439,39 @@ double Circuit::inter_table_ldo(double vin, double iout, double vin_1, double vi
 			iout_1, z11, iout_2, z21);
 		return vout;
 	}
+}
+
+double Circuit::locate_maxIRdrop(){
+	max_IRdrop = ckt_l.locate_maxIRdrop();
+	return max_IRdrop;
+}
+
+// perform DC LDO optimization
+void Circuit::solve_DC_LDO(){
+	// first get IR drop values
+	solve_DC();
+	double max_IRdrop = locate_maxIRdrop();
+	double THRES = VDD_G * 0.1;
+	// safe area, return with current LDO location
+	if(max_IRdrop <= THRES) return;
+
+	// first optimize the locations of LDOs
+	relocate_pads();
+
+	int iter = 0;
+	// while not satisfied and still have room,
+	// perform optimization
+	/* while(max_IRdrop > THRES && 
+		ldolist.size() < MAX_NUM_LDO && 
+		iter++ < 1){
+		// if number not satisfied, 
+		// need to add more LDOs
+		// add_LDO();
+	}*/
+}
+
+// adjust ldo number and locations
+// update the ldo correlated nets
+void Circuit::relocate_pads(){
+	
 }

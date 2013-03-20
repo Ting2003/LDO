@@ -38,6 +38,6 @@ const int NTHREADS=16;
 typedef pair<size_t,size_t> SizeTPair;
 class Triplet;
 typedef Triplet Matrix;
-const double VDD_G = 1.4;
+const double VDD_G = 1.8;
 //typedef vector<Net *> NetPtrVector;
 #endif

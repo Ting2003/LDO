@@ -201,6 +201,7 @@ private:
 	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init();
+	void solve_DC();
 	void solve_DC_LDO();
 	void solve_TR_LDO(Tran &tran, double time);
 	void count_merge_nodes();
@@ -313,6 +314,7 @@ private:
 	SubCircuit ckt_l;	// local subcircuit
 	vector<LDO*> ldolist;
 	vector<MODULE*> wspacelist;
+	int MAX_NUM_LDO; // maximum ldo number allowed
 	NetPtrVector net_set[NUM_NET_TYPE];// should be the same as size of NET_TYPE
 	// defines the net direction in layers
 	static vector<LAYER_DIR> layer_dir;
