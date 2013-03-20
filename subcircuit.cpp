@@ -2439,10 +2439,11 @@ void SubCircuit::relocate_pads(){
 		
 		//clog<<"before assign pad set. "<<endl;
 		move_violate_pads(ref_drop_vec, true);
-		/*
+		
 		// move pads according to graph contraints
 		
-		graph_move_pads(map_node_pt_g, pad_set, ref_drop_vec, true);
+		graph_move_pads(ref_drop_vec, true);
+		/*
 		//clog<<"after graph move. "<<endl;
 		clear_flags(pad_set);
 		// actual move pads into the new spots
@@ -3540,5 +3541,59 @@ void SubCircuit::move_violate_pads(vector<double> ref_drop_vec, bool local_flag)
 			pad_ptr->visit_flag = true;
 		}
 	}
+}
+
+void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
+	Node *new_pad;
+	int id=0;
+	// for(size_t i=0;i<5;i++){
+	do{
+		id = locate_max_drop_pad(ref_drop_vec);
+		if(id==-1) break;
+		Pad *pad_ptr = pad_set[id];
+		Pad *pad_nbr = NULL;
+		Node *pad = pad_ptr->node;
+		new_pad = pad_projection(pad_ptr, pad, local_flag);
+		 // if(pad->name == "_X_n6_200_150")
+		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+
+		pad_ptr->visit_flag = true;
+		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
+			pad_nbr = pad_ptr->nbrs[i];
+			if(pad_nbr->fix_flag == false){
+				pad_nbr->fix_flag = true;
+				//cout<<"pad_nbr: "<<*pad_nbr->node<<endl;
+			}
+		}
+		// assign later, after creating X node
+		pad_ptr->node = new_pad;
+		pad_ptr->control_nodes.clear();
+	}while(id != -1);
+}
+
+// locate id that has minimum value and not visited or fixed 
+int SubCircuit::locate_max_drop_pad(vector<double> vec){
+	int min_id = -1;
+	double min_ref = 0;
+	bool flag = false;
+	for(size_t i=0;i<vec.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+		if(pad_set[i]->visit_flag == true ||
+			pad_set[i]->fix_flag ==  true)
+			continue;
+		//clog<<"i, vec: "<<i<<" "<<vec[i]<<endl;
+		if(flag == false){
+			flag = true;
+			min_ref = vec[i];
+			min_id = i;
+		}
+		else if(vec[i] < min_ref){
+			min_ref = vec[i];
+			min_id = i;
+		}
+	}	
+	//clog<<"min_ref, min_pad: "<<min_ref<<" "<<*pad_set[min_id]->node<<endl;
+	return min_id;
 }
 

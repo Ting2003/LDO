@@ -156,8 +156,8 @@ public:
 	Node * expand_candi_pads(Node *na);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
-	int locate_max_drop_pad(vector<Pad*> &pad_set, vector<double> vec);
+	void graph_move_pads(vector<double> ref_drop_vec, bool local_flag);
+	int locate_max_drop_pad(vector<double> vec);
 	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(size_t i);
