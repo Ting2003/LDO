@@ -2419,9 +2419,10 @@ void SubCircuit::relocate_pads(){
 		
 		// find control nodes for each pad
 		extract_pads(pad_set, pad_number);
-		/*
+		
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(pad_set, ref_drop_vec, i);
+		/*
 		//print_all_control_nodes();	
 		if(i>=6){
 			dynamic_update_violate_ref(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
@@ -2646,3 +2647,55 @@ void SubCircuit::clear_pad_control_nodes(vector<Pad*> &pad_set){
 		pad_set[i]->control_nodes.clear();
 	}
 }
+
+// tune 50% nodes with the small IR drops
+void SubCircuit::update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_value, size_t iter){
+	ref_drop_value.resize(pad_set.size());
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+		
+		double middle_value = locate_ref(pad_set, i);
+		ref_drop_value[i] = middle_value;
+		//cout<<"middle value: "<<middle_value<<endl;
+	}
+}
+
+bool compare_values(double a, double b){
+	return (a<b);
+}
+
+// locate the tune spot for the control nodes.
+double SubCircuit::locate_ref(vector<Pad*> &pad_set, size_t i){
+	Pad *pad_ptr;
+	Node *pad;
+	map<Node*, double>::iterator it;
+	Node *nd;
+	double weight = 0;
+	//vector<double> drop_vec;
+	pad_ptr = pad_set[i];
+	pad = pad_ptr->node;
+	pad_ptr->drop_vec.clear();
+	// cout<<"pad: "<<*pad<<endl;
+	for(it = pad_ptr->control_nodes.begin();
+			it != pad_ptr->control_nodes.end();
+			it++){
+		nd = it->first;
+		// cout<<"control: "<<*nd<<endl;
+		// need to be generated with worst_cur
+		weight = nd->value;
+		if(weight <0)
+			weight *=10;
+
+		pad_ptr->control_nodes[nd] = weight;
+		pad_ptr->drop_vec.push_back(nd->value); 
+	}
+	sort(pad_ptr->drop_vec.begin(), pad_ptr->drop_vec.end(),
+			compare_values);
+	pad_ptr->ratio = 2;
+	size_t id = pad_ptr->drop_vec.size() / pad_ptr->ratio;
+	double middle_value = pad_ptr->drop_vec[id];
+	//drop_vec.clear();
+	return middle_value;
+}
+
