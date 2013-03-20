@@ -88,7 +88,6 @@ public:
       // solve for node voltage
 	void solve(Tran &tran);
 	void build_subcircuit();
-	void check_ldo_table();
 	
 	//void set_blocklist(Node * nd);
 	friend ostream & operator << (ostream & os, const Circuit & ckt);

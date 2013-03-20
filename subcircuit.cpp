@@ -2369,3 +2369,13 @@ void SubCircuit::modify_ldo_rhs(){
 		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
 	}
 }
+
+double SubCircuit::locate_maxIRdrop(){
+	max_IRdrop = 0;
+	for(size_t i=0;i<replist.size();i++){	
+		double IR_drop = 1.4 - replist[i]->value;		
+		if(IR_drop > max_IRdrop)
+			max_IRdrop = IR_drop;
+	}
+	return max_IRdrop;
+}

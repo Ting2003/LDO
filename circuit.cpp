@@ -2237,10 +2237,6 @@ void solve_a_line(Node *nd, DIRECTION d){
 }
 */
 
-void Circuit::check_ldo_table(){
-
-}
-
 void Circuit::solve_DC_LDO(){
 	int iter=0;
 	double diff_opt_ldo=1;
@@ -2274,7 +2270,7 @@ void Circuit::solve_DC_LDO(){
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		
-		clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		iter++;
 	}
 }
