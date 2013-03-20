@@ -2262,15 +2262,18 @@ void Circuit::solve_DC_LDO(){
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_DC(true);
 		ckt_g.stamp_decomp_matrix_DC(false);
+		
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs();
+		
 		diff_g = ckt_g.solve_CK_with_decomp();
 		// then throw into ldo lookup table
 		update_ldo_vout();
+		
 		clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		iter++;
 	}
