@@ -2235,6 +2235,7 @@ void solve_a_line(Node *nd, DIRECTION d){
 */
 
 void Circuit::check_ldo_table(){
+
 }
 
 void Circuit::solve_DC_LDO(){
@@ -2255,7 +2256,13 @@ void Circuit::solve_DC_LDO(){
 		ckt_g.stamp_decomp_matrix_DC(false);
 		// solve eq with decomped matrix
 		ckt_l.solve_CK_with_decomp();
+		// calculate ldo current from ckt_l
+		ckt_l.update_ldo_current();
+		// restamp global rhs with ldo current
+		ckt_g.modify_ldo_rhs();
 		ckt_g.solve_CK_with_decomp();
+		// then throw into ldo lookup table
+		//get_ldo_vout();
 	}
 }
 

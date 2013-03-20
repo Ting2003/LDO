@@ -193,6 +193,8 @@ private:
 	void stamp_decomp_matrix_TR(Tran &tran, double time);
 
 	void solve_CK_with_decomp();
+	void update_ldo_current();
+	void modify_ldo_rhs();
 	// add solve with ADI method
 	//void solve_partial_ADI();
 	//double solve_ADI_DC();

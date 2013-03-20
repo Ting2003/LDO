@@ -2243,8 +2243,8 @@ void SubCircuit::build_global_nets(){
 	double current;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
-		// current = ldolist[i]->current;
-		current = 0.3;
+		current = ldolist[i]->current;
+		//current = 0.3;
 		Net *net = new Net(CURRENT, current, nd, nodelist[nodelist.size()-1]);
 		add_net(net);
 		// update top nbr net
@@ -2295,10 +2295,60 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
 
 // solve eq with decomped matrix
 void SubCircuit::solve_CK_with_decomp(){
+	for(size_t i=0;i<replist.size();i++)
+		cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
 	// copy solution to nodes
    	get_voltages_from_LU_sol(xp);
-	// cout<<nodelist<<endl;
+	cout<<nodelist<<endl;
+}
+
+// update current values for all LDOs
+void SubCircuit::update_ldo_current(){
+	Node *nd;
+	Net *net;
+	Node *nb;
+	double current=0;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->A;
+		for(DIRECTION d = WEST; d!= BOTTOM; d = (DIRECTION)(d+1)){
+			net = nd->nbr[d];
+			if(net == NULL) continue;
+			// no current net in ldo 
+			// locations in input file
+			if(net->type == CURRENT) 
+				continue;
+			// work on resistance net
+			if(net->ab[0] == nd)
+				nb = net->ab[1];
+			else
+				nb = net->ab[0];
+			current += (nd->value - nb->value ) / net->value;
+			// clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<current;
+		}
+		// copy old current
+		ldolist[i]->current_old = 
+			ldolist[i]->current;
+		// assign new current
+		ldolist[i]->current = current;
+		// clog<<"ldo current: "<<current;
+	}
+}
+
+// modify rhs with new current value of LDO
+void SubCircuit::modify_ldo_rhs(){
+	Node *nd;
+	size_t rid;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->nd_in;
+		rid = nd->rep->rid;
+		// clog<<"old bp: "<<bp[rid]<<endl;
+		// restore old current
+		bp[rid] += ldolist[i]->current_old;
+		// change into new one
+		bp[rid] -= ldolist[i]->current;
+		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
+	}
 }

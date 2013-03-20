@@ -19,7 +19,8 @@ public:
 	// stores the output voltage
 	double voltage;
 	// current extracted from this LDO
-	double current; 
+	double current;
+	double current_old;
 };
 
 // current block in polygon format
