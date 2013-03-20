@@ -2456,7 +2456,7 @@ void Circuit::solve_DC_LDO(){
 	if(max_IRdrop <= THRES) return;
 
 	// first optimize the locations of LDOs
-	relocate_pads();
+	relocate_LDOs();
 
 	int iter = 0;
 	// while not satisfied and still have room,
@@ -2470,8 +2470,7 @@ void Circuit::solve_DC_LDO(){
 	}*/
 }
 
-// adjust ldo number and locations
-// update the ldo correlated nets
-void Circuit::relocate_pads(){
-	
+void Circuit::relocate_LDOs(){
+	ckt_l.relocate_pads();
 }
+

@@ -2379,3 +2379,121 @@ double SubCircuit::locate_maxIRdrop(){
 	}
 	return max_IRdrop;
 }
+
+// adjust ldo number and locations
+// update the ldo correlated nets
+void SubCircuit::relocate_pads(){
+	vector<Node*> pad_set_old;
+	double dist = 0;
+	
+	pad_set_old.resize(pad_set.size());
+	assign_pad_set(pad_set, pad_set_old);
+	
+	// stores the best ldolist
+	vector<LDO*>ldolist_best;
+	ldolist_best.resize(ldolist.size());
+	for(size_t i=0;i<ldolist.size();i++){
+		ldolist_best[i] = new LDO();
+		ldolist_best[i]->node.resize(ldolist[i]->node.size());
+		for(size_t j=0;j<ldolist_best[i]->node.size();j++){
+			ldolist_best[i]->node[j] = new Point(-1,-1,-1);
+			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
+			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
+		}
+		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
+	}
+
+	return;
+#if 0
+	vector<double> ref_drop_vec_l;
+	double min_IR = max_IRdrop;	
+	//clog<<"min_IR initial is: "<<min_IR<<endl;
+	// for local pad movement
+	for(size_t i=0;i<5;i++){
+		// clog<<endl<<"iter for pad move. "<<i<<endl;
+		int pad_number = 1;
+		origin_pad_set.resize(pad_set.size());
+		
+		assign_pad_set(pad_set, origin_pad_set);
+		// build pad connection graph
+		//build_graph(pad_set_l);
+		build_graph_global();
+		if(i==0)
+			modify_graph(true);
+
+		// find control nodes for each pad
+		extract_pads(pad_set, pad_number);
+		// find the tune spot for control nodes	
+		update_pad_control_nodes(pad_set, ref_drop_vec_l, i);
+		//print_all_control_nodes();	
+		if(i>=6){
+			dynamic_update_violate_ref(VDD_G, pad_set, ref_drop_vec_l, map_node_pt_g, true);
+		}
+		// find new point for all pads	
+		dist_l = update_pad_pos_all(pad_set_l, ref_drop_vec_l);
+		// move the low 10% pads into high 10% 
+		// pad area 
+		if(i==0){
+			extract_min_max_pads(VDD_G, pad_set_l, ref_drop_vec_l, map_node_pt_g, true);
+		}
+		//clog<<"before move violate. "<<endl;
+		// update the old pad set value
+		assign_pad_set(pad_set_l, pad_set_old_l);
+		//clog<<"before assign pad set. "<<endl;
+		move_violate_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
+
+		// move pads according to graph contraints
+		
+		graph_move_pads(map_node_pt_g, pad_set_l, ref_drop_vec_l, true);
+		//clog<<"after graph move. "<<endl;
+		clear_flags(pad_set_l);
+		// actual move pads into the new spots
+		// project_pads();
+		// clog<<"before resolve direct. "<<endl;	
+		double max_IR = resolve_direct(tran, true);
+		// clog<<"after resolve direct. "<<endl;
+		if(max_IR ==0)
+			break;
+		if(max_IR < min_IR){
+			min_IR = max_IR;
+			for(size_t i=0;i<ldolist.size();i++){
+				for(int j=0;j<ldolist_best[i]->node.size();j++){
+					ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
+					ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
+					
+					// clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
+				}
+			}
+		}
+		//clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
+	}
+	
+	//ldolist = ldolist_best;
+	// recover into old local pad status
+	//clog<<"before recover local pad. "<<endl;	
+	origin_pad_set_l.resize(pad_set_l.size());	
+	recover_local_pad(tran, ldolist_best);
+	
+	
+	ref_drop_vec_l.clear();
+	origin_pad_set_l.clear();
+	pad_set_old_l.clear();
+	// terminate cm and xp,bp and so on
+	//print_pad_set();
+	//cout<<nodelist<<endl;
+#endif
+}
+
+void SubCircuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
+	//clog<<"assign pad set."<<endl;
+	// clog<<"size: "<<pad_set_old.size()<<endl;
+	// clog<<"pad_set size: "<<pad_set.size()<<endl;
+	pad_set_old.resize(pad_set.size());
+	for(size_t i=0;i<pad_set_old.size();i++){
+		if(pad_set[i]->node == NULL)
+			clog<<"NULL node. "<<endl;
+		pad_set_old[i] = pad_set[i]->node;
+		//if(pad_set[i]->node->get_layer()==local_layers[0])
+		// cout<<"pad: "<<i<<" "<<*pad_set_old[i]<<endl;	
+	}
+}
