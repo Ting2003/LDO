@@ -2443,9 +2443,10 @@ void SubCircuit::relocate_pads(){
 		// move pads according to graph contraints
 		
 		graph_move_pads(ref_drop_vec, true);
-		/*
+		
 		//clog<<"after graph move. "<<endl;
-		clear_flags(pad_set);
+		clear_flags();
+		/*
 		// actual move pads into the new spots
 		// project_pads();
 		// clog<<"before resolve direct. "<<endl;	
@@ -3595,5 +3596,18 @@ int SubCircuit::locate_max_drop_pad(vector<double> vec){
 	}	
 	//clog<<"min_ref, min_pad: "<<min_ref<<" "<<*pad_set[min_id]->node<<endl;
 	return min_id;
+}
+
+void SubCircuit::clear_flags(){
+	Pad *pad;
+	for(size_t i=0;i<pad_set.size();i++){
+		pad = pad_set[i];
+		pad->visit_flag = false;
+		pad->fix_flag = false;
+		pad->violate_flag = false;
+		//nd->region_flag = false;
+		//nd->fix_flag = false;
+		//nd->visit_flag = false;
+	}
 }
 
