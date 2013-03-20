@@ -192,7 +192,7 @@ private:
 	void stamp_decomp_matrix_DC(bool local_flag);
 	void stamp_decomp_matrix_TR(Tran &tran, double time);
 
-	void solve_CK_with_decomp();
+	double solve_CK_with_decomp();
 	void update_ldo_current();
 	void modify_ldo_rhs();
 	// add solve with ADI method
@@ -248,7 +248,7 @@ private:
 	void copy_node_voltages(double *x, size_t &size, bool from=true);
 
 	// after solving, copy node voltage from replist to nodes
-	void get_voltages_from_LU_sol(double *x);
+	double get_voltages_from_LU_sol(double *x);
 	void select_omega();
 
 	void set_type(CIRCUIT_TYPE type){circuit_type = type;};

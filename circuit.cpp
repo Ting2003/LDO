@@ -2244,28 +2244,35 @@ void Circuit::check_ldo_table(){
 void Circuit::solve_DC_LDO(){
 	int iter=0;
 	double diff_opt_ldo=1;
+	double diff_l = 1;
+	double diff_g = 1;
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
-	while(diff_opt_ldo >1e-3 && iter++ < 1){
+	// while(diff_opt_ldo >1e-3 && iter++ < 1){
+	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
 		// for each location of LDO
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
+
 		// then update netlist
 		ckt_l.build_local_nets();
 		ckt_g.build_global_nets();
+
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_DC(true);
 		ckt_g.stamp_decomp_matrix_DC(false);
 		// solve eq with decomped matrix
-		ckt_l.solve_CK_with_decomp();
+		diff_l = ckt_l.solve_CK_with_decomp();
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs();
-		ckt_g.solve_CK_with_decomp();
+		diff_g = ckt_g.solve_CK_with_decomp();
 		// then throw into ldo lookup table
 		update_ldo_vout();
+		clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		iter++;
 	}
 }
 
@@ -2354,12 +2361,12 @@ void Circuit::update_ldo_vout(){
 			vin_2, ldo_vin_vec);
 		find_table_elements(iout, iout_1, 
 			iout_2, ldo_iout_vec);
-		clog<<"vin, start, end: "<<vin<<" "<<vin_1<<" "<<vin_2<<endl;
-		clog<<"iout, start, end: "<<iout<<" "<<iout_1<<" "<<iout_2<<endl;
+		// clog<<"vin, start, end: "<<vin<<" "<<vin_1<<" "<<vin_2<<endl;
+		// clog<<"iout, start, end: "<<iout<<" "<<iout_1<<" "<<iout_2<<endl;
 		// perform interpolation operation
 		double vout = inter_table_ldo(vin, iout, 
 			vin_1, vin_2, iout_1, iout_2);
-		clog<<"vout: "<<vout<<endl;
+		// clog<<"vout: "<<vout<<endl;
 	}
 }
 
@@ -2408,7 +2415,7 @@ double Circuit::inter_table_ldo(double vin, double iout, double vin_1, double vi
 	z12 = table_ldo[make_pair(vin_2, iout_1)];
 	z21 = table_ldo[make_pair(vin_1, iout_2)];
 	z22 = table_ldo[make_pair(vin_2, iout_2)];
-	clog<<"z11, z12, z21, z22: "<<z11<<" "<<z12<<" "<<z21<<" "<<z22<<endl;
+	// clog<<"z11, z12, z21, z22: "<<z11<<" "<<z12<<" "<<z21<<" "<<z22<<endl;
 
 	// if only 1 element, return
 	if(vin_1 == vin_2 && iout_1 == iout_2)

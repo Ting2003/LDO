@@ -154,6 +154,7 @@ void SubCircuit::print(){
 // 3. find node in which block, update count
 // 4. get representative lists
 void SubCircuit::solve_init(bool flag){
+	replist.clear();
         sort_nodes();
 	size_t size = nodelist.size()-1; // exclude ground node!!
 	Node *p=NULL;
@@ -427,15 +428,20 @@ void SubCircuit::solve_LU(Tran &tran, bool local_flag){
 
 // given vector x that obtained from LU, set the value to the corresponding
 // node in nodelist
-void SubCircuit::get_voltages_from_LU_sol(double * x){
+double SubCircuit::get_voltages_from_LU_sol(double * x){
    size_t i;
+   double max_diff = 0;
+   double diff = 0;
    for(i=0;i<nodelist.size()-1;i++){
       Node * node = nodelist[i];
       size_t id = node->rep->rid;  // get rep's id in Vec
       double v = x[id];		// get its rep's value
+      diff = abs(node->value - v);
+      if(diff  > max_diff)
+	      max_diff = diff;
       node->value = v;
-
    }
+   return max_diff;
 }
 
 // copy node voltages from the SubCircuit to a Vec
@@ -2209,8 +2215,10 @@ void SubCircuit::build_local_nets(){
 	// first delete all voltage nets
 	int type = VOLTAGE;
 	NetPtrVector &ns = net_set[type];
-	for(size_t i=0;i<ns.size();i++)
+	for(size_t i=0;i<ns.size();i++){
 		delete ns[i];
+	}
+	ns.clear();
 	// then create new ones
 	Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
@@ -2238,6 +2246,7 @@ void SubCircuit::build_global_nets(){
 	NetPtrVector &ns = net_set[type];
 	for(size_t i=0;i<ns.size();i++)
 		delete ns[i];
+	ns.clear();
 	// then create new ones
 	Node *nd;
 	double current;
@@ -2294,15 +2303,16 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
 }
 
 // solve eq with decomped matrix
-void SubCircuit::solve_CK_with_decomp(){
-	//for(size_t i=0;i<replist.size();i++)
-		//cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
+double SubCircuit::solve_CK_with_decomp(){
+	// for(size_t i=0;i<replist.size();i++)
+		// cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
 	// copy solution to nodes
-   	get_voltages_from_LU_sol(xp);
+   	double diff = get_voltages_from_LU_sol(xp);
 	// cout<<nodelist<<endl;
+	return diff;
 }
 
 // update current values for all LDOs
