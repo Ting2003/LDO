@@ -163,7 +163,7 @@ public:
 	double locate_ref(size_t i);
 	void dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag);
 	bool print_flag(Node *nd);
-	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
+	void move_violate_pads(vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
 	double resolve_direct(Tran &tran, bool local_flag);
 	void resolve_queue(vector<Node *> origin_pad_set);

@@ -2427,18 +2427,19 @@ void SubCircuit::relocate_pads(){
 		//}/*
 		// find new point for all pads	
 		dist = update_pad_pos_all(ref_drop_vec);
-		/*
+		
 		// move the low 10% pads into high 10% 
 		// pad area 
-		if(i==0){
+		/*if(i==0){
 			extract_min_max_pads(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
-		}
+		}*/
 		//clog<<"before move violate. "<<endl;
 		// update the old pad set value
 		assign_pad_set(pad_set, pad_set_old);
+		
 		//clog<<"before assign pad set. "<<endl;
-		move_violate_pads(map_node_pt_g, pad_set, ref_drop_vec, true);
-
+		move_violate_pads(ref_drop_vec, true);
+		/*
 		// move pads according to graph contraints
 		
 		graph_move_pads(map_node_pt_g, pad_set, ref_drop_vec, true);
@@ -2480,6 +2481,7 @@ void SubCircuit::relocate_pads(){
 	//cout<<nodelist<<endl;
 }
 
+// update the old pad set value
 void SubCircuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old){
 	//clog<<"assign pad set."<<endl;
 	// clog<<"size: "<<pad_set_old.size()<<endl;
@@ -3517,5 +3519,26 @@ Node * SubCircuit::expand_candi_pads(Node *nd){
 	}
 	clog<<"no point for new pad. return. "<<endl;
 	return NULL;
+}
+
+void SubCircuit::move_violate_pads(vector<double> ref_drop_vec, bool local_flag){
+	Pad *pad_ptr;
+	Node * pad;
+	Node * new_pad;
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+
+		pad_ptr = pad_set[i];
+		pad = pad_ptr->node;
+		// if violate, move this pad
+		if(pad_ptr->violate_flag == true){
+			new_pad = pad_projection(pad_ptr, pad, local_flag);
+			// clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+			pad_ptr->node = new_pad;
+			pad_ptr->control_nodes.clear();
+			pad_ptr->visit_flag = true;
+		}
+	}
 }
 
