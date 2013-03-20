@@ -208,9 +208,14 @@ private:
 	// readin LDO and store the lookup table
 	void Readin_LDO();
 	void update_ldo_vout();
-	void find_table_elements(double vin, 
-		double iout, double &vin_1, 
+	void find_table_elements(double &vin, 
+		double &vin_1, 
 		double &vin_2, vector<double> vec);
+	double inter_1D_table(double x, double x1, 
+		double y1, double x2, double y2);
+	double inter_table_ldo(double vin, double iout, 
+		double vin_1, double vin_2, 
+		double iout_1, double iout_2);
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);

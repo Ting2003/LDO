@@ -2350,28 +2350,34 @@ void Circuit::update_ldo_vout(){
 		iout = ldolist[i]->current;
 		// find correlated elements in 
 		// the lookup table
-		find_table_elements(vin, iout, vin_1, 
+		find_table_elements(vin, vin_1, 
 			vin_2, ldo_vin_vec);
-		find_table_elements(vin, iout, iout_1, 
+		find_table_elements(iout, iout_1, 
 			iout_2, ldo_iout_vec);
 		clog<<"vin, start, end: "<<vin<<" "<<vin_1<<" "<<vin_2<<endl;
 		clog<<"iout, start, end: "<<iout<<" "<<iout_1<<" "<<iout_2<<endl;
+		// perform interpolation operation
+		double vout = inter_table_ldo(vin, iout, 
+			vin_1, vin_2, iout_1, iout_2);
+		clog<<"vout: "<<vout<<endl;
 	}
 }
 
 // find correlated elements in the lookup table
-void Circuit::find_table_elements(double vin, 
-	double iout, double &vin_1, double &vin_2, 
+void Circuit::find_table_elements(double &vin, 
+	double &vin_1, double &vin_2, 
 	vector<double> vec){
 	size_t n = vec.size();
 	// if out of range
 	if(vin < vec[0]){
 		vin_1 = vec[0];
 		vin_2 = vin_1;
+		vin = vin_1;
 	}
 	else if(vin > vec[n-1]){
 		vin_1 = vec[n-1];
 		vin_2 = vin_1;
+		vin = vin_1;
 	}
 	else{
 		for(size_t j=0;j<n-1;j++){
@@ -2382,5 +2388,49 @@ void Circuit::find_table_elements(double vin,
 				break;
 			}
 		}
+	}
+}
+
+// first interpolate a line
+double Circuit::inter_1D_table(double x, double x1, double y1, double x2, double y2){
+	return ((x-x1)*y2 + (x2-x)*y1) / (x2-x1);
+}
+// perform interpolation operation
+double Circuit::inter_table_ldo(double vin, double iout, double vin_1, double vin_2, double iout_1, double iout_2){
+	double z11=0;
+	double z12=0;
+	double z21=0;
+	double z22=0;
+	double temp1 = 0;
+	double temp2 = 0;
+
+	z11 = table_ldo[make_pair(vin_1, iout_1)];
+	z12 = table_ldo[make_pair(vin_2, iout_1)];
+	z21 = table_ldo[make_pair(vin_1, iout_2)];
+	z22 = table_ldo[make_pair(vin_2, iout_2)];
+	clog<<"z11, z12, z21, z22: "<<z11<<" "<<z12<<" "<<z21<<" "<<z22<<endl;
+
+	// if only 1 element, return
+	if(vin_1 == vin_2 && iout_1 == iout_2)
+		return z11;
+	// if 2 elements
+	if(iout_1 != iout_2 && vin_1 != vin_2){
+		temp1 = inter_1D_table(iout, 
+			iout_1, z11, iout_2, z21);
+		temp2 = inter_1D_table(iout, 
+			iout_1, z12, iout_2, z22);
+		double vout = inter_1D_table(vin, 
+			vin_1, temp1, vin_2, temp2);
+		return vout;
+	}
+	if(iout_1 == iout_2){
+		double vout = inter_1D_table(vin, 
+			vin_1, z11, vin_2, z12);
+		return vout;
+	}
+	if(vin_1 == vin_2){
+		double vout = inter_1D_table(iout, 
+			iout_1, z11, iout_2, z21);
+		return vout;
 	}
 }
