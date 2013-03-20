@@ -2416,12 +2416,10 @@ void SubCircuit::relocate_pads(){
 		assign_pad_set(pad_set, origin_pad_set);
 		// build pad connection graph
 		build_pad_graph();
-		/*
-		if(i==0)
-			modify_graph(true);
-
+		
 		// find control nodes for each pad
 		extract_pads(pad_set, pad_number);
+		/*
 		// find the tune spot for control nodes	
 		update_pad_control_nodes(pad_set, ref_drop_vec, i);
 		//print_all_control_nodes();	
@@ -2579,3 +2577,72 @@ double SubCircuit::get_distance(Node *na, Node *nb){
 	return distance;
 }
 
+void SubCircuit::extract_pads(vector<Pad*> &pad_set, int pad_number){
+	vector<Node*> pair_first;
+	vector<double> pair_second;
+	pair<Node*, double> pair_nd;
+	//int pad_number = 5;
+	double distance = 0;
+	map<Node*, double>::iterator it;
+
+	clear_pad_control_nodes(pad_set);
+	for(size_t i=0;i<special_nodes.size();i++){
+		int count = 0;
+		pair_first.clear();
+		pair_second.clear();
+		Node *nd = special_nodes[i];
+		// search for closest pads
+		for(size_t j=0;j<pad_set.size();j++){
+			Node *ptr = pad_set[j]->node;
+			// make sure they are in same layer
+			if(ptr->get_layer() != nd->get_layer())
+				continue;
+			distance = get_distance(ptr, nd);
+
+			if(count < pad_number){
+				pair_first.push_back(ptr);
+				pair_second.push_back(distance);
+				count++;
+			}else{// substitute the pad node
+				double max_dist = 0;
+				size_t max_index = 0;
+				for(size_t k=0;k<pair_second.size();k++){
+					if(pair_second[k]>max_dist){
+						max_dist = pair_second[k];
+						max_index = k;
+					}
+				}
+				if(distance < max_dist){ 
+					pair_first[max_index] = ptr;
+					pair_second[max_index] = distance;
+				}
+			}
+		}
+		// then map these distance into pads
+		for(size_t j=0;j<pair_first.size();j++){
+			Node *ptr = pair_first[j];
+			//if(nd->name == "n0_0_0")
+			//clog<<"ptr: "<<*ptr<<endl;
+			for(size_t k=0;k<pad_set.size();k++){
+				if(pad_set[k]->node->name == ptr->name){
+					// control nodes
+					pair_nd.first = nd;
+					// distance
+					pair_nd.second = pair_second[j];
+					pad_set[k]->control_nodes.insert(pair_nd);
+					break;
+				}
+			}
+		}
+	}
+	//print_pad_map();	
+	pair_first.clear();
+	pair_second.clear();
+	//print_pad_map();
+}
+
+void SubCircuit::clear_pad_control_nodes(vector<Pad*> &pad_set){
+	for(size_t i=0;i<pad_set.size();i++){
+		pad_set[i]->control_nodes.clear();
+	}
+}
