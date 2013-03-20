@@ -63,6 +63,9 @@ Circuit::~Circuit(){
 	Li = NULL;
 	Lp = NULL;
 	Lnz = NULL;
+	table_ldo.clear();
+	ldo_vin_vec.clear();
+	ldo_iout_vec.clear();
 }
 
 void Circuit::check_sys() const{
@@ -2262,7 +2265,7 @@ void Circuit::solve_DC_LDO(){
 		ckt_g.modify_ldo_rhs();
 		ckt_g.solve_CK_with_decomp();
 		// then throw into ldo lookup table
-		//get_ldo_vout();
+		update_ldo_vout();
 	}
 }
 
@@ -2291,11 +2294,14 @@ void Circuit::Readin_LDO(){
 	FILE *f;
 	key_LDO key;
 	pair<key_LDO, double> LDO_pair;
+	ldo_vin_vec.clear();
+	ldo_iout_vec.clear();
 	f = fopen("../data/LDO/data/LDO_lookupTable.txt", "r");
 	if( f == NULL ) 
 		report_exit("LDO table file not exist!\n");
 	char line[MAX_BUF];
 	double vin, iout, vout;
+	vector<double>::iterator it;
 	while(fgets(line, MAX_BUF, f) != NULL){
 		if(line[0]== '*') continue;
 		sscanf(line, "%lf %lf %lf", &vin, &iout, &vout);
@@ -2308,6 +2314,73 @@ void Circuit::Readin_LDO(){
 			LDO_pair.second<<endl;
 		*/
 		table_ldo.insert(LDO_pair);
+		// build ldo_vin list
+		it = find(ldo_vin_vec.begin(), 
+			ldo_vin_vec.end(), vin);
+		if(it == ldo_vin_vec.end()){
+			ldo_vin_vec.push_back(vin);
+		}
+		// build ldo_iout list
+		it = find(ldo_iout_vec.begin(), 
+			ldo_iout_vec.end(), iout);
+		if(it == ldo_iout_vec.end()){
+			ldo_iout_vec.push_back(iout);
+		}
 	}
 	fclose(f);
+	// sort ldo_iout_vec and vin_vec 
+	sort(ldo_vin_vec.begin(), ldo_vin_vec.end());
+	sort(ldo_iout_vec.begin(), ldo_iout_vec.end());
+}
+
+// with new Iout and Vin, update ldo vout 
+// with lookup Table - linear interpolation method
+// if out of range of index, choose the closest
+void Circuit::update_ldo_vout(){
+	Node *nd_out;
+	Node *nd_in;
+	double iout;
+	double vin;
+	size_t n_vin = ldo_vin_vec.size();
+	size_t n_iout = ldo_iout_vec.size();
+	double vin_1, vin_2;
+	double iout_1, iout_2;
+	for(size_t i=0;i<ldolist.size();i++){
+		vin = ldolist[i]->nd_in->value;
+		iout = ldolist[i]->current;
+		// find correlated elements in 
+		// the lookup table
+		find_table_elements(vin, iout, vin_1, 
+			vin_2, ldo_vin_vec);
+		find_table_elements(vin, iout, iout_1, 
+			iout_2, ldo_iout_vec);
+		clog<<"vin, start, end: "<<vin<<" "<<vin_1<<" "<<vin_2<<endl;
+		clog<<"iout, start, end: "<<iout<<" "<<iout_1<<" "<<iout_2<<endl;
+	}
+}
+
+// find correlated elements in the lookup table
+void Circuit::find_table_elements(double vin, 
+	double iout, double &vin_1, double &vin_2, 
+	vector<double> vec){
+	size_t n = vec.size();
+	// if out of range
+	if(vin < vec[0]){
+		vin_1 = vec[0];
+		vin_2 = vin_1;
+	}
+	else if(vin > vec[n-1]){
+		vin_1 = vec[n-1];
+		vin_2 = vin_1;
+	}
+	else{
+		for(size_t j=0;j<n-1;j++){
+			if(vec[j] <= vin && 
+				vec[j+1] >= vin){
+				vin_1 = vec[j];
+				vin_2 = vec[j+1];
+				break;
+			}
+		}
+	}
 }

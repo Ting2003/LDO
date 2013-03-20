@@ -15,7 +15,7 @@ public:
 	int width;
 	int height;
 	// stores the input voltage
-	double vin;
+	//double vin;
 	// stores the output voltage
 	double voltage;
 	// current extracted from this LDO

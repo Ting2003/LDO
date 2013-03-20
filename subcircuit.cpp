@@ -2295,14 +2295,14 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
 
 // solve eq with decomped matrix
 void SubCircuit::solve_CK_with_decomp(){
-	for(size_t i=0;i<replist.size();i++)
-		cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
+	//for(size_t i=0;i<replist.size();i++)
+		//cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
 	// copy solution to nodes
    	get_voltages_from_LU_sol(xp);
-	cout<<nodelist<<endl;
+	// cout<<nodelist<<endl;
 }
 
 // update current values for all LDOs
@@ -2336,6 +2336,13 @@ void SubCircuit::update_ldo_current(){
 		// clog<<"ldo current: "<<current;
 	}
 }
+
+/*// update ldo input voltage
+void SubCircuit::update_ldo_vin(){
+	for(size_t i=0;i<ldolist.size();i++){
+		ldolist[i]->vin = ldolist[i]->nd_in->value;
+	}
+}*/
 
 // modify rhs with new current value of LDO
 void SubCircuit::modify_ldo_rhs(){

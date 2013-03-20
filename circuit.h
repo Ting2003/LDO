@@ -207,6 +207,10 @@ private:
 	void count_merge_nodes();
 	// readin LDO and store the lookup table
 	void Readin_LDO();
+	void update_ldo_vout();
+	void find_table_elements(double vin, 
+		double iout, double &vin_1, 
+		double &vin_2, vector<double> vec);
 
 	// methods of stamping the matrix
 	void stamp_by_set(Matrix & A, double * b);
@@ -295,6 +299,10 @@ private:
 	NodePtrVector replist;		// a set of representative nodes
 	
 	TABLE_LDO table_ldo;
+	// record ldo vin list
+	vector<double> ldo_vin_vec;
+	// record ldo iout list
+	vector<double> ldo_iout_vec;
 	// TABLE_LDO table_ldo;
 
 	SubCircuit ckt_g;	// global subcircuit
