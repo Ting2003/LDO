@@ -96,7 +96,7 @@ public:
 	double locate_maxIRdrop(double *x, size_t n);
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
-	void mark_special_nodes();
+	// void mark_special_nodes();
 	bool set_ldo(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
 	void recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best);
 	void recover_global_pad(Tran &tran, vector<Node*> &pad_set_best);
@@ -108,7 +108,7 @@ public:
 	double max_IRdrop;
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
-	vector<Node*> special_nodes;
+	// vector<Node*> special_nodes;
 	// size = replist
 	// record -current that has the worst IR drop values
 	// mapping from name to Node object pointer
@@ -120,14 +120,11 @@ public:
 	void print_pad_map(vector<Pad*> &pad_set);
 	void release_resource();
 	void clear_flags(vector<Pad*> &pad_set);
-	double update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, size_t i);
-	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
+	double update_pad_pos(double ref_drop_value, size_t i);
+	double update_pad_pos_all(vector<double> ref_drop_vec);
 	void round_data(double &data);
-	Node * pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd, bool local_flag);
+	Node * pad_projection(Pad *pad, Node *nd, bool local_flag);
 	void project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
-	bool has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const;
-	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
-	void build_map_node_pt();
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_pads();
@@ -145,12 +142,12 @@ public:
 	void update_ldo_voltage(char *filename);
 	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
-	void extract_pads(vector<Pad*> &pad_set, int pad_number);
+	void extract_pads(int pad_number);
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
-	void update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_vec, size_t iter);
+	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
 	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
-	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
+	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
 	void build_pad_graph();
 	void modify_graph(bool flag);
@@ -161,10 +158,10 @@ public:
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	int locate_max_drop_pad(vector<Pad*> &pad_set, vector<double> vec);
-	double calc_avg_ref_drop(vector<Pad*> &pad_set, vector<double> &ref_drop_vec);
+	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
-	double locate_ref(vector<Pad*> &pad_set, size_t i);
-	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec,unordered_map<string, Node*> map_node_pt, bool local_flag);
+	double locate_ref(size_t i);
+	void dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag);
 	bool print_flag(Node *nd);
 	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
@@ -233,6 +230,18 @@ private:
 
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
+	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
+	void locate_ldo_region_bound(int a, int b, int &min, int &max);
+	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo);
+	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
+	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
+	//bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);
+	bool place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, LDO &ldo_ptr, MODULE *module);
+	bool ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo);
+	bool place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr, MODULE * module);
+	bool move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module);
+	Point *shortest_point(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module);
+
 	void release_tr_nodes(Tran &tran);
 	void release_ckt_nodes(Tran &tran);
 	void print_ckt_nodes(Tran &tran);

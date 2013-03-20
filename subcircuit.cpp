@@ -2411,24 +2411,23 @@ void SubCircuit::relocate_pads(){
 	for(size_t i=0;i<1;i++){//5;i++){
 		// clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
-		origin_pad_set.resize(pad_set.size());
-		
+		origin_pad_set.resize(pad_set.size());	
 		assign_pad_set(pad_set, origin_pad_set);
 		// build pad connection graph
 		build_pad_graph();
 		
 		// find control nodes for each pad
-		extract_pads(pad_set, pad_number);
+		extract_pads(pad_number);
 		
 		// find the tune spot for control nodes	
-		update_pad_control_nodes(pad_set, ref_drop_vec, i);
-		/*
+		update_pad_control_nodes(ref_drop_vec, i);	
 		//print_all_control_nodes();	
-		if(i>=6){
-			dynamic_update_violate_ref(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
-		}
+		//if(i>=6){
+			//dynamic_update_violate_ref(VDD_G, ref_drop_vec, true);
+		//}/*
 		// find new point for all pads	
-		dist = update_pad_pos_all(pad_set, ref_drop_vec);
+		dist = update_pad_pos_all(ref_drop_vec);
+		/*
 		// move the low 10% pads into high 10% 
 		// pad area 
 		if(i==0){
@@ -2578,7 +2577,8 @@ double SubCircuit::get_distance(Node *na, Node *nb){
 	return distance;
 }
 
-void SubCircuit::extract_pads(vector<Pad*> &pad_set, int pad_number){
+// find control nodes for each pad
+void SubCircuit::extract_pads(int pad_number){
 	vector<Node*> pair_first;
 	vector<double> pair_second;
 	pair<Node*, double> pair_nd;
@@ -2587,11 +2587,11 @@ void SubCircuit::extract_pads(vector<Pad*> &pad_set, int pad_number){
 	map<Node*, double>::iterator it;
 
 	clear_pad_control_nodes(pad_set);
-	for(size_t i=0;i<special_nodes.size();i++){
+	for(size_t i=0;i<replist.size();i++){
 		int count = 0;
 		pair_first.clear();
 		pair_second.clear();
-		Node *nd = special_nodes[i];
+		Node *nd = replist[i];
 		// search for closest pads
 		for(size_t j=0;j<pad_set.size();j++){
 			Node *ptr = pad_set[j]->node;
@@ -2649,13 +2649,13 @@ void SubCircuit::clear_pad_control_nodes(vector<Pad*> &pad_set){
 }
 
 // tune 50% nodes with the small IR drops
-void SubCircuit::update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_value, size_t iter){
+void SubCircuit::update_pad_control_nodes(vector<double> & ref_drop_value, size_t iter){
 	ref_drop_value.resize(pad_set.size());
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
 		
-		double middle_value = locate_ref(pad_set, i);
+		double middle_value = locate_ref(i);
 		ref_drop_value[i] = middle_value;
 		//cout<<"middle value: "<<middle_value<<endl;
 	}
@@ -2666,7 +2666,7 @@ bool compare_values(double a, double b){
 }
 
 // locate the tune spot for the control nodes.
-double SubCircuit::locate_ref(vector<Pad*> &pad_set, size_t i){
+double SubCircuit::locate_ref(size_t i){
 	Pad *pad_ptr;
 	Node *pad;
 	map<Node*, double>::iterator it;
@@ -2697,5 +2697,825 @@ double SubCircuit::locate_ref(vector<Pad*> &pad_set, size_t i){
 	double middle_value = pad_ptr->drop_vec[id];
 	//drop_vec.clear();
 	return middle_value;
+}
+
+void SubCircuit::dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag){
+	//for(size_t j=0;j<2;j++){
+	double avg_drop = 0;
+	avg_drop = calc_avg_ref_drop(ref_drop_vec);
+
+	Pad *pad_ptr;
+	Node *pad;
+	//cout<<"j: "<<j<<endl;
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+		pad_ptr = pad_set[i];
+		pad = pad_ptr->node;
+ 
+		if(pad_ptr->data >= 2*avg_drop){
+			pad_ptr->violate_flag = true;
+			double ratio_new = pad_ptr->ratio * 2;
+			size_t id = pad_ptr->drop_vec.size() / ratio_new;
+			pad_ptr->ratio = ratio_new;
+			double middle_value = pad_ptr->drop_vec[id];
+			ref_drop_vec[i] = middle_value;
+		}
+	}
+	
+	extract_min_max_pads_new(VDD, ref_drop_vec, local_flag);	
+}
+
+double SubCircuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
+	Node *pad;
+	Pad *pad_ptr;
+	double max_drop, min_drop;
+	//double sum_max = 0;
+	//double sum_min = 0;
+	double sum_diff = 0;
+	size_t count = 0;
+	double ref_drop_value = 0;
+
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+		count ++;	
+		ref_drop_value = ref_drop_vec[i];
+		map<Node *, double>::iterator it;
+		pad_ptr = pad_set[i];
+		pad = pad_ptr->node;
+		max_drop = 0;
+		min_drop = -1;
+		
+		for(it = pad_ptr->control_nodes.begin();
+		    it != pad_ptr->control_nodes.end();
+		    it++){
+			if(it->second > ref_drop_value)
+				continue;
+			  if(it->second > max_drop)
+				max_drop = it->second;
+			  if(min_drop == -1)
+				min_drop = it->second;
+			  else if(it->second < min_drop)
+				min_drop = it->second;
+		}
+		pad_ptr->data = max_drop - min_drop;
+		sum_diff += pad_ptr->data;
+	}
+	double avg_drop = sum_diff / count;
+	return avg_drop;
+}
+
+void SubCircuit::extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag){
+	Node *nd;
+	Pad *pad;
+	size_t max_index = 0;
+	double max = 0;
+
+	vector<Node*> min_pads;
+	vector<Node*> max_pads;
+	vector<bool >temp_flag;
+
+	map<Node *, double>::iterator it;
+	temp_flag.resize(pad_set.size());
+	for(size_t i=0;i<temp_flag.size();i++)
+		temp_flag[i] = false;
+	size_t id_minpad = 0;
+	double drop = 0;
+	double avg_ref = calc_avg_ref(pad_set, ref_drop_vec);
+	double avg_drop = VDD - avg_ref;
+	
+	for(size_t i=0;i<pad_set.size();i++){
+		pad = pad_set[i];
+		nd = pad->node;
+					
+		drop = VDD_G - ref_drop_vec[i];
+		if(drop>max){
+			max = drop;
+			max_index = i;
+		}
+		if(drop < 0.7*avg_drop){
+			min_pads.push_back(nd);
+		}
+	}
+	double max_id;
+	do{
+		double max_temp = 0;
+		max_id = -1;
+		for(size_t j=0;j<ref_drop_vec.size();j++){
+			if(VDD - ref_drop_vec[j] < max*0.9)
+				continue;
+			if(temp_flag[j] ==  false){
+				if(max_id == -1)
+					max_id = j;
+				if(VDD - ref_drop_vec[j] > max_temp){
+					max_temp = VDD - ref_drop_vec[j];
+					max_id = j;
+				}
+			}
+		}
+		if(max_id == -1) break;
+		temp_flag[max_id] = true;
+		if(max_temp >= max*0.9)	
+			max_pads.push_back(pad_set[max_id]->node);
+	}while(max_id != -1);
+
+	temp_flag.clear();
+	Node *new_pad;
+	Pad * pad_ptr;
+
+	// set nd into the weighted center
+	// start to map min pads into max pads locations
+	for(size_t j=0;j<min_pads.size();j=j+2){
+		for(size_t k=0;k<pad_set.size();k++){
+			if(pad_set[k]->node->name == 
+				min_pads[j]->name){
+				id_minpad = k;
+			}
+		}
+	
+		size_t i = j % max_pads.size();
+		//size_t i = locate_max_pad(max_pads, iter);
+		Node * nd = max_pads[i];
+		for(size_t k=0;k<pad_set.size();k++){
+			if(pad_set[k]->node->name == 
+				nd->name){	
+				pad_ptr = pad_set[k];
+				//double ref_drop_value = ref_drop_vec[k];
+
+				new_pad = pad_projection(pad_ptr, min_pads[j], local_flag);
+				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
+
+				size_t m = id_minpad;
+				pad_set[m]->node->disableX();
+				pad_set[m]->node->value = 0;
+				pad_set[m]->node = new_pad;
+				pad_set[m]->visit_flag = true;
+				// already taken care of
+				pad_set[m]->control_nodes.clear();
+				break;
+			}
+		}
+
+	}
+	// next step is to insert the min pads into max pads area
+	min_pads.clear();
+	max_pads.clear();
+}
+
+// expand from (x,y) to nearest node in grid
+// fits for non-uniform grid
+Node * SubCircuit::pad_projection( 
+	Pad *pad, Node *nd,
+	bool local_flag){
+	//Node *nd;
+	Node *na;
+	stringstream sstream;
+	string pt_name;
+	Node *nd_new=NULL;
+   	Point pt;
+	//int gap - 10;
+
+	Net *net = nd->nbr[BOTTOM];
+	na = net->ab[0];
+	if(na->name == nd->name)
+		na = net->ab[1];
+	LDO *ldo = NULL;
+	for(size_t i=0;i<ldolist.size();i++){
+		if(ldolist[i]->A->name == na->name){
+			ldo = ldolist[i];
+		}
+	}
+	//nd = pad->node;
+	pt.z = nd->get_layer();
+	pt.x = pad->newx;
+	pt.y = pad->newy;
+	if(pad->newx == nd->pt.x && 
+		pad->newy == nd->pt.y){
+		nd_new = nd;	
+		return nd_new;
+	}
+
+	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
+	name = sstream.str();
+	// clog<<"pt_name: "<<pt_name<<endl;
+	// first see if this node is on grid
+	// and if it is occupied by pad or not
+	if(has_node(name)){
+		nd_new = get_node(name);
+		nd_new = nd_new->rep;
+		//clog<<"has this node: "<<*nd_new<<endl;
+		// if this node is not occupied by pad
+		if(nd_new->isS()!=X){
+			//clog<<"nd_new: "<<*nd_new<<endl;
+			// need to adjust the local pads
+			if(local_flag == true){// &&nd_new->get_layer() == local_layers[0]){
+				//clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
+				Node *nb = project_local_pad(nd, nd_new, ldo);
+				if(nb == NULL)
+					return nd;
+				else{
+					//Node *nd_new_adjust = adjust_pads(nb);
+					//if(nd_new_adjust != NULL){
+
+					nd->disableX();
+					nd->value = 0;
+					return nb;
+					//}else{
+					//	return nd;
+					//}
+				}
+			}else if(local_flag == false){
+				//clog<<"nd, nd_new: "<<*nd<<" "<<*nd_new<<endl;
+				Node *nd_new_adjust = adjust_pads(nd_new);
+				if(nd_new_adjust != NULL){
+					//clog<<"nd_new_adjust: "<<*nd_new_adjust<<endl;
+				//return nd;
+					nd->disableX();
+					nd->value = 0;
+					return nd_new_adjust;
+				}
+				else{
+					//clog<<"no global pad. "<<endl;
+					return nd;
+				}
+			}
+		}else
+			return nd;
+	}
+	else
+		report_exit("no project node.");
+	/*Node *nd_new_X = expand_pad(nd_new, ldo, map_node_pt);
+	if(nd_new_X != NULL){
+		nd->disableX();
+		nd->value = 0;
+		return nd_new_X;
+	}else
+		return nd;	*/
+}
+
+// project local pad, setting ldo into new white spaces near current/device blocks
+Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
+	double ref_x = nd_new->pt.x;
+	double ref_y = nd_new->pt.y;
+	vector<int> candi_wspace;
+	double ref_dx, ref_dy;
+	double ref_dist;
+	// if min_id == -1, stay on old wspace
+	stringstream sstream;
+	LDO ldo_ptr;
+	// find the reference distance
+	ref_dx = fabs(ref_x - nd->pt.x);
+	ref_dy = fabs(ref_y - nd->pt.y);
+	ref_dist = sqrt(ref_dx * ref_dx + ref_dy * ref_dy);
+
+	// ldo_ptr points to current LDO
+	for(size_t i=0;i<ldolist.size();i++){
+		Node *A = ldolist[i]->A;
+		if(A->pt.x == nd->pt.x && 
+		   A->pt.y == nd->pt.y)
+			ldo_ptr = *ldolist[i];
+	}
+	bool flag = false;
+	bool flag_move = false;
+	for(size_t i=0;i<wspacelist.size();i++){
+		//clog<<"ref_x, ref_y, wspace: "<<ref_x<<" "<<ref_y<<" ";
+		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);
+		
+		// if ldo is in some block
+		if(flag == true){
+			//clog<<"target in current module. "<<endl;
+			// move the LDO out of this block
+			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
+			break;
+		}
+	}
+	if(flag == false){
+		//clog<<"target not in current module. "<<endl;
+		double x0 = ref_x;
+		double y0 = ref_y;
+		// direct set ldo from current spot
+		flag_move = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, x0, y0, ldo_ptr);
+	}
+	if(flag_move == false){
+		//clog<<"not move: "<<endl;
+		return NULL;
+	}
+	// get the node
+	sstream.str("");
+	sstream<<"n"<<global_layers[0]<<"_"<<ldo_ptr.node[0]->x<<"_"<<ldo_ptr.node[0]->y;
+	//clog<<"check ldo node: "<<ldo_ptr.node[0]->x<<" "<<ldo_ptr.node[0]->y<<endl;
+	Node *nd_new_ldo = get_node(sstream.str());
+	if(nd_new_ldo == NULL){
+		clog<<"no this node: "<<endl;
+		return NULL;
+	}
+	/*Node ldo_node;
+	ldo_node = *nd_new_ldo;
+	sstream.str("");
+	sstream<<"_X_"<<nd_new_ldo->name;
+	ldo_node.name = sstream.str();
+	if(!get_node_pt(map_node_pt, sstream.str())){
+		Node *ldo_final_ptr = new Node(ldo_node);
+		ldo_final_ptr->rep = ldo_final_ptr;
+		ldo_final_ptr->flag = X;
+		ldo_final_ptr->value = VDD_G;
+		nodelist[nd_new_ldo->id] = ldo_final_ptr;
+		ldo->A = ldo_final_ptr;
+	}*/
+	//clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
+	ldo->A = nd_new_ldo;
+	return nd_new_ldo; 
+}
+
+// see if the white space is large enough for LDO
+// move LDO out of current modules
+bool SubCircuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module){
+	Point *pt;
+	pt = shortest_point(ref_dist, ref_x, ref_y, ldo_ptr, module);
+	// not move
+	if(pt == NULL)
+		return NULL;
+
+	// locate the cloest point at pt
+	// propagate block nodes from pt
+	// clog<<"existing pt. "<<pt->x<<" "<<pt->y<<endl;	
+	// propagate along this node to find a ldo 
+	// position which does not have overlap with 
+	// each other
+	bool flag = place_ldo(ref_dist, ref_x, ref_y, 
+		pt, ldo_ptr, module);
+	
+	return flag;
+}
+
+// locate the point on boundary of block that has 
+// shortest dist from ref_x and ref_y
+// also need to set LDO position
+Point *SubCircuit::shortest_point(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module){
+	Point *na;
+	Point *nb;
+	Point *pt = new Point(-1,-1,-1);
+	Point *pt_diag = new Point(-1, -1, -1);
+	Point min_pt;
+	Point *min_ptr = new Point(-1,-1,-1);
+	//Point *min_ptr;
+	//min_ptr = &min_pt;
+	double dist = 0;
+	double min_dist = 0;
+	size_t min_id = 0;
+	//clog<<"ref_x, ref_y : "<<ref_x<<" "<<ref_y<<endl;
+	// find out the best spot among all candidates
+	for(size_t i=1;i<module->node.size();i++){
+		na = module->node[i-1];
+		nb = module->node[i];
+		//clog<<"na, nb: "<<na->x<<" "<<na->y<<" "<<nb->x<<" "<<nb->y<<endl;
+		// if on side area
+		if(na->x == nb->x && 
+		  (ref_y - na->y)* (ref_y - nb->y) <= 0){
+			dist = fabs(na->x - ref_x);
+			pt->x = na->x;
+			pt->y = ref_y;
+			//clog<<"dist, x, y: "<<dist<<" "<<pt->x<<" "<<pt->y<<endl;
+		}else if(na->y == nb->y && 
+		  (ref_x - na->x)* (ref_x - nb->x) <= 0){
+			dist = fabs(na->y - ref_y);
+			pt->x = ref_x;
+			pt->y = na->y;
+		}// if not within side area (corner)
+		else{
+			double dist_a = sqrt((ref_x - na->x)*(ref_x - na->x)+(ref_y - na->y)*(ref_y - na->y)); 
+				
+			double dist_b = sqrt((ref_x - nb->x)*(ref_x - nb->x)+(ref_y - nb->y)*(ref_y - nb->y));
+			if(dist_a < dist_b){
+				dist = dist_a;
+				pt = na;
+			}
+			else{
+				dist = dist_b;
+				pt = nb;
+			}
+		}
+		//clog<<"dist, ref: "<<dist<<" "<<ref_dist<<endl;
+		if(min_dist == 0 || dist < min_dist){
+			min_dist = dist;
+			min_id = i;
+			min_pt = *pt;
+			// clog<<"min dist, pt: "<<min_dist<<" "<<min_pt.x<<" "<<min_pt.y<<endl;
+		}
+		
+	}
+	if(min_dist >= ref_dist)
+		return NULL;
+	min_ptr->x = min_pt.x;
+	min_ptr->y = min_pt.y;
+	// clog<<"min_dist, id, min_pt: "<<min_dist<<" "<<min_id<<" "<<min_pt->x<<" "<<min_pt->y<<endl;
+	return min_ptr;
+}
+
+double SubCircuit::update_pad_pos_all(vector<double> ref_drop_vec){
+	double total_dist = 0;
+	double dist = 0;
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+
+		double ref_drop_value = ref_drop_vec[i];
+
+		dist = update_pad_pos(ref_drop_value, i);
+		total_dist += dist;
+	}
+	return total_dist;
+}
+
+// decide pad's new pos with the weights
+// need to be tuned
+double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
+	//double total_dist=0;
+	Node *pad;
+	Pad *pad_ptr;
+	Node *nd;
+	double weight = 0;
+	//double distance = 0;
+	double pad_newx;
+	double pad_newy;
+	map<Node *, double>::iterator it;
+
+	double sum_weight = 0;
+	double weighted_x =0;
+	double weighted_y =0;
+	pad_ptr = pad_set[i];
+	pad = pad_ptr->node;
+	for(it = pad_ptr->control_nodes.begin();
+			it != pad_ptr->control_nodes.end();
+			it++){
+		if(it->second > ref_drop_value)
+			continue;
+
+		/*if((pad_set[i]->node->name == "n0_30_74" ||
+		  pad_set[i]->node->name == "n0_135_104"||
+		  pad_set[i]->node->name == "n0_255_59")){
+		//clog<<"data: "<<pad_set[i]->data<<endl;
+		//cout<<"control node: "<<*it->first<<" "<<it->second<<endl;
+		printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
+
+		}*/
+		nd = it->first;
+		weight = 1.0/it->second;
+		weighted_x += weight * nd->pt.x;
+		weighted_y += weight * nd->pt.y;
+		sum_weight += weight; 	
+	}
+
+	if(sum_weight !=0){
+		pad_newx = weighted_x / sum_weight;
+		pad_newy = weighted_y / sum_weight;
+
+		// pad_newx = (pad_newx - pad->pt.x)/2+pad->pt.x;
+		//pad_newy = (pad_newy - pad->pt.y)/2+pad->pt.y;
+		round_data(pad_newx);
+		round_data(pad_newy);
+
+
+		if((pad_ptr->node->pt.x > 300 || pad_ptr->node->pt.y > 150) && (pad_newx <= 300 && pad_newy <= 150)){
+			//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
+			pad_ptr->control_nodes.clear();
+			pad_ptr->visit_flag = true;
+
+		}else{
+
+
+			pad_ptr->newx = pad_newx;
+			pad_ptr->newy = pad_newy;
+		}
+	}else{
+		pad_ptr->newx = pad->pt.x;
+		pad_ptr->newy = pad->pt.y;
+	}
+
+	//if(pad->name == "_X_n6_0_0")
+		// clog<<"pad, new: "<<*pad_ptr->node<<" "<<pad_ptr->newx<<" "<<pad_ptr->newy<<endl;
+	double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
+	//total_dist += temp;
+	//}
+
+	//clog<<"dist: "<<total_dist<<endl<<endl;
+	return dist;
+}
+
+// round double, depends on whether the frac >=0.5
+void SubCircuit::round_data(double &data){
+	double fractpart, intpart;
+	fractpart = modf(data, &intpart);
+	if(fractpart >= 0.5)
+		data = ceil(data);
+	else
+		data = floor(data);
+}
+
+// simple version utilized in moving process
+// at least one corner should be OK for the ldo
+bool SubCircuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
+	double dx, dy;
+	double dist;
+		
+	int width = ldo.width;
+	int height = ldo.height;
+
+	// try all 8 positions first to find a place
+	int vec_y[4][8]; // diagonal corner coordinate
+	int vec_x[4][8];
+		
+	// define all the 4 nodes under 8 cases
+	vec_x[2][0] = x0 + width-1; 
+	vec_y[2][0] = y0 + height-1;
+	vec_x[2][1] = x0 - width+1; 
+	vec_y[2][1] = y0 + height-1;
+	vec_x[2][2] = x0 - width+1; 
+	vec_y[2][2] = y0 - height+1;
+	vec_x[2][3] = x0 + width-1; 
+	vec_y[2][3] = y0 - height+1;
+	vec_x[2][4] = x0 + height-1; 
+	vec_y[2][4] = y0 + width-1;
+	vec_x[2][5] = x0 - height+1; 
+	vec_y[2][5] = y0 + width-1;
+	vec_x[2][6] = x0 - height+1; 
+	vec_y[2][6] = y0 - width+1;
+	vec_x[2][7] = x0 + height-1; 
+	vec_y[2][7] = y0 - width+1;
+	for(int i=0;i<8;i++){
+		vec_x[0][i] = x0;
+		vec_y[0][i] = y0;
+		vec_x[1][i] = vec_x[2][i];
+		vec_y[1][i] = y0;
+		vec_x[3][i] = x0;
+		vec_y[3][i] = vec_y[2][i];
+	}
+
+	bool return_flag = false;
+	// see if LDO is in wspace
+	int id_pos = -1;
+	for(int i=0;i<8;i++){
+	  bool flag_ldo_block = false;
+	  for(size_t k=0;k<wspacelist.size();k++){
+	    MODULE *module = wspacelist[k];
+	    bool flag_block = false;
+	    for(int j=0;j<4;j++){
+	      flag_block = node_in_wspace(vec_x[j][i], vec_y[j][i], module);
+	      if(flag_block == true){
+		 flag_ldo_block = true;
+		 break;
+	      }
+            }
+	    if(flag_ldo_block) break;
+	  }
+	  bool flag_ldo_ldo = false;
+	  for(size_t k=0;k<ldolist.size();k++){
+	    LDO *ldo_ptr = ldolist[k];
+	    bool flag_ldo = false;
+	    for(int j=0;j<4;j++){
+	      flag_ldo = node_in_ldo(vec_x[j][i], vec_y[j][i], ldo_ptr);
+	      if(flag_ldo == true){
+		 flag_ldo_ldo = true;
+		 break;
+	      }
+            }
+	    if(flag_ldo_ldo) break;
+	  }
+	  // if not overlap with both block and ldo
+	  if(!flag_ldo_block && !flag_ldo_ldo){
+		id_pos = i;
+		break;
+	  }
+	}
+	// not overlap with any device blocks
+	if(id_pos == -1) return false;
+	return_flag = true;
+	// clog<<"target not in blocks and LDOs: "<<id_pos<<endl;
+	double min_dist = -1;
+	int min_id = 0;
+	for(int i=0;i<4;i++){
+		 // clog<<"4 node: "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<" "<<endl;
+		dx = vec_x[i][id_pos] - ref_x;
+		dy = vec_y[i][id_pos] - ref_y;
+		dist = sqrt(dx*dx+dy*dy);
+		// clog<<"dist ,ref: "<<dist<<" "<<ref_dist<<endl;
+		if(min_dist ==-1 || dist < min_dist){
+			min_dist = dist;
+			min_id = i;
+		}
+	}
+	// clog<<"min_dist, min_id: "<<min_dist<<" "<<min_id<<endl;
+	for(int i=0;i<4;i++){
+		int j = (4+(min_id -i))%4;
+		// clog<<"j, node: "<<j<<" "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<endl;
+		ldo.node[j]->x = vec_x[i][id_pos];
+		ldo.node[j]->y = vec_y[i][id_pos];
+	}
+	ldo.width = ldo.node[2]->x - ldo.node[0]->x;
+	ldo.height = ldo.node[2]->y - ldo.node[0]->y;
+	
+	//for(int i=0;i<4;i++)
+		//clog<<"LDO node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<" "<<endl;
+
+	// now can check of overlaps with other LDOs
+	// if overlaps, can move until no overlap
+	//adjust_ldo_pos(ref_dist, ref_x, ref_y, ldo_temp);	
+		
+	/*for(int i=0;i<4;i++){
+		delete vec_x[i];
+		delete vec_y[i];
+	}
+	delete vec_x;
+	delete vec_y;*/
+	return return_flag;
+}
+
+double SubCircuit::calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec){
+	//Node *pad;
+	//Pad *pad_ptr;
+	double sum_ref = 0;
+	size_t count = 0;
+	double ref_drop_value = 0;
+	double avg_ref = 0;
+
+	for(size_t i=0;i<pad_set.size();i++){
+		if(pad_set[i]->control_nodes.size()==0)
+			continue;
+
+		count ++;	
+		ref_drop_value = ref_drop_vec[i];	
+		sum_ref += ref_drop_value;
+	}
+	avg_ref = sum_ref / count;
+	return avg_ref;
+}
+
+// propagate along this node to find a ldo 
+// position which does not have overlap with 
+// each other
+bool SubCircuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, LDO &ldo_ptr, MODULE *module){
+	bool return_flag = false;
+	// 8 directions
+	double dx[8] = {1, 0, -1,  0, 1, -1, -1,  1};
+	double dy[8] = {0, 1,  0, -1, 1,  1, -1, -1};
+	queue<Point> q;
+	q.push(*pt);
+	Point cur;
+	Point nbr;
+	map<Point*, bool> process;
+	pair <Point*, bool> pro_pair;
+	pro_pair.first = pt;
+	pro_pair.second = true;
+	process.insert(pro_pair);
+	double x, y;
+	double deltax, deltay;
+	double dist;
+	while(!q.empty()){
+		cur = q.front();
+		nbr = cur;
+		x = cur.x;	y = cur.y;
+		deltax = x - ref_x; deltay = y - ref_y;
+		dist = sqrt(deltax*deltax + deltay*deltay);
+		// clog<<"x, y, dist, ref: "<<x<<" "<<y<<" "<<dist<<" "<<ref_dist<<endl;
+		if(dist >= ref_dist) break;
+		bool flag_place = false;
+		// handle current spot
+		for(int i=0;i<8;i++){
+			double temp_x = x + dx[i];
+			double temp_y = y + dy[i];
+			if(temp_x <lx || temp_x > gx || 				temp_y < ly || 
+				temp_y > gy) continue;
+			// clog<<"temp_x, temp_y: "<<temp_x<<" "<<temp_y<<endl;
+			bool flag = node_in_wspace(temp_x, temp_y, module);
+			if(flag == true) continue;
+			// find the one not in block
+			// see if this one fits LDO
+			flag_place = place_ldo_cur(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr, module);
+			// if find, break
+			if(flag_place == true)
+				break;
+		}
+		if(flag_place == true){
+			return_flag = true;
+			break;
+		}
+
+		for(int i=0;i<4;i++){
+			double temp_x = x + dx[i];
+			double temp_y = x + dy[i];
+			bool flag = node_in_wspace(temp_x, temp_y, module);
+			// queue in this node
+			if(flag == true && process[&nbr] == false){
+				nbr.x = temp_x;
+				nbr.y = temp_y;
+				q.push(nbr);
+				pro_pair.first = &nbr;
+				pro_pair.second = true;
+				process.insert(pro_pair);
+			}
+		}
+		q.pop();
+	}
+	while(!q.empty())
+		q.pop();
+	//free(dx);
+	//free(dy);
+	return return_flag;
+}
+
+// adjust place for ldo
+// no overlap with other blocks or LDOs
+bool SubCircuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr, MODULE * module){	
+	bool flag = false;
+	flag = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
+	return flag;
+}
+
+// adjust pad positions to candidate locations
+// gap of candidate grid is x=3, y=3.
+// new_pad is the projection pad
+Node * SubCircuit::adjust_pads(Node *nd){
+	Node * nd_new;
+	stringstream sstream;
+	Node * na;
+	int Gap = 3;
+	int adjust_dist = 1;
+	// if satisfied, already pad node
+	if(nd->pt.x% Gap==0 && nd->pt.y %Gap ==0)
+		return nd;
+	
+	// else start to project the node
+	int newx = (nd->pt.x+1)/Gap*Gap;
+	int newy = (nd->pt.y+1)/Gap*Gap;
+	
+	sstream<<"n"<<nd->pt.z<<"_"<<newx<<"_"<<newy;
+	if(has_node(sstream.str())){
+		nd_new = get_node(sstream.str());
+		Net *net = nd_new->nbr[TOP];
+		// can set pad node here
+		if(net == NULL){
+			//clog<<"new_node: "<<*nd_new<<endl;
+			return nd_new;
+		}else{
+			//clog<<"expand. "<<endl;
+			na = expand_candi_pads(nd_new);
+			//clog<<"new_node after expand: "<<*na<<endl;
+			return na;
+		}
+		// if not, set pad at nd_new
+		return nd_new;
+	}
+	return NULL;	
+}
+
+// use queue to search for candi pads around nd
+Node * SubCircuit::expand_candi_pads(Node *nd){
+	Node *na;
+	Node *nd_new;
+	queue<Point> q;
+	Point pt;
+	Point pt_cur;
+	stringstream sstream;
+	string pt_name;
+	bool return_flag = false;
+	q.push(nd->pt);
+	
+	double dx[4] = {3, 0, -3, 0};
+	double dy[4] = {0, 3, 0, -3};
+	// if not, expand it to neighboring area
+	while(!q.empty()&& return_flag == false){
+		pt_cur = q.front();
+		Point pt_nbr = pt_cur;
+		//expand_pad_pos(q, pt_cur);	
+		for(size_t i=0;i<4;i++){
+			pt_nbr.x = pt_cur.x + dx[i];
+			pt_nbr.y = pt_cur.y + dy[i];
+			stringstream sstream;
+			string pt_name;
+			sstream <<"n"<<pt_nbr.z<<"_"<<
+				pt_nbr.x<<"_"<<
+				pt_nbr.y;
+			pt_name = sstream.str();
+			if(has_node(pt_name)){
+				nd_new = get_node(pt_name);
+				Net *net = nd_new->nbr[TOP];
+				if(net == NULL){
+					return_flag = true;
+					break;
+				}	
+			}
+			q.push(pt_nbr);
+		}
+		q.pop();
+	}
+	while(!q.empty()){
+		q.pop();
+	}
+	if(return_flag == true){
+		return nd_new;
+	}
+	clog<<"no point for new pad. return. "<<endl;
+	return NULL;
 }
 
