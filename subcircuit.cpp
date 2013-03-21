@@ -2930,10 +2930,10 @@ Node * SubCircuit::pad_projection(
 
 // project local pad, setting ldo into new white spaces near current/device blocks
 Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
-	double ref_x = nd_new->pt.x;
-	double ref_y = nd_new->pt.y;
+	int ref_x = nd_new->pt.x;
+	int ref_y = nd_new->pt.y;
 	Node *nd_new_ldo;
-	double ref_dx, ref_dy;
+	int ref_dx, ref_dy;
 	double ref_dist;
 	// if min_id == -1, stay on old wspace
 	stringstream sstream;
@@ -2949,107 +2949,26 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 		if(A->name == nd->name)
 			ldo_ptr = *ldolist[i];
 	}
-	bool flag_occupy = false;
+	// 1. project to nearest LDO candi nodes
+	// update ref_x and ref_y
+	project_ldo_node(ref_x, ref_y, ldo_ptr);
+
+	// then start to expand to find candi LDO nodes
+	nd_new_ldo = expand_ldo_location(ref_dist, ref_x, ref_y, ldo_ptr);
+	
+	/* bool flag_occupy = false;
 	// see if node is in ldo or block region
 	flag_occupy = node_in_ldo_or_block(ref_x, ref_y);
 	if(flag_occupy == true){
 		clog<<"target in modules. "<<endl;
 		// move the LDO out of this block
-		nd_new_ldo = expand_ldo_location(ref_dist, ref_x, ref_y, ldo_ptr);
 	}
 	if(flag_occupy == false){
 		clog<<"target not in modules. "<<endl;
-		// project to nearest LDO candi nodes
-		nd_new_ldo = project_ldo_node(ref_x, ref_y, ldo_ptr);
 		clog<<"new_ldo: "<<*nd_new_ldo<<endl;
-	}	
+	}*/	
 	ldo->A = nd_new_ldo;
 	return nd_new_ldo; 
-}
-
-// see if the white space is large enough for LDO
-// move LDO out of current modules
-bool SubCircuit::move_ldo_out_of_module(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module){
-	Point *pt;
-	pt = shortest_point(ref_dist, ref_x, ref_y, ldo_ptr, module);
-	// not move
-	if(pt == NULL)
-		return NULL;
-
-	// locate the cloest point at pt
-	// propagate block nodes from pt
-	// clog<<"existing pt. "<<pt->x<<" "<<pt->y<<endl;	
-	// propagate along this node to find a ldo 
-	// position which does not have overlap with 
-	// each other
-	bool flag = place_ldo(ref_dist, ref_x, ref_y, 
-		pt, ldo_ptr, module);
-	
-	return flag;
-}
-
-// locate the point on boundary of block that has 
-// shortest dist from ref_x and ref_y
-// also need to set LDO position
-Point *SubCircuit::shortest_point(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, MODULE *module){
-	Point *na;
-	Point *nb;
-	Point *pt = new Point(-1,-1,-1);
-	//Point *pt_diag = new Point(-1, -1, -1);
-	Point min_pt;
-	Point *min_ptr = new Point(-1,-1,-1);
-	//Point *min_ptr;
-	//min_ptr = &min_pt;
-	double dist = 0;
-	double min_dist = 0;
-	size_t min_id = 0;
-	//clog<<"ref_x, ref_y : "<<ref_x<<" "<<ref_y<<endl;
-	// find out the best spot among all candidates
-	for(size_t i=1;i<module->node.size();i++){
-		na = module->node[i-1];
-		nb = module->node[i];
-		//clog<<"na, nb: "<<na->x<<" "<<na->y<<" "<<nb->x<<" "<<nb->y<<endl;
-		// if on side area
-		if(na->x == nb->x && 
-		  (ref_y - na->y)* (ref_y - nb->y) <= 0){
-			dist = fabs(na->x - ref_x);
-			pt->x = na->x;
-			pt->y = ref_y;
-			//clog<<"dist, x, y: "<<dist<<" "<<pt->x<<" "<<pt->y<<endl;
-		}else if(na->y == nb->y && 
-		  (ref_x - na->x)* (ref_x - nb->x) <= 0){
-			dist = fabs(na->y - ref_y);
-			pt->x = ref_x;
-			pt->y = na->y;
-		}// if not within side area (corner)
-		else{
-			double dist_a = sqrt((ref_x - na->x)*(ref_x - na->x)+(ref_y - na->y)*(ref_y - na->y)); 
-				
-			double dist_b = sqrt((ref_x - nb->x)*(ref_x - nb->x)+(ref_y - nb->y)*(ref_y - nb->y));
-			if(dist_a < dist_b){
-				dist = dist_a;
-				pt = na;
-			}
-			else{
-				dist = dist_b;
-				pt = nb;
-			}
-		}
-		//clog<<"dist, ref: "<<dist<<" "<<ref_dist<<endl;
-		if(min_dist == 0 || dist < min_dist){
-			min_dist = dist;
-			min_id = i;
-			min_pt = *pt;
-			// clog<<"min dist, pt: "<<min_dist<<" "<<min_pt.x<<" "<<min_pt.y<<endl;
-		}
-		
-	}
-	if(min_dist >= ref_dist)
-		return NULL;
-	min_ptr->x = min_pt.x;
-	min_ptr->y = min_pt.y;
-	// clog<<"min_dist, id, min_pt: "<<min_dist<<" "<<min_id<<" "<<min_pt->x<<" "<<min_pt->y<<endl;
-	return min_ptr;
 }
 
 double SubCircuit::update_pad_pos_all(vector<double> ref_drop_vec){
@@ -3154,160 +3073,16 @@ void SubCircuit::round_data(double &data){
 
 // project the wspace reference node to nearest ldo
 // candi locations
-Node* SubCircuit::project_ldo_node(double ref_x, double ref_y, LDO &ldo){
-	int x[2];
-	int y[2];
-
+void SubCircuit::project_ldo_node(int &ref_x, int &ref_y, LDO &ldo){
 	int width = ldo.width;
 	int height = ldo.height;
 	
-	x[0] = ref_x / width;
-	x[0] *= width;
-	x[1] = x[0] + width;
+	ref_x = ref_x / width;
+	ref_x *= width;
+	//x[1] = x[0] + width;
 
-	y[0] = ref_y / height;
-	y[0] *= height;
-	y[1] = y[0] + height;
-
-	stringstream sstream;
-	// loop 4 node
-	for(int i=0;i<2;i++){
-		if(x[i] > gx || x[i] < lx) continue;
-		for(int j=0;j<2;j++){
-			if(y[i] > gy || y[i] < ly) 
-				continue;
-			sstream.str("");
-			sstream<<"n"<<ldo.A->pt.z<<"_"<<x[i]<<"_"<<y[j];
-			// clog<<"name: "<<sstream.str()<<endl;
-			Node *nd = get_node(sstream.str());
-			if(nd == NULL) continue;
-			// clog<<"nd, geo_flag: "<<*nd<<" "<<nd->get_geo_flag()<<endl;
-			// set LDO to here
-			if(nd->get_geo_flag() == SBLANK){
-				return nd;
-			}
-		}
-	}
-	// if no candidate, return original node
-	return ldo.A;
-}
-
-// simple version utilized in moving process
-// at least one corner should be OK for the ldo
-bool SubCircuit::ldo_in_wspace_trial(double ref_dist, double ref_x, double ref_y, double &x0, double &y0, LDO &ldo){
-	double dx, dy;
-	double dist;
-		
-	int width = ldo.width;
-	int height = ldo.height;
-
-	// try all 8 positions first to find a place
-	int vec_y[4][8]; // diagonal corner coordinate
-	int vec_x[4][8];
-		
-	// define all the 4 nodes under 8 cases
-	vec_x[2][0] = x0 + width-1; 
-	vec_y[2][0] = y0 + height-1;
-	vec_x[2][1] = x0 - width+1; 
-	vec_y[2][1] = y0 + height-1;
-	vec_x[2][2] = x0 - width+1; 
-	vec_y[2][2] = y0 - height+1;
-	vec_x[2][3] = x0 + width-1; 
-	vec_y[2][3] = y0 - height+1;
-	vec_x[2][4] = x0 + height-1; 
-	vec_y[2][4] = y0 + width-1;
-	vec_x[2][5] = x0 - height+1; 
-	vec_y[2][5] = y0 + width-1;
-	vec_x[2][6] = x0 - height+1; 
-	vec_y[2][6] = y0 - width+1;
-	vec_x[2][7] = x0 + height-1; 
-	vec_y[2][7] = y0 - width+1;
-	for(int i=0;i<8;i++){
-		vec_x[0][i] = x0;
-		vec_y[0][i] = y0;
-		vec_x[1][i] = vec_x[2][i];
-		vec_y[1][i] = y0;
-		vec_x[3][i] = x0;
-		vec_y[3][i] = vec_y[2][i];
-	}
-
-	bool return_flag = false;
-	// see if LDO is in wspace
-	int id_pos = -1;
-	for(int i=0;i<8;i++){
-	  bool flag_ldo_block = false;
-	  for(size_t k=0;k<wspacelist.size();k++){
-	    MODULE *module = wspacelist[k];
-	    bool flag_block = false;
-	    for(int j=0;j<4;j++){
-	      flag_block = node_in_wspace(vec_x[j][i], vec_y[j][i], module);
-	      if(flag_block == true){
-		 flag_ldo_block = true;
-		 break;
-	      }
-            }
-	    if(flag_ldo_block) break;
-	  }
-	  bool flag_ldo_ldo = false;
-	  for(size_t k=0;k<ldolist.size();k++){
-	    LDO *ldo_ptr = ldolist[k];
-	    bool flag_ldo = false;
-	    for(int j=0;j<4;j++){
-	      flag_ldo = node_in_ldo(vec_x[j][i], vec_y[j][i], ldo_ptr);
-	      if(flag_ldo == true){
-		 flag_ldo_ldo = true;
-		 break;
-	      }
-            }
-	    if(flag_ldo_ldo) break;
-	  }
-	  // if not overlap with both block and ldo
-	  if(!flag_ldo_block && !flag_ldo_ldo){
-		id_pos = i;
-		break;
-	  }
-	}
-	// not overlap with any device blocks
-	if(id_pos == -1) return false;
-	return_flag = true;
-	// clog<<"target not in blocks and LDOs: "<<id_pos<<endl;
-	double min_dist = -1;
-	int min_id = 0;
-	for(int i=0;i<4;i++){
-		 // clog<<"4 node: "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<" "<<endl;
-		dx = vec_x[i][id_pos] - ref_x;
-		dy = vec_y[i][id_pos] - ref_y;
-		dist = sqrt(dx*dx+dy*dy);
-		// clog<<"dist ,ref: "<<dist<<" "<<ref_dist<<endl;
-		if(min_dist ==-1 || dist < min_dist){
-			min_dist = dist;
-			min_id = i;
-		}
-	}
-	// clog<<"min_dist, min_id: "<<min_dist<<" "<<min_id<<endl;
-	for(int i=0;i<4;i++){
-		int j = (4+(min_id -i))%4;
-		// clog<<"j, node: "<<j<<" "<<vec_x[i][id_pos]<<" "<<vec_y[i][id_pos]<<endl;
-		ldo.node[j]->x = vec_x[i][id_pos];
-		ldo.node[j]->y = vec_y[i][id_pos];
-	}
-	ldo.width = ldo.node[2]->x - ldo.node[0]->x;
-	ldo.height = ldo.node[2]->y - ldo.node[0]->y;
-	
-	//for(int i=0;i<4;i++)
-		//clog<<"LDO node: "<<ldo.node[i]->x<<" "<<ldo.node[i]->y<<" "<<endl;
-
-	// now can check of overlaps with other LDOs
-	// if overlaps, can move until no overlap
-	//adjust_ldo_pos(ref_dist, ref_x, ref_y, ldo_temp);	
-		
-	/*for(int i=0;i<4;i++){
-		delete vec_x[i];
-		delete vec_y[i];
-	}
-	delete vec_x;
-	delete vec_y;*/
-	return return_flag;
+	ref_y = ref_y / height;
+	ref_y *= height;
 }
 
 double SubCircuit::calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec){
@@ -3328,87 +3103,6 @@ double SubCircuit::calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_v
 	}
 	avg_ref = sum_ref / count;
 	return avg_ref;
-}
-
-// propagate along this node to find a ldo 
-// position which does not have overlap with 
-// each other
-bool SubCircuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *pt, LDO &ldo_ptr, MODULE *module){
-	bool return_flag = false;
-	// 8 directions
-	double dx[8] = {1, 0, -1,  0, 1, -1, -1,  1};
-	double dy[8] = {0, 1,  0, -1, 1,  1, -1, -1};
-	queue<Point> q;
-	q.push(*pt);
-	Point cur;
-	Point nbr;
-	map<Point*, bool> process;
-	pair <Point*, bool> pro_pair;
-	pro_pair.first = pt;
-	pro_pair.second = true;
-	process.insert(pro_pair);
-	double x, y;
-	double deltax, deltay;
-	double dist;
-	while(!q.empty()){
-		cur = q.front();
-		nbr = cur;
-		x = cur.x;	y = cur.y;
-		deltax = x - ref_x; deltay = y - ref_y;
-		dist = sqrt(deltax*deltax + deltay*deltay);
-		// clog<<"x, y, dist, ref: "<<x<<" "<<y<<" "<<dist<<" "<<ref_dist<<endl;
-		if(dist >= ref_dist) break;
-		bool flag_place = false;
-		// handle current spot
-		for(int i=0;i<8;i++){
-			double temp_x = x + dx[i];
-			double temp_y = y + dy[i];
-			if(temp_x <lx || temp_x > gx || 				temp_y < ly || 
-				temp_y > gy) continue;
-			// clog<<"temp_x, temp_y: "<<temp_x<<" "<<temp_y<<endl;
-			bool flag = node_in_wspace(temp_x, temp_y, module);
-			if(flag == true) continue;
-			// find the one not in block
-			// see if this one fits LDO
-			flag_place = place_ldo_cur(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
-			// if find, break
-			if(flag_place == true)
-				break;
-		}
-		if(flag_place == true){
-			return_flag = true;
-			break;
-		}
-
-		for(int i=0;i<4;i++){
-			double temp_x = x + dx[i];
-			double temp_y = x + dy[i];
-			bool flag = node_in_wspace(temp_x, temp_y, module);
-			// queue in this node
-			if(flag == true && process[&nbr] == false){
-				nbr.x = temp_x;
-				nbr.y = temp_y;
-				q.push(nbr);
-				pro_pair.first = &nbr;
-				pro_pair.second = true;
-				process.insert(pro_pair);
-			}
-		}
-		q.pop();
-	}
-	while(!q.empty())
-		q.pop();
-	//free(dx);
-	//free(dy);
-	return return_flag;
-}
-
-// adjust place for ldo
-// no overlap with other blocks or LDOs
-bool SubCircuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr){	
-	bool flag = false;
-	flag = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
-	return flag;
 }
 
 // adjust pad positions to candidate locations
@@ -3700,6 +3394,7 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, double ref_x, double ref
 
 	queue<Point> q;
 	Point pt;
+	pt.x = ref_x;
 	Point pt_cur;
 	stringstream sstream;
 	string pt_name;
