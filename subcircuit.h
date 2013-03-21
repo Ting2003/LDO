@@ -234,7 +234,8 @@ private:
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo);
-	Node* project_ldo_node(double ref_dist, double ref_x, double ref_y, LDO &ldo);
+	Node* project_ldo_node(double ref_x, double ref_y, LDO &ldo);
+	bool node_in_ldo_or_block(double ref_x, double ref_y);
 	Node * expand_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void get_candi_wspace(double ref_x, double ref_y, double ref_dist, vector<int> &candi_wspace);
 	//bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);

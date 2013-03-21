@@ -2937,7 +2937,6 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
 	Node *nd_new_ldo;
-	vector<int> candi_wspace;
 	double ref_dx, ref_dy;
 	double ref_dist;
 	// if min_id == -1, stay on old wspace
@@ -2951,32 +2950,24 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	// ldo_ptr points to current LDO
 	for(size_t i=0;i<ldolist.size();i++){
 		Node *A = ldolist[i]->A;
-		if(A->pt.x == nd->pt.x && 
-		   A->pt.y == nd->pt.y)
+		if(A->name == nd->name)
 			ldo_ptr = *ldolist[i];
 	}
-	bool flag = false;
-	bool flag_move = false;
-	for(size_t i=0;i<wspacelist.size();i++){
-		// clog<<"ref_x, ref_y, wspace: "<<ref_x<<" "<<ref_y<<" ";
-		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);	
-		// if ldo is in some block
-		if(flag == true){
-			clog<<"target in current module. "<<endl;
-			// move the LDO out of this block
-			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
-			break;
-		}
+	bool flag_occupy = false;
+	// see if node is in ldo or block region
+	flag_occupy = node_in_ldo_or_block(ref_x, ref_y);
+	if(flag_occupy == true){
+		clog<<"target in modules. "<<endl;
+		// move the LDO out of this block
+		// flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
+		//break;
 	}
-	if(flag == false){
-		clog<<"target not in current module. "<<endl;
+	if(flag_occupy == false){
+		clog<<"target not in modules. "<<endl;
 		// project to nearest LDO candi nodes
-		nd_new_ldo = project_ldo_node(ref_dist, ref_x, ref_y, ldo_ptr);
-	}
-	if(flag_move == false){
-		//clog<<"not move: "<<endl;
-		return NULL;
-	}
+		nd_new_ldo = project_ldo_node(ref_x, ref_y, ldo_ptr);
+		clog<<"new_ldo: "<<*nd_new_ldo<<endl;
+	}	
 	ldo->A = nd_new_ldo;
 	return nd_new_ldo; 
 }
@@ -3168,7 +3159,7 @@ void SubCircuit::round_data(double &data){
 
 // project the wspace reference node to nearest ldo
 // candi locations
-Node* SubCircuit::project_ldo_node(double ref_dist, double ref_x, double ref_y, LDO &ldo){
+Node* SubCircuit::project_ldo_node(double ref_x, double ref_y, LDO &ldo){
 	int x[2];
 	int y[2];
 
@@ -3192,9 +3183,10 @@ Node* SubCircuit::project_ldo_node(double ref_dist, double ref_x, double ref_y, 
 				continue;
 			sstream.str("");
 			sstream<<"n"<<ldo.A->pt.z<<"_"<<x[i]<<"_"<<y[j];
-			clog<<"name: "<<sstream.str()<<endl;
+			// clog<<"name: "<<sstream.str()<<endl;
 			Node *nd = get_node(sstream.str());
 			if(nd == NULL) continue;
+			// clog<<"nd, geo_flag: "<<*nd<<" "<<nd->get_geo_flag()<<endl;
 			// set LDO to here
 			if(nd->get_geo_flag() == SBLANK){
 				return nd;
@@ -3613,42 +3605,92 @@ void SubCircuit::mark_geo_occupation(){
 	Node *nd;
 	for(size_t i=0;i<nodelist.size()-1;i++){
 		nd = nodelist[i];
+		if(nd->isS()==Z) continue;
 		int x = nd->pt.x;
 		int y = nd->pt.y;
 		// mark node with geo occupation
-		if(x % width ==0 && y % height ==0){
-			bool flag_module = false;
-			// check if it is module
-			for(size_t j=0;j<wspacelist.size();j++){
-				int module_xl = wspacelist[j]->node[0]->x;
-				int module_xr = wspacelist[j]->node[0]->x + wspacelist[j]->width;
-				int module_yl = wspacelist[j]->node[0]->y;
-				int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
-				if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
-					// in module
-					nd->assign_geo_flag(SBLOCK);
-					flag_module = true;
-					break;
-				}
+		if(!(x % width ==0 && y % height ==0))
+			continue;
+		// clog<<"start mark node: "<<*nd<<endl;
+		bool flag_module = false;
+		// check if it is module
+		for(size_t j=0;j<wspacelist.size();j++){
+			int module_xl = wspacelist[j]->node[0]->x;
+			int module_xr = wspacelist[j]->node[0]->x + wspacelist[j]->width;
+			int module_yl = wspacelist[j]->node[0]->y;
+			int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
+			// clog<<"bxl, bxr, byl, byr: "<<module_xl<<" "<<module_xr<<" "<<module_yl<<" "<<module_yr<<endl;
+			if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
+				// clog<<"mark block. "<<endl<<endl;
+				// in module
+				nd->assign_geo_flag(SBLOCK);
+				flag_module = true;
+				break;
 			}
-			// check if it is LDO
-			bool flag_ldo = false;
-			for(size_t j=0;j<ldolist.size();j++){
-				int ldo_xl = ldolist[j]->A->pt.x;
-				int ldo_xr = ldolist[j]->A->pt.x + width;
-				int ldo_yl = ldolist[j]->A->pt.y;
-				int ldo_yr = ldolist[j]->A->pt.y + height;
-				if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
-					// in module
-					nd->assign_geo_flag(SLDO);
-					flag_ldo = true;
-					break;
-				}
+		}
+		if(flag_module == true)
+			continue;
+		// check if it is LDO
+		bool flag_ldo = false;
+		for(size_t j=0;j<ldolist.size();j++){
+			int ldo_xl = ldolist[j]->A->pt.x;
+			int ldo_xr = ldolist[j]->A->pt.x + width;
+			int ldo_yl = ldolist[j]->A->pt.y;
+			int ldo_yr = ldolist[j]->A->pt.y + height;
+			// clog<<"lxl, lxr, lyl, lyr: "<<ldo_xl<<" "<<ldo_xr<<" "<<ldo_yl<<" "<<ldo_yr<<endl;
+			if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
+				// clog<<"mark ldo. "<<endl<<endl;
+				// in module
+				nd->assign_geo_flag(SLDO);
+				flag_ldo = true;
+				break;
 			}
-			// else assign blank
-			if(flag_module == false &&
-				flag_ldo == false)
-				nd->assign_geo_flag(SBLANK);
+		}
+		if(flag_ldo == true)
+			continue;
+		// else assign blank
+		// clog<<"mark blank. "<<endl<<endl;
+		nd->assign_geo_flag(SBLANK);
+	}
+}
+
+bool SubCircuit::node_in_ldo_or_block(double x, double y){
+	int width = ldolist[0]->width;
+	int height = ldolist[0]->height;
+
+	bool flag_module = false;
+	// check if it is module
+	for(size_t j=0;j<wspacelist.size();j++){
+		int module_xl = wspacelist[j]->node[0]->x;
+		int module_xr = wspacelist[j]->node[0]->x + wspacelist[j]->width;
+		int module_yl = wspacelist[j]->node[0]->y;
+		int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
+		// clog<<"bxl, bxr, byl, byr: "<<module_xl<<" "<<module_xr<<" "<<module_yl<<" "<<module_yr<<endl;
+		if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
+			// clog<<"mark block. "<<endl<<endl;
+			// in module
+			flag_module = true;
+			break;
 		}
 	}
+	if(flag_module == true)
+		return true;
+	// check if it is LDO
+	bool flag_ldo = false;
+	for(size_t j=0;j<ldolist.size();j++){
+		int ldo_xl = ldolist[j]->A->pt.x;
+		int ldo_xr = ldolist[j]->A->pt.x + width;
+		int ldo_yl = ldolist[j]->A->pt.y;
+		int ldo_yr = ldolist[j]->A->pt.y + height;
+		// clog<<"lxl, lxr, lyl, lyr: "<<ldo_xl<<" "<<ldo_xr<<" "<<ldo_yl<<" "<<ldo_yr<<endl;
+		if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
+			// clog<<"mark ldo. "<<endl<<endl;
+			// in module
+			flag_ldo = true;
+			break;
+		}
+	}
+	if(flag_ldo == true)
+		return true;
+	return false;
 }
