@@ -197,6 +197,7 @@ private:
 	// initialize things before solve_iteration
 	void solve_init(bool flag);
 	void configure_init();
+	void mark_geo_occupation();
 
 	void count_merge_nodes();
 

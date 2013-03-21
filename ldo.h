@@ -29,6 +29,9 @@ private:
 public:
 	MODULE();
 	string name;
+	//Point * node;
+	int width;
+	int height;
 	vector<Point*> node;
 	// vector<int> LDO_id; // index of LDO within wspace
 };

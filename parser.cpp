@@ -563,6 +563,8 @@ void Parser::parse_wspace(char *line){
 	char *chs;
 	char *saveptr;
 	const char *sep = "() \n";
+	int width;
+	int height;
 	
 	wspace_ptr = new MODULE();
 	Point * pt;
@@ -570,6 +572,15 @@ void Parser::parse_wspace(char *line){
 	chs = strtok_r(line, sep, &saveptr);
 	//clog<<"chs: "<<chs<<endl;
 	wspace_ptr->name = chs;
+
+	chs = strtok_r(NULL, sep, &saveptr);
+	sscanf(chs, "%d", &width);
+	wspace_ptr->width = width;
+
+	chs = strtok_r(NULL, sep, &saveptr);
+	sscanf(chs, "%d", &height);
+	wspace_ptr->height = height;
+
 	while(chs != NULL){
 		chs = strtok_r(NULL, sep, &saveptr);	
 		if(chs == NULL)	break;

@@ -160,8 +160,6 @@ void Circuit::print(){
 
 // initialization before solving the circuit
 void Circuit::solve_init(){
-	// mark the geometry with occupy info
-	mark_geo_occupation();
 	// assign nodes and nets into ckt_g and ckt_l
 	build_subcircuit();
 	ckt_l.lx = lx; ckt_l.gx = gx; 
@@ -245,6 +243,9 @@ void Circuit::build_subcircuit(){
 				ckt_g.net_set[type].push_back(net);
 		}
 	}
+
+	// mark the geometry with occupy info
+	ckt_l.mark_geo_occupation();
 }
 
 #if 0
@@ -2484,6 +2485,3 @@ void Circuit::relocate_LDOs(){
 	ckt_l.relocate_pads();
 }
 
-// mark the grid with block and LDO occupation
-void Circuit::mark_geo_occupation(){
-}

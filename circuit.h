@@ -205,7 +205,6 @@ private:
 	void solve_DC_LDO();
 	void solve_TR_LDO(Tran &tran, double time);
 
-	void mark_geo_occupation();
 	void count_merge_nodes();
 	// readin LDO and store the lookup table
 	void Readin_LDO();

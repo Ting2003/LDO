@@ -3600,3 +3600,55 @@ void SubCircuit::clear_flags(){
 	}
 }
 
+// mark the grid with block and LDO occupation
+void SubCircuit::mark_geo_occupation(){
+	int width=0;
+	int height = 0;
+
+	if(ldolist.size()!=0){
+		width = ldolist[0]->width;
+		height = ldolist[0]->height;
+	}
+	
+	Node *nd;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		nd = nodelist[i];
+		int x = nd->pt.x;
+		int y = nd->pt.y;
+		// mark node with geo occupation
+		if(x % width ==0 && y % height ==0){
+			bool flag_module = false;
+			// check if it is module
+			for(size_t j=0;j<wspacelist.size();j++){
+				int module_xl = wspacelist[j]->node[0]->x;
+				int module_xr = wspacelist[j]->node[0]->x + wspacelist[j]->width;
+				int module_yl = wspacelist[j]->node[0]->y;
+				int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
+				if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
+					// in module
+					nd->assign_geo_flag(SBLOCK);
+					flag_module = true;
+					break;
+				}
+			}
+			// check if it is LDO
+			bool flag_ldo = false;
+			for(size_t j=0;j<ldolist.size();j++){
+				int ldo_xl = ldolist[j]->A->pt.x;
+				int ldo_xr = ldolist[j]->A->pt.x + width;
+				int ldo_yl = ldolist[j]->A->pt.y;
+				int ldo_yr = ldolist[j]->A->pt.y + height;
+				if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
+					// in module
+					nd->assign_geo_flag(SLDO);
+					flag_ldo = true;
+					break;
+				}
+			}
+			// else assign blank
+			if(flag_module == false &&
+				flag_ldo == false)
+				nd->assign_geo_flag(SBLANK);
+		}
+	}
+}
