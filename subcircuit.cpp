@@ -2270,6 +2270,9 @@ void SubCircuit::configure_init(){
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
+   map_node.clear();
+   for(size_t i=0;i<nodelist.size()-1;i++)
+	   map_node[nodelist[i]->name] = nodelist[i];
 }
 
 // stmap matrix and rhs, decomp matrix for DC
@@ -2406,7 +2409,7 @@ void SubCircuit::relocate_pads(){
 //#if 0
 	vector<double> ref_drop_vec;
 	double min_IR = max_IRdrop;	
-	//clog<<"min_IR initial is: "<<min_IR<<endl;
+	clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	for(size_t i=0;i<1;i++){//5;i++){
 		// clog<<endl<<"iter for pad move. "<<i<<endl;
@@ -2441,15 +2444,16 @@ void SubCircuit::relocate_pads(){
 		move_violate_pads(ref_drop_vec, true);
 		
 		// move pads according to graph contraints
-		
+		clog<<"before graph move."<<endl;		
 		graph_move_pads(ref_drop_vec, true);
 		
 		//clog<<"after graph move. "<<endl;
 		clear_flags();
-		/*
+		
 		// actual move pads into the new spots
 		// project_pads();
-		// clog<<"before resolve direct. "<<endl;	
+		// clog<<"before resolve direct. "<<endl;		
+		/*
 		double max_IR = resolve_direct(tran, true);
 		// clog<<"after resolve direct. "<<endl;
 		if(max_IR ==0)
@@ -2902,66 +2906,37 @@ Node * SubCircuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	name = sstream.str();
-	// clog<<"pt_name: "<<pt_name<<endl;
+	clog<<"pt_name: "<<name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
-	if(has_node(name)){
-		nd_new = get_node(name);
-		nd_new = nd_new->rep;
-		//clog<<"has this node: "<<*nd_new<<endl;
-		// if this node is not occupied by pad
-		if(nd_new->isS()!=X){
-			//clog<<"nd_new: "<<*nd_new<<endl;
-			// need to adjust the local pads
-			if(local_flag == true){// &&nd_new->get_layer() == local_layers[0]){
-				//clog<<"project_local_pad. "<<*nd<<" "<<*nd_new<<endl;
-				Node *nb = project_local_pad(nd, nd_new, ldo);
-				if(nb == NULL)
-					return nd;
-				else{
-					//Node *nd_new_adjust = adjust_pads(nb);
-					//if(nd_new_adjust != NULL){
-
-					nd->disableX();
-					nd->value = 0;
-					return nb;
-					//}else{
-					//	return nd;
-					//}
-				}
-			}else if(local_flag == false){
-				//clog<<"nd, nd_new: "<<*nd<<" "<<*nd_new<<endl;
-				Node *nd_new_adjust = adjust_pads(nd_new);
-				if(nd_new_adjust != NULL){
-					//clog<<"nd_new_adjust: "<<*nd_new_adjust<<endl;
-				//return nd;
-					nd->disableX();
-					nd->value = 0;
-					return nd_new_adjust;
-				}
-				else{
-					//clog<<"no global pad. "<<endl;
-					return nd;
-				}
-			}
-		}else
-			return nd;
+	nd_new = get_node(name);
+	if(nd_new == NULL){
+		clog<<"null node: "<<endl;
+		return nd;
 	}
-	else
-		report_exit("no project node.");
-	/*Node *nd_new_X = expand_pad(nd_new, ldo, map_node_pt);
-	if(nd_new_X != NULL){
-		nd->disableX();
-		nd->value = 0;
-		return nd_new_X;
+	nd_new = nd_new->rep;
+	// if this node is not occupied by pad
+	if(nd_new->isS()!=Y){
+		clog<<"need to adjust nd_new: "<<*nd_new<<endl;
+		// need to adjust the local pads
+		Node *nb = project_local_pad(nd, nd_new, ldo);
+		if(nb == NULL)
+			return nd;
+		else{
+			nd->disableY();
+			nd->value = 0;
+			return nb;
+		}
+
 	}else
-		return nd;	*/
+		return nd;
 }
 
 // project local pad, setting ldo into new white spaces near current/device blocks
 Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	double ref_x = nd_new->pt.x;
 	double ref_y = nd_new->pt.y;
+	Node *nd_new_ldo;
 	vector<int> candi_wspace;
 	double ref_dx, ref_dy;
 	double ref_dist;
@@ -2983,51 +2958,25 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	bool flag = false;
 	bool flag_move = false;
 	for(size_t i=0;i<wspacelist.size();i++){
-		//clog<<"ref_x, ref_y, wspace: "<<ref_x<<" "<<ref_y<<" ";
-		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);
-		
+		// clog<<"ref_x, ref_y, wspace: "<<ref_x<<" "<<ref_y<<" ";
+		flag = node_in_wspace(ref_x, ref_y, wspacelist[i]);	
 		// if ldo is in some block
 		if(flag == true){
-			//clog<<"target in current module. "<<endl;
+			clog<<"target in current module. "<<endl;
 			// move the LDO out of this block
 			flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
 			break;
 		}
 	}
 	if(flag == false){
-		//clog<<"target not in current module. "<<endl;
-		double x0 = ref_x;
-		double y0 = ref_y;
-		// direct set ldo from current spot
-		flag_move = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, x0, y0, ldo_ptr);
+		clog<<"target not in current module. "<<endl;
+		// project to nearest LDO candi nodes
+		nd_new_ldo = project_ldo_node(ref_dist, ref_x, ref_y, ldo_ptr);
 	}
 	if(flag_move == false){
 		//clog<<"not move: "<<endl;
 		return NULL;
 	}
-	// get the node
-	sstream.str("");
-	sstream<<"n"<<global_layers[0]<<"_"<<ldo_ptr.node[0]->x<<"_"<<ldo_ptr.node[0]->y;
-	//clog<<"check ldo node: "<<ldo_ptr.node[0]->x<<" "<<ldo_ptr.node[0]->y<<endl;
-	Node *nd_new_ldo = get_node(sstream.str());
-	if(nd_new_ldo == NULL){
-		clog<<"no this node: "<<endl;
-		return NULL;
-	}
-	/*Node ldo_node;
-	ldo_node = *nd_new_ldo;
-	sstream.str("");
-	sstream<<"_X_"<<nd_new_ldo->name;
-	ldo_node.name = sstream.str();
-	if(!get_node_pt(map_node_pt, sstream.str())){
-		Node *ldo_final_ptr = new Node(ldo_node);
-		ldo_final_ptr->rep = ldo_final_ptr;
-		ldo_final_ptr->flag = X;
-		ldo_final_ptr->value = VDD_G;
-		nodelist[nd_new_ldo->id] = ldo_final_ptr;
-		ldo->A = ldo_final_ptr;
-	}*/
-	//clog<<"final ldo node: "<<nd_new_ldo->name<<endl;
 	ldo->A = nd_new_ldo;
 	return nd_new_ldo; 
 }
@@ -3060,7 +3009,7 @@ Point *SubCircuit::shortest_point(double ref_dist, double ref_x, double ref_y, L
 	Point *na;
 	Point *nb;
 	Point *pt = new Point(-1,-1,-1);
-	Point *pt_diag = new Point(-1, -1, -1);
+	//Point *pt_diag = new Point(-1, -1, -1);
 	Point min_pt;
 	Point *min_ptr = new Point(-1,-1,-1);
 	//Point *min_ptr;
@@ -3215,6 +3164,45 @@ void SubCircuit::round_data(double &data){
 		data = ceil(data);
 	else
 		data = floor(data);
+}
+
+// project the wspace reference node to nearest ldo
+// candi locations
+Node* SubCircuit::project_ldo_node(double ref_dist, double ref_x, double ref_y, LDO &ldo){
+	int x[2];
+	int y[2];
+
+	int width = ldo.width;
+	int height = ldo.height;
+	
+	x[0] = ref_x / width;
+	x[0] *= width;
+	x[1] = x[0] + width;
+
+	y[0] = ref_y / height;
+	y[0] *= height;
+	y[1] = y[0] + height;
+
+	stringstream sstream;
+	// loop 4 node
+	for(int i=0;i<2;i++){
+		if(x[i] > gx || x[i] < lx) continue;
+		for(int j=0;j<2;j++){
+			if(y[i] > gy || y[i] < ly) 
+				continue;
+			sstream.str("");
+			sstream<<"n"<<ldo.A->pt.z<<"_"<<x[i]<<"_"<<y[j];
+			clog<<"name: "<<sstream.str()<<endl;
+			Node *nd = get_node(sstream.str());
+			if(nd == NULL) continue;
+			// set LDO to here
+			if(nd->get_geo_flag() == SBLANK){
+				return nd;
+			}
+		}
+	}
+	// if no candidate, return original node
+	return ldo.A;
 }
 
 // simple version utilized in moving process
@@ -3395,7 +3383,7 @@ bool SubCircuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *p
 			if(flag == true) continue;
 			// find the one not in block
 			// see if this one fits LDO
-			flag_place = place_ldo_cur(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr, module);
+			flag_place = place_ldo_cur(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
 			// if find, break
 			if(flag_place == true)
 				break;
@@ -3430,7 +3418,7 @@ bool SubCircuit::place_ldo(double ref_dist, double ref_x, double ref_y, Point *p
 
 // adjust place for ldo
 // no overlap with other blocks or LDOs
-bool SubCircuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr, MODULE * module){	
+bool SubCircuit::place_ldo_cur(double ref_dist, double ref_x, double ref_y, double temp_x, double temp_y, LDO &ldo_ptr){	
 	bool flag = false;
 	flag = ldo_in_wspace_trial(ref_dist, ref_x, ref_y, temp_x, temp_y, ldo_ptr);
 	return flag;
@@ -3554,9 +3542,10 @@ void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
+		clog<<"old_pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad, local_flag);
 		 // if(pad->name == "_X_n6_200_150")
-		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		 clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){

@@ -160,8 +160,16 @@ void Circuit::print(){
 
 // initialization before solving the circuit
 void Circuit::solve_init(){
+	// mark the geometry with occupy info
+	mark_geo_occupation();
 	// assign nodes and nets into ckt_g and ckt_l
 	build_subcircuit();
+	ckt_l.lx = lx; ckt_l.gx = gx; 
+	ckt_l.ly = ly; ckt_l.gy = gy;
+	//clog<<"lx, gx, ly, gy: "<<lx<<" "<<gx<<" "<<ly<<" "<<gy<<endl;
+	ckt_g.lx = lx; ckt_g.gx = gx; 
+	ckt_g.ly = ly; ckt_g.gy = gy;
+
 	// configure subckt, start cholmod process
 	ckt_l.configure_init();
 	ckt_g.configure_init();
@@ -442,6 +450,8 @@ void Circuit::solve_LU_core(Tran &tran){
 void Circuit::build_wspacelist(vector<MODULE*> wspace_vec){
 	wspacelist.clear();
 	wspacelist = wspace_vec;
+	ckt_l.wspacelist = wspace_vec;
+	ckt_g.wspacelist = wspace_vec;
 }
 
 void Circuit::build_ldolist(vector<LDO*> ldo_vec){
@@ -2453,7 +2463,7 @@ void Circuit::solve_DC_LDO(){
 	double max_IRdrop = locate_maxIRdrop();
 	double THRES = VDD_G * 0.1;
 	// safe area, return with current LDO location
-	if(max_IRdrop <= THRES) return;
+	//if(max_IRdrop <= THRES) return;
 
 	// first optimize the locations of LDOs
 	relocate_LDOs();
@@ -2474,3 +2484,6 @@ void Circuit::relocate_LDOs(){
 	ckt_l.relocate_pads();
 }
 
+// mark the grid with block and LDO occupation
+void Circuit::mark_geo_occupation(){
+}

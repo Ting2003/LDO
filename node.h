@@ -54,6 +54,10 @@ public:
 	bool flag_visited;
 	bool flag_qualified;
 	bool flag_LDO; 	// whether this node is LDO node
+	int flag_geo; // utilized to record the geo
+		 	// : SBLANK - blank
+			// : SBLOCK - block
+			// : SLDO   - LDO
 	//////// member and function for pad //////
 
 	// disable the flag of some pad node
@@ -63,6 +67,8 @@ public:
 	void disableY();
 	// enable the flag of some pad node
 	void enableY();
+	void assign_geo_flag(int flag);
+	int get_geo_flag();
 
 	void enableLDO();
 	void disableLDO();
@@ -85,6 +91,8 @@ inline void Node::disableY() {flag = -1;}
 inline void Node::enableY() {flag = 1;}
 inline void Node::enableLDO() {flag_LDO = true;}
 inline void Node::disableLDO() {flag_LDO = false;}
+inline void Node::assign_geo_flag(int flag) {flag_geo = flag;}
+inline int Node::get_geo_flag() {return flag_geo;}
 
 //inline bool Node::is_ground() const{return name == "0";}
 // use a tricky way to speed up
