@@ -2916,20 +2916,16 @@ Node * SubCircuit::pad_projection(
 	}
 	nd_new = nd_new->rep;
 	// if this node is not occupied by pad
-	if(nd_new->isS()!=Y){
-		clog<<"need to adjust nd_new: "<<*nd_new<<endl;
-		// need to adjust the local pads
-		Node *nb = project_local_pad(nd, nd_new, ldo);
-		if(nb == NULL)
-			return nd;
-		else{
-			nd->disableY();
-			nd->value = 0;
-			return nb;
-		}
-
-	}else
+	clog<<"need to adjust nd_new: "<<*nd_new<<endl;
+	// need to adjust the local pads
+	Node *nb = project_local_pad(nd, nd_new, ldo);
+	if(nb->name == nd->name)
 		return nd;
+	else{
+		nd->disableY();
+		nd->value = 0;
+		return nb;
+	}
 }
 
 // project local pad, setting ldo into new white spaces near current/device blocks
@@ -2959,8 +2955,7 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	if(flag_occupy == true){
 		clog<<"target in modules. "<<endl;
 		// move the LDO out of this block
-		// flag_move = move_ldo_out_of_module(ref_dist, ref_x, ref_y, ldo_ptr, wspacelist[i]);	
-		//break;
+		nd_new_ldo = expand_ldo_location(ref_dist, ref_x, ref_y, ldo_ptr);
 	}
 	if(flag_occupy == false){
 		clog<<"target not in modules. "<<endl;
@@ -3665,9 +3660,7 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 		int module_xr = wspacelist[j]->node[0]->x + wspacelist[j]->width;
 		int module_yl = wspacelist[j]->node[0]->y;
 		int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
-		// clog<<"bxl, bxr, byl, byr: "<<module_xl<<" "<<module_xr<<" "<<module_yl<<" "<<module_yr<<endl;
 		if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
-			// clog<<"mark block. "<<endl<<endl;
 			// in module
 			flag_module = true;
 			break;
@@ -3682,9 +3675,7 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 		int ldo_xr = ldolist[j]->A->pt.x + width;
 		int ldo_yl = ldolist[j]->A->pt.y;
 		int ldo_yr = ldolist[j]->A->pt.y + height;
-		// clog<<"lxl, lxr, lyl, lyr: "<<ldo_xl<<" "<<ldo_xr<<" "<<ldo_yl<<" "<<ldo_yr<<endl;
 		if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
-			// clog<<"mark ldo. "<<endl<<endl;
 			// in module
 			flag_ldo = true;
 			break;
@@ -3693,4 +3684,73 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 	if(flag_ldo == true)
 		return true;
 	return false;
+}
+
+// expand to find the location of LDO around ref_x, ref_y
+// if the location is farther than ref_dist, restore back
+Node * SubCircuit::expand_ldo_location(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
+	Node *nd = ldo_ptr.A;
+	Node *nd_new;
+	int width = ldo_ptr.width;
+	int height = ldo_ptr.height;
+	int dx[4]; int dy[4];
+
+	dx[0] = width; dx[2] = -width;
+	dy[1] = height; dy[3] = -height;
+
+	queue<Point> q;
+	Point pt;
+	Point pt_cur;
+	stringstream sstream;
+	string pt_name;
+	int return_flag = 0;;
+	// else start to search for node
+	q.push(pt);
+	double diff_x, diff_y;
+	double dist;
+	// if not, expand it to neighboring area
+	while(!q.empty()&& return_flag == false){
+		pt_cur = q.front();
+		Point pt_nbr = pt_cur;
+		//expand_pad_pos(q, pt_cur);	
+		for(size_t i=0;i<4;i++){
+			pt_nbr.x = pt_cur.x + dx[i];
+			pt_nbr.y = pt_cur.y + dy[i];
+			stringstream sstream;
+			string name;
+			sstream <<"n"<<pt_nbr.z<<"_"<<
+				pt_nbr.x<<"_"<<
+				pt_nbr.y;
+			name = sstream.str();
+			nd_new = get_node(name);
+			if(nd_new == NULL) continue;
+			nd_new = nd_new->rep;
+			if(nd_new->isS()==Y) continue;
+			// get candidate location
+			if(nd_new->get_geo_flag()==SBLANK){
+				diff_x = nd_new->pt.x - ref_x;
+				diff_y = nd_new->pt.y - ref_y;
+				dist = sqrt(diff_x*diff_x + diff_y*diff_y);
+				if(dist < ref_dist){
+
+					clog<<"new name: "<<*nd_new<<" "<<endl;
+					return_flag = 1;
+					break;
+				}else{// already out of range, break
+					return_flag = 2;
+					break;
+				}
+			}
+			q.push(pt_nbr);
+		}
+		q.pop();
+	}
+	while(!q.empty()){
+		q.pop();
+	}
+	if(return_flag == 1){
+		return nd_new;
+	}
+	// no candidate, return original node
+	return nd;
 }
