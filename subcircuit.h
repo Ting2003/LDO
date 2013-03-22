@@ -158,8 +158,7 @@ public:
 	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(vector<Pad*> pad_set, size_t i);
-	void update_pad_flag(vector<Pad*> pad_set);
-	void insert_new_LDO(Pad *pad);
+	void update_single_pad_flag(Pad* pad);
 	void dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag);
 	bool print_flag(Node *nd);
 	void move_violate_pads(vector<double> ref_drop_vec, bool local_flag);
