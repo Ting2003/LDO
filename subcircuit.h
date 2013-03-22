@@ -127,7 +127,7 @@ public:
 
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
-	void rebuild_local_nets();
+	void rebuild_local_nets(Node *rm_node, Node *add_node);
 	void rebuild_global_nets();
 	double compute_stand_dev();
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
@@ -158,7 +158,7 @@ public:
 	bool print_flag(Node *nd);
 	void move_violate_pads(vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
-	void rebuild_ldo_nets(bool local_flag);
+	void update_node(Net *net);
 	void resolve_queue(vector<Node *> origin_pad_set);
 	void solve_queue(vector<Node *> pad_set_old);
 	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);

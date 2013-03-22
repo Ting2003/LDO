@@ -11,7 +11,7 @@ public:
 	Node * nd_in; // input node
 	// 4 corners
 	// first node is the pin for VDD
-	vector<Point*> node;
+	//vector<Point*> node;
 	int width;
 	int height;
 	// stores the input voltage

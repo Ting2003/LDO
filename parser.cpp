@@ -489,18 +489,15 @@ void Parser::parse_ldo_line(char *line, int *count){
 	chs = strtok_r(NULL, sep, &saveptr);
 	name = chs;
 	strcpy(sA, name.c_str());
-
-	while(chs != NULL){
-		chs = strtok_r(NULL, sep, &saveptr);	
-		if(chs == NULL)	break;
-		//clog<<"chs: "<<chs<<endl;
-		sscanf(chs, "%d,%d", &x,&y);
-		pt = new Point(x, y, -1);
-		ldo_ptr->node.push_back(pt);
-	}
-	// compute width and height
-	ldo_ptr->width = ldo_ptr->node[2]->x - ldo_ptr->node[0]->x+1;
-	ldo_ptr->height = ldo_ptr->node[2]->y - ldo_ptr->node[0]->y+1;
+	// width
+	chs = strtok_r(NULL, sep, &saveptr);
+	int width = atol(chs);
+	// height
+	chs = strtok_r(NULL, sep, &saveptr);
+	int height = atol(chs);	
+	// store width and height
+	ldo_ptr->width = width;
+	ldo_ptr->height = height;
 	p_chip->ldolist.push_back(ldo_ptr);
 
 	// build output node and net
@@ -510,6 +507,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 		report_exit("LDO node error!");	
 	ldo_ptr->A = nd_ptr;
 	nd_ptr->enableY(); // make this node VDD source
+	nd_ptr->enableLDO();
 	// initiallize voltage
 	ldo_ptr->voltage = VDD_G;
 

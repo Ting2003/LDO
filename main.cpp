@@ -85,7 +85,7 @@ int main(int argc, char * argv[]){
  		ckt->verify_ldo(tran, spicefile);*/
  		//ckt->print_ldo_list();
  		//ckt->print_matlab();
- 		delete ckt;
+ 		// delete ckt;
 	}
 	//tran.print_tr_nodes();
 

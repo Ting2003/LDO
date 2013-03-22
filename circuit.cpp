@@ -2459,18 +2459,54 @@ double Circuit::locate_maxIRdrop(){
 
 // perform DC LDO optimization
 void Circuit::solve_DC_LDO(){
+	map<Node*, double> ldo_best;
+	pair<Node*, double> ldo_pair;
 	// first get IR drop values
 	solve_DC();
 	double max_IRdrop = locate_maxIRdrop();
+	Node *nd = ldolist[0]->A;
+	ldo_pair.first = nd;
+	ldo_pair.second = max_IRdrop;
+	ldo_best.insert(ldo_pair);
+
+	//clog<<"first max_IR: "<<max_IRdrop<<endl;
 	double THRES = VDD_G * 0.1;
 	// safe area, return with current LDO location
-	//if(max_IRdrop <= THRES) return;
+	// if(max_IRdrop <= THRES) return;
 
-	// first optimize the locations of LDOs
-	relocate_LDOs();
-
-	// then solve circuit with new information
+	// need to keep best ldolist in the trial
+	// stores the best ldolist	
+	for(int i=0;i<5;i++){
+		// optimize the locations of LDO and resolve
+		relocate_LDOs();
+		solve_DC();
+		max_IRdrop = locate_maxIRdrop();
+		// clog<<"second max_IR: "<<max_IRdrop<<endl;
+		Node *nd = ldolist[0]->A;
+		// clog<<"new ldo node: "<<*nd<<endl;
+		ldo_pair.first = nd;
+		ldo_pair.second = max_IRdrop;
+		ldo_best.insert(ldo_pair);
+	}
+	map<Node*, double>::iterator it;
+	Node *nd_min;
+	double min_IR;
+	for(it = ldo_best.begin();it!=ldo_best.end();it++){
+		//clog<<"ldo best list: "<<*it->first<<" "<< it->second<<endl;
+		if(it ==  ldo_best.begin()){
+			min_IR = it->second;
+			nd_min = it->first;
+		}else if(it->second < min_IR){
+			min_IR = it->second;
+			nd_min = it->first;
+		}
+	}
+	// switch to the best ldo
+	recover_best_ldo(nd_min);
 	solve_DC();
+	max_IRdrop = locate_maxIRdrop();
+	clog<<"final max_IR: "<<max_IRdrop<<endl;
+
 	int iter = 0;
 	// while not satisfied and still have room,
 	// perform optimization
@@ -2489,3 +2525,11 @@ void Circuit::relocate_LDOs(){
 	ckt_g.rebuild_global_nets();
 }
 
+// recover the circuit with best ldo location
+void Circuit::recover_best_ldo(Node *nd_min){
+	//clog<<"nd_min: "<<*nd_min<<endl;
+	//clog<<"ldo node: "<<*ldolist[0]->A<<endl;
+	ckt_l.rebuild_local_nets(ldolist[0]->A, nd_min);
+	ckt_g.rebuild_global_nets();
+	//clog<<"final best ldo: "<<*ldolist[0]->A<<endl;
+}

@@ -189,22 +189,11 @@ void SubCircuit::solve_init(bool flag){
 			p->rid = p->rep->rid;
 		//clog<<"p->rep: "<<*p->rep<<endl;
 	}
-	Node *nd;
-	for(size_t i=0;i<ldolist.size();i++){
-		/*LDO *ldo_ptr = ldolist[i];
-		//clog<<"ldo node: "<<*ldo_ptr->A<<endl;
-		Net *net = ldo_ptr->A->nbr[TOP];
-		if(net == NULL) {
-			//clog<<"null net. "<<endl;
-			continue;
-		}
-		nd = net->ab[0];
-		if(nd->name == ldo_ptr->A->name)
-			nd = net->ab[1];*/
-		nd = ldolist[i]->A;
-		nd->enableLDO();
-		//clog<<"nd is LDO: "<<*nd<<endl;
-	}
+	/*for(size_t i=0;i<ldolist.size();i++){
+		Node *nd = ldolist[i]->A;
+
+		clog<<"i, ldo_A, ldo_in: "<<i<<" "<<*ldolist[i]->A<<" "<<nd->is_LDO()<<" "<<*ldolist[i]->nd_in<<endl;
+	}*/
 	//clog<<"before build pad set. "<<endl;
 	if(pad_set.size()==0)	
 		build_pad_set();
@@ -613,13 +602,13 @@ void SubCircuit::stamp_resistor(Matrix & A, Net * net){
            || nk->nbr[TOP]->type != INDUCTANCE)) {
            A.push_back(k,k, G);
 
-           //cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+           // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
            if(!nl->is_ground() && nl->isS()!=Y
 			   &&(nl->nbr[TOP]==NULL || 
                  nl->nbr[TOP]->type != INDUCTANCE)&&(k > l)){
                     A.push_back(k,l,-G);
 
-                  //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+                  // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
@@ -627,12 +616,13 @@ void SubCircuit::stamp_resistor(Matrix & A, Net * net){
 			(nl->nbr[TOP] ==NULL 
 		||nl->nbr[TOP]->type != INDUCTANCE)) {
 		A.push_back(l,l, G);
-                //cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+                // cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+
 		if(!nk->is_ground()&& nk->isS()!=Y
 			&&(nk->nbr[TOP]==NULL ||
 		  nk->nbr[TOP]->type != INDUCTANCE) && l > k){
 			A.push_back(l,k,-G);
-		//cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		 //cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -2394,7 +2384,7 @@ void SubCircuit::relocate_pads(){
 
 	vector<double> ref_drop_vec;
 	double min_IR = max_IRdrop;	
-	clog<<"min_IR initial is: "<<min_IR<<endl;
+	// clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	int pad_number = 1;
 
@@ -2412,7 +2402,9 @@ void SubCircuit::relocate_pads(){
 	//clog<<"after graph move. "<<endl;
 	clear_flags();
 
-	rebuild_ldo_nets(true);
+	Node *rm_node = origin_pad_set[0]->rep;
+	Node *add_node = pad_set[0]->node->rep;
+	rebuild_local_nets(rm_node, add_node);
 		
 	ref_drop_vec.clear();
 }
@@ -3072,7 +3064,7 @@ void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
 		Node *pad = pad_ptr->node;
 		// clog<<"old_pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad, local_flag);
-		clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
@@ -3302,33 +3294,24 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 	return nd;
 }
 
-// rebuild the nets of LDO and solve
-void SubCircuit::rebuild_ldo_nets(bool local_flag){
-	if(local_flag == false)
-		rebuild_global_nets();
-	else
-		rebuild_local_nets();	
-}
-
 // perform LDO node change
 // modify nets and nodes with the change of LDO
-void SubCircuit::rebuild_local_nets(){
-	Node *rm_node=NULL;
-	Node *add_node=NULL;
+void SubCircuit::rebuild_local_nets(Node *rm_node, Node *add_node){
+	//Node *rm_node=NULL;
+	//Node *add_node=NULL;
 
 	/*for(size_t i=0;i<origin_pad_set.size();i++){
 		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
 	}*/
 
-	for(size_t i=0;i<origin_pad_set.size();i++){
+	//for(size_t i=0;i<origin_pad_set.size();i++){
 		// one-one correspondence
-		rm_node = origin_pad_set[i]->rep;	
-		add_node = pad_set[i]->node->rep;
+		//rm_node = origin_pad_set[i]->rep;	
+		//add_node = pad_set[i]->node->rep;
 
-		if(rm_node->name == add_node->name || 
-				add_node->isS()==Y)
-			continue;
-		// cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+		if(rm_node->name == add_node->name)
+			return;
+		// clog<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
 	
 		// modify node info
 		rm_node->disableY();
@@ -3347,17 +3330,18 @@ void SubCircuit::rebuild_local_nets(){
 		// clog<<"add_node: "<<*add_node<<" "<<add_node->is_LDO()<<" "<<add_node->isS()<<endl;
 		Net *net = rm_node->nbr[TOP];
 		// should print error info
-		if(net == NULL) continue;
+		if(net == NULL) return;
 
 		// modify net info
 		if(net->ab[0]->is_ground())
 			net->ab[1] = add_node;
 		else if(net->ab[1]->is_ground())
 			net->ab[0] = add_node;
+		ldolist[0]->A = add_node;
 		//clog<<"net: "<<*net<<endl;
-	}
+	//}
 }
-
+	
 // for global circuit
 // rebuild all the RLV nets from ldolist
 void SubCircuit::rebuild_global_nets(){
@@ -3397,11 +3381,14 @@ void SubCircuit::rebuild_global_nets(){
 		ns.clear();
 	}
 	Node *gnd = nodelist[nodelist.size()-1];
+	// keep the old nd_in node
+	int old_z = ldolist[0]->nd_in->pt.z;
 	// and delete all the nodes except ground 
 	for(size_t i=0;i<nodelist.size()-1;i++) 
 		delete nodelist[i];
 	replist.clear();
 	nodelist.clear();
+	map_node.clear();
 	nodelist.push_back(gnd);
 
 	NET_TYPE net_type;
@@ -3417,6 +3404,7 @@ void SubCircuit::rebuild_global_nets(){
 		net_type = VOLTAGE;
 		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
 		add_net(net_vol);
+		update_node(net_vol);
 		// then create inductance net
 		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3426,6 +3414,7 @@ void SubCircuit::rebuild_global_nets(){
 		net_type = INDUCTANCE;
 		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
 		add_net(net_induc);
+		update_node(net_induc);
 		// then create resistance net 
 		sprintf(name, "n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3436,11 +3425,21 @@ void SubCircuit::rebuild_global_nets(){
 		Net *net_resis = new Net(net_type, 
 			resis_value, nd_ptr_resis, nd_ptr_induc);
 		add_net(net_resis);
+		update_node(net_resis);
 		// then create current net 
 		net_type = CURRENT;
 		Net *net_current = new Net(net_type, 
 			current_value, nd_ptr_resis, nodelist[0]);
 		add_net(net_current);
+		update_node(net_current);
+	}
+	// then update ldo->nd_in;
+	for(size_t i=0;i<ldolist.size();i++){
+		Node *nd = ldolist[i]->A;
+		stringstream sstream;
+		sstream<<"n"<<old_z<<"_"<<nd->pt.x<<"_"<<nd->pt.y;
+		Node *nd_new = get_node(sstream.str());
+		ldolist[i]->nd_in = nd_new;
 	}
 	/*clog<<"to here. "<<endl;
 	clog<<nodelist<<endl;
@@ -3482,4 +3481,97 @@ void SubCircuit::extract_node(char * str, Node & nd){
 	nd.pt.set(x,y,z);
 	nd.flag = flag;
 	//return Node(string(str), Point(x,y,z), flag);
+}
+
+// Given a net with its two nodes, update the connection information
+// for thet two nodes
+void SubCircuit::update_node(Net * net){
+	// first identify their connection type:
+	// 1. horizontal/vertical   2. via/VDD 3. current
+	//
+	// swap *a and *b so that a is:
+	// WEST   for horizontal
+	// SOUTH  for vertical
+	// BOTTOM for via / XVDD
+	// ground node for CURRENT
+	Node *a=net->ab[0], *b=net->ab[1];
+	//cout<<"setting "<<net->name<<" nd1="<<nd1->name<<" nd2="<<nd2->name<<endl;
+	
+	if(net->type == CAPACITANCE){
+		// make sure a is the Z node, b is ground
+		if(a->isS() != Z) swap<Node*>(a,b);
+		// only needs single dir nbr net for index
+		// TOP for resistance
+		// BOTTOM for capacitance
+		a->set_nbr(BOTTOM, net);
+	}
+	else if(net->type == INDUCTANCE){
+		// a is Y, b is X
+		if(a->isS()== X) swap<Node*>(a,b);
+		a->set_nbr(BOTTOM, net);
+		b->set_nbr(TOP, net);
+	}
+	// resistance type net with special nodes
+	else if(net->type == RESISTOR && a->isS()!= -1 
+		&& b->isS() == -1){
+		if(a->isS()== X){
+			a->set_nbr(BOTTOM, net);
+			b->set_nbr(TOP, net);
+		}
+		else if(a->isS() == Z){
+			// bottom for z node has been taken by 
+			// current
+			a->set_nbr(TOP, net);
+		}
+	}
+	else if(net->type == RESISTOR && b->isS()!= -1 && a->isS() ==-1){
+		if(b->isS()== X){
+			b->set_nbr(BOTTOM, net);
+			a->set_nbr(TOP, net);
+		}
+		else if(b->isS() == Z){
+			b->set_nbr(TOP, net);
+		}
+	}
+	else if( a->get_layer() == b->get_layer() ){
+		// horizontal or vertical resistor in the same layer
+		int layer = a->get_layer();
+		if( a->pt.y == b->pt.y ){// horizontal
+			if(a->pt.x > b->pt.x) swap<Node*>(a,b);
+			a->set_nbr(EAST, net);
+			b->set_nbr(WEST, net);
+			layer_dir[layer] = HR;
+		}
+		else if( a->pt.x == b->pt.x ){// vertical
+			if(a->pt.y > b->pt.y) swap<Node*>(a,b);
+			a->set_nbr(NORTH, net);
+			b->set_nbr(SOUTH, net);
+			layer_dir[layer] = VT;
+		}
+		else{
+			clog<<*net<<endl;
+			report_exit("Diagonal net\n");
+		}
+	}
+	else if( //fzero(net->value) && 
+		 !a->is_ground() &&
+		 !b->is_ground() ){// this is Via (Voltage or Resistor )
+		if( a->get_layer() > b->get_layer() ) swap<Node*>(a,b);
+		a->set_nbr(TOP, net);
+		b->set_nbr(BOTTOM, net);
+	}
+	else if (net->type == VOLTAGE){// Vdd Voltage
+		// one is X node, one is ground node
+		// Let a be X node, b be another
+		if( a->is_ground() ) swap<Node*>(a,b);
+		a->flag = Y;		// set a to be X node
+		a->set_nbr(TOP, net);	// X -- VDD -- Ground
+		a->set_value(net->value);
+	}
+	
+	else{// if( net->type == CURRENT ){// current source
+		// let a be ground node
+		if( !a->is_ground() ) swap<Node*>(a,b);
+		b->set_nbr(BOTTOM, net);
+	}
 }
