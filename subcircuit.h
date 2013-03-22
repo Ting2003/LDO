@@ -138,7 +138,7 @@ public:
 	void update_ldo_voltage(char *filename);
 	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
-	void extract_pads(int pad_number);
+	void extract_pads(vector<Pad*> pad_set);
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);

@@ -2541,6 +2541,7 @@ void Circuit::add_LDO_DC(){
 	// 1. build candidate pad graph
 	ckt_l.build_pad_graph(ckt_l.candi_pad_set);
 	// 2. search for control nodes for all candi
+	ckt_l.extract_pads(ckt_l.candi_pad_set);
 	// 3. get ref_value as IR drop for each candi
 	// 4. LDO should go to candi with maximum IR
 	// 5. update the nbr flags for candi in graph

@@ -2384,9 +2384,8 @@ void SubCircuit::relocate_pads(){
 	double min_IR = max_IRdrop;	
 	// clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
-	int pad_number = 1;
 	// find control nodes for each pad
-	extract_pads(pad_number);
+	extract_pads(pad_set);
 	// find the tune spot for control nodes	
 	update_pad_control_nodes(ref_drop_vec, 0);	
 
@@ -2505,7 +2504,8 @@ double SubCircuit::get_distance(Node *na, Node *nb){
 }
 
 // find control nodes for each pad
-void SubCircuit::extract_pads(int pad_number){
+void SubCircuit::extract_pads(vector<Pad*> pad_set){
+	int pad_number = 1;
 	vector<Node*> pair_first;
 	vector<double> pair_second;
 	pair<Node*, double> pair_nd;
