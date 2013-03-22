@@ -2421,7 +2421,7 @@ void SubCircuit::assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old)
 	}
 }
 
-void SubCircuit::build_pad_graph(){
+void SubCircuit::build_pad_graph(vector<Pad*> &pad_set){
 	Pad *pad;
 	Pad *pad_nbr;
 	bool flag_pad = false;
@@ -3579,9 +3579,4 @@ void SubCircuit::update_node(Net * net){
 		if( !a->is_ground() ) swap<Node*>(a,b);
 		b->set_nbr(BOTTOM, net);
 	}
-}
-
-// build candidate padlist from wspace
-void SubCircuit::build_candi_graph(){
-	
 }

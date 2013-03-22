@@ -145,7 +145,7 @@ public:
 	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
-	void build_pad_graph();
+	void build_pad_graph(vector<Pad*> &pad_set);
 	void modify_graph(bool flag);
 	void print_ldo_list();
 	Node * expand_candi_pads(Node *na);
