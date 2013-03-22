@@ -3461,12 +3461,68 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
+		nd->enableY();
+		nd->enableLDO();
+		nd->value = VDD_G;
+		Net *net = new Net(VOLTAGE, VDD_G, nd, nodelist[nodelist.size()-1]);
+		add_net(net);
+		// update top nbr net
+		nd->rep->nbr[TOP] = net;
 	}
 }
 
+// need to create all the RLVI nets
 void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
+	Node nd_temp;
+	double vol_value = 0;
+	double induc_value = 0;
+	double resis_value = 0;
+	double current_value = 0;
+
+	char name[MAX_BUF];
+
+	Node *gnd = nodelist[nodelist.size()-1];
+	NET_TYPE net_type;
+	int ldo_z = ldolist[0]->nd_in->pt.z;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
+		sprintf(name, "_Y_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_vol = new Node(nd_temp);
+		nd_ptr_vol->rep = nd_ptr_vol;
+		add_node(nd_ptr_vol);
+		// first create voltage net
+		net_type = VOLTAGE;
+		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
+		add_net(net_vol);
+		update_node(net_vol);
+		// then create inductance net
+		sprintf(name, "_X_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_induc = new Node(nd_temp);
+		nd_ptr_induc->rep = nd_ptr_induc;
+		add_node(nd_ptr_induc);
+		net_type = INDUCTANCE;
+		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
+		add_net(net_induc);
+		update_node(net_induc);
+		// then create resistance net 
+		sprintf(name, "n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_resis = new Node(nd_temp);
+		nd_ptr_resis->rep = nd_ptr_resis;
+		add_node(nd_ptr_resis);
+		net_type = RESISTOR;
+		Net *net_resis = new Net(net_type, 
+			resis_value, nd_ptr_resis, nd_ptr_induc);
+		add_net(net_resis);
+		update_node(net_resis);
+		// then create current net 
+		net_type = CURRENT;
+		Net *net_current = new Net(net_type, 
+			current_value, nd_ptr_resis, nodelist[0]);
+		add_net(net_current);
+		update_node(net_current);
 	}
 }
