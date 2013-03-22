@@ -214,7 +214,7 @@ void Circuit::build_subcircuit(){
 	ckt_l.ldolist = ldolist;
 	ckt_g.ldolist = ldolist;
 	int layer_l = local_layers[0];
-	int layer_g = global_layers[0];
+	//int layer_g = global_layers[0];
 	//clog<<"layer_l and g: "<<layer_l<<" "<<layer_g<<endl;
 	// build nodelist
 	for(size_t i=0;i<nodelist.size();i++){
@@ -2133,7 +2133,7 @@ void Circuit::save_ckt_nodes_to_tr(Tran &tran){
 
 void Circuit::build_pad_set_l(vector<LDO*> ldolist){
 	pad_set_l.clear();
-	Node *nd;
+	//Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
 		Pad *pad_ptr  = new Pad();
 		pad_ptr->node = ldolist[i]->A;
@@ -2288,7 +2288,7 @@ void Circuit::solve_DC(){
 
 // LDO optimization for one time step
 void Circuit::solve_TR_LDO(Tran &tran, double time){
-	int iter;
+	int iter=0;
 	double diff_opt_ldo=1;
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
@@ -2354,12 +2354,10 @@ void Circuit::Readin_LDO(){
 // with lookup Table - linear interpolation method
 // if out of range of index, choose the closest
 void Circuit::update_ldo_vout(){
-	Node *nd_out;
-	Node *nd_in;
 	double iout;
 	double vin;
-	size_t n_vin = ldo_vin_vec.size();
-	size_t n_iout = ldo_iout_vec.size();
+	//size_t n_vin = ldo_vin_vec.size();
+	//size_t n_iout = ldo_iout_vec.size();
 	double vin_1, vin_2;
 	double iout_1, iout_2;
 	for(size_t i=0;i<ldolist.size();i++){
@@ -2376,6 +2374,7 @@ void Circuit::update_ldo_vout(){
 		// perform interpolation operation
 		double vout = inter_table_ldo(vin, iout, 
 			vin_1, vin_2, iout_1, iout_2);
+		ldolist[i]->voltage = vout;
 		// clog<<"vout: "<<vout<<endl;
 	}
 }
@@ -2450,6 +2449,7 @@ double Circuit::inter_table_ldo(double vin, double iout, double vin_1, double vi
 			iout_1, z11, iout_2, z21);
 		return vout;
 	}
+	return z11;
 }
 
 double Circuit::locate_maxIRdrop(){
@@ -2489,8 +2489,8 @@ void Circuit::solve_DC_LDO(){
 		ldo_best.insert(ldo_pair);
 	}
 	map<Node*, double>::iterator it;
-	Node *nd_min;
-	double min_IR;
+	Node *nd_min = NULL;
+	double min_IR=0;
 	for(it = ldo_best.begin();it!=ldo_best.end();it++){
 		//clog<<"ldo best list: "<<*it->first<<" "<< it->second<<endl;
 		if(it ==  ldo_best.begin()){
@@ -2516,7 +2516,7 @@ void Circuit::solve_DC_LDO(){
 		iter++ < 1){
 		// if number not satisfied, 
 		// need to add more LDOs
-		// add_LDO();
+		add_LDO();
 	}
 }
 
@@ -2526,11 +2526,14 @@ void Circuit::relocate_LDOs(){
 	ckt_g.rebuild_global_nets();
 }
 
-// recover the circuit with best ldo location
+// recover the SubCircuit with best ldo location
 void Circuit::recover_best_ldo(Node *nd_min){
 	//clog<<"nd_min: "<<*nd_min<<endl;
 	//clog<<"ldo node: "<<*ldolist[0]->A<<endl;
 	ckt_l.rebuild_local_nets(ldolist[0]->A, nd_min);
 	ckt_g.rebuild_global_nets();
 	//clog<<"final best ldo: "<<*ldolist[0]->A<<endl;
+}
+
+void Circuit::add_LDO(){
 }

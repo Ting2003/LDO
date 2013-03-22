@@ -31,7 +31,6 @@
 #include "sp_node.h"
 #include "pad.h"
 #include "ldo.h"
-#include "common.h"
 #include <queue>
 
 using namespace std;
