@@ -191,6 +191,7 @@ private:
 	void solve_init(bool flag);
 	void configure_init();
 	void mark_geo_occupation();
+	void extract_node(char * str, Node & nd);
 
 	void count_merge_nodes();
 

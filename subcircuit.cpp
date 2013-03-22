@@ -3458,5 +3458,114 @@ void SubCircuit::rebuild_local_nets(){
 	}
 }
 
+// for global circuit
+// rebuild all the RLV nets from ldolist
 void SubCircuit::rebuild_global_nets(){
+	pad_set.clear();
+	Node *nd;
+	static Node nd_temp;
+	Net *net;
+	stringstream sstream;
+
+	double vol_value = 0;
+	double induc_value = 0;
+	double resis_value = 0;
+	double current_value = 0;
+
+	char name[MAX_BUF];
+
+	for(int type =0 ;type <NUM_NET_TYPE;type++){
+		NetList &ns = net_set[type];
+		net = ns[0];
+		if(net->type == VOLTAGE)
+			vol_value = net->value;
+		else if(net->type == INDUCTANCE)
+			induc_value = net->value;
+		else if(net->type == RESISTOR)
+			resis_value = net->value;
+		else if(net->type == CURRENT)
+			current_value = net->value;
+	}
+
+	// then delete all the nets in global circuit
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		for(size_t j=0;j<ns.size();j++) delete ns[j];
+	}
+	// and delete all the nodes except ground 
+	for(size_t i=0;i<nodelist.size()-1;i++) 
+		delete nodelist[i];
+	replist.clear();
+
+	NET_TYPE net_type;
+	// start to create new nets
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->A;
+		sprintf(name, "_Y_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_vol = new Node(nd_temp);
+		nd_ptr_vol->rep = nd_ptr_vol;
+		add_node(nd_ptr_vol);
+		// first create voltage net
+		net_type = VOLTAGE;
+		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, nodelist[0]);
+		add_net(net_vol);
+		// then create inductance net
+		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_induc = new Node(nd_temp);
+		nd_ptr_induc->rep = nd_ptr_induc;
+		add_node(nd_ptr_induc);
+		net_type = INDUCTANCE;
+		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
+		add_net(net_induc);
+		// then create resistance net 
+		sprintf(name, "n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
+		extract_node(name, nd_temp);
+		Node *nd_ptr_resis = new Node(nd_temp);
+		nd_ptr_resis->rep = nd_ptr_resis;
+		add_node(nd_ptr_resis);
+		net_type = RESISTOR;
+		Net *net_resis = new Net(net_type, 
+			resis_value, nd_ptr_resis, nd_ptr_induc);
+		add_net(net_resis);
+		// then create current net 
+		net_type = CURRENT;
+		Net *net_current = new Net(net_type, 
+			current_value, nd_ptr_resis, nodelist[0]);
+		add_net(net_current);
+	}
+}
+
+void SubCircuit::extract_node(char * str, Node & nd){
+	//static Node gnd(string("0"), Point(-1,-1,-1));
+	if( str[0] == '0' ) {
+		nd.name="0";
+		nd.pt.set(-1,-1,-1);
+		return;
+	}
+
+	long z, y, x;
+	int flag = -1;
+	char * chs;
+	char * saveptr;
+	char l[MAX_BUF];
+	strcpy(l, str);
+	const char * sep = "_n";
+	chs = strtok_r(l, sep, &saveptr); // initialize
+	// for transient, 'Y' is the VDD source node
+	if( chs[0] == 'X' || chs[0]== 'Y' || chs[0]== 'Z' ){
+		flag = chs[0]-'X';
+		chs = strtok_r(NULL, sep, &saveptr);
+	}
+	z = atol(chs);
+	chs = strtok_r(NULL, sep, &saveptr);
+	x = atol(chs);
+	chs = strtok_r(NULL, sep, &saveptr);
+	y = atol(chs);
+
+	nd.name.assign(str);
+	nd.pt.set(x,y,z);
+	nd.flag = flag;
+	//return Node(string(str), Point(x,y,z), flag);
 }
