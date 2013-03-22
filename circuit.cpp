@@ -2508,15 +2508,16 @@ void Circuit::solve_DC_LDO(){
 	clog<<"final max_IR: "<<max_IRdrop<<endl;
 
 	int iter = 0;
+	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
-	/* while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && 
+	// while(max_IRdrop > THRES &&) 
+	while(ldolist.size() < ckt_l.MAX_NUM_LDO && 
 		iter++ < 1){
 		// if number not satisfied, 
 		// need to add more LDOs
 		// add_LDO();
-	}*/
+	}
 }
 
 void Circuit::relocate_LDOs(){

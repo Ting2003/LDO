@@ -302,6 +302,7 @@ private:
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;
+	int MAX_NUM_LDO;
 
 	// mapping from Net name to object pointer
 	// unordered_map<string, Net*> map_net;
