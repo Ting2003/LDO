@@ -2580,9 +2580,11 @@ void SubCircuit::update_pad_control_nodes(vector<Pad*> pad_set){
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
-		
-		double middle_value = locate_ref(i);
+		//clog<<"before middle value. "<<endl;	
+		double middle_value = locate_ref(pad_set, i);
+		//clog<<"middle value: "<<middle_value<<endl;
 		pad_set[i]->ref_vol = middle_value;
+		//clog<<"after assign. "<<endl;
 		//cout<<"middle value: "<<middle_value<<endl;
 	}
 }
@@ -2592,15 +2594,15 @@ bool compare_values(double a, double b){
 }
 
 // locate the tune spot for the control nodes.
-double SubCircuit::locate_ref(size_t i){
+double SubCircuit::locate_ref(vector<Pad*> pad_set, size_t i){
 	Pad *pad_ptr;
-	Node *pad;
 	map<Node*, double>::iterator it;
 	Node *nd;
 	double weight = 0;
 	//vector<double> drop_vec;
 	pad_ptr = pad_set[i];
-	pad = pad_ptr->node;
+	// clog<<"get pad_ptr. "<<endl;
+	Node *pad = pad_set[i]->node;
 	pad_ptr->drop_vec.clear();
 	// cout<<"pad: "<<*pad<<endl;
 	for(it = pad_ptr->control_nodes.begin();
@@ -2612,8 +2614,9 @@ double SubCircuit::locate_ref(size_t i){
 		weight = nd->value;
 		if(weight <0)
 			weight *=10;
-
+		// clog<<"before assign weight. "<<endl;
 		pad_ptr->control_nodes[nd] = weight;
+		// clog<<"before push drop vec. "<<endl;
 		pad_ptr->drop_vec.push_back(nd->value); 
 	}
 	sort(pad_ptr->drop_vec.begin(), pad_ptr->drop_vec.end(),
@@ -3182,6 +3185,13 @@ void SubCircuit::mark_geo_occupation(){
 	}
 	// count is the maximum candidate number for LDO
 	MAX_NUM_LDO = candi_pad_set.size();
+	/* cout<<"start to output candi_pad set. "<<endl<<endl<<endl;
+	for(size_t i=0;i<MAX_NUM_LDO;i++){
+		Pad *pad = candi_pad_set[i];
+		Node *nd = pad->node;
+		if(nd != NULL)
+			cout<<"nd: "<<*nd<<endl;
+	}*/
 }
 
 bool SubCircuit::node_in_ldo_or_block(double x, double y){
@@ -3594,13 +3604,18 @@ void SubCircuit::extract_add_LDO_dc_info(){
 	//    rebuild the local and global net and
 }
 
+// return pad candi with max IR (still available candi)
 Pad* SubCircuit::locate_candi_pad_maxIR(){
-	double min_vol;
+	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
+	bool flag = false;
 	for(size_t i=0;i<pad_set.size();i++){
-		if(i==0){
+		if(pad_set[i]->node->flag_visited == true)
+			continue;
+		if(flag == false){
 			min_vol = pad_set[i]->ref_vol;
 			pad_ptr = pad_set[i];
+			flag = true;
 		}
 		else if(pad_set[i]->ref_vol < min_vol){
 			min_vol = pad_set[i]->ref_vol;

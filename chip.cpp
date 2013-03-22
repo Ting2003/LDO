@@ -1,5 +1,4 @@
 #include "chip.h"
-#include "common.h"
 
 Chip::Chip(){
 	cktlist.clear();
