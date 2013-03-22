@@ -2537,7 +2537,20 @@ void Circuit::recover_best_ldo(Node *nd_min){
 
 // add more LDO into circuit
 void Circuit::add_LDO_DC(){
+	clog<<"enter add LDO DC. "<<endl;
+	vector<Pad*> LDO_pad_vec;
+	// build candi graph, extract control nodes 
+	// for each LDO pad node
+	ckt_l.create_current_LDO_graph();
+	clog<<"after create LDO graph. "<<endl;
 	// first find the node new LDO should go to
-	ckt_l.extract_add_LDO_dc_info();
+	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	clog<<"after extract add LDO info. "<<endl;
+	// 7. when finish adding LDOs, 
+	// rebuild the local and global net and
+	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
+	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	solve_DC();
+	max_IRdrop = locate_maxIRdrop();
+	LDO_pad_vec.clear();
 }

@@ -2381,7 +2381,7 @@ void SubCircuit::relocate_pads(){
 	assign_pad_set(pad_set, origin_pad_set);
 
 	vector<double> ref_drop_vec;
-	double min_IR = max_IRdrop;	
+	//double min_IR = max_IRdrop;	
 	// clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	// find control nodes for each pad
@@ -2602,7 +2602,6 @@ double SubCircuit::locate_ref(vector<Pad*> pad_set, size_t i){
 	//vector<double> drop_vec;
 	pad_ptr = pad_set[i];
 	// clog<<"get pad_ptr. "<<endl;
-	Node *pad = pad_set[i]->node;
 	pad_ptr->drop_vec.clear();
 	// cout<<"pad: "<<*pad<<endl;
 	for(it = pad_ptr->control_nodes.begin();
@@ -2626,33 +2625,6 @@ double SubCircuit::locate_ref(vector<Pad*> pad_set, size_t i){
 	double middle_value = pad_ptr->drop_vec[id];
 	//drop_vec.clear();
 	return middle_value;
-}
-
-void SubCircuit::dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag){
-	//for(size_t j=0;j<2;j++){
-	double avg_drop = 0;
-	avg_drop = calc_avg_ref_drop(ref_drop_vec);
-
-	Pad *pad_ptr;
-	Node *pad;
-	//cout<<"j: "<<j<<endl;
-	for(size_t i=0;i<pad_set.size();i++){
-		if(pad_set[i]->control_nodes.size()==0)
-			continue;
-		pad_ptr = pad_set[i];
-		pad = pad_ptr->node;
- 
-		if(pad_ptr->data >= 2*avg_drop){
-			pad_ptr->violate_flag = true;
-			double ratio_new = pad_ptr->ratio * 2;
-			size_t id = pad_ptr->drop_vec.size() / ratio_new;
-			pad_ptr->ratio = ratio_new;
-			double middle_value = pad_ptr->drop_vec[id];
-			ref_drop_vec[i] = middle_value;
-		}
-	}
-	
-	extract_min_max_pads_new(VDD, ref_drop_vec, local_flag);	
 }
 
 double SubCircuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
@@ -2693,103 +2665,6 @@ double SubCircuit::calc_avg_ref_drop(vector<double> &ref_drop_vec){
 	}
 	double avg_drop = sum_diff / count;
 	return avg_drop;
-}
-
-void SubCircuit::extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag){
-	Node *nd;
-	Pad *pad;
-	size_t max_index = 0;
-	double max = 0;
-
-	vector<Node*> min_pads;
-	vector<Node*> max_pads;
-	vector<bool >temp_flag;
-
-	map<Node *, double>::iterator it;
-	temp_flag.resize(pad_set.size());
-	for(size_t i=0;i<temp_flag.size();i++)
-		temp_flag[i] = false;
-	size_t id_minpad = 0;
-	double drop = 0;
-	double avg_ref = calc_avg_ref(pad_set, ref_drop_vec);
-	double avg_drop = VDD - avg_ref;
-	
-	for(size_t i=0;i<pad_set.size();i++){
-		pad = pad_set[i];
-		nd = pad->node;
-					
-		drop = VDD_G - ref_drop_vec[i];
-		if(drop>max){
-			max = drop;
-			max_index = i;
-		}
-		if(drop < 0.7*avg_drop){
-			min_pads.push_back(nd);
-		}
-	}
-	double max_id;
-	do{
-		double max_temp = 0;
-		max_id = -1;
-		for(size_t j=0;j<ref_drop_vec.size();j++){
-			if(VDD - ref_drop_vec[j] < max*0.9)
-				continue;
-			if(temp_flag[j] ==  false){
-				if(max_id == -1)
-					max_id = j;
-				if(VDD - ref_drop_vec[j] > max_temp){
-					max_temp = VDD - ref_drop_vec[j];
-					max_id = j;
-				}
-			}
-		}
-		if(max_id == -1) break;
-		temp_flag[max_id] = true;
-		if(max_temp >= max*0.9)	
-			max_pads.push_back(pad_set[max_id]->node);
-	}while(max_id != -1);
-
-	temp_flag.clear();
-	Node *new_pad;
-	Pad * pad_ptr;
-
-	// set nd into the weighted center
-	// start to map min pads into max pads locations
-	for(size_t j=0;j<min_pads.size();j=j+2){
-		for(size_t k=0;k<pad_set.size();k++){
-			if(pad_set[k]->node->name == 
-				min_pads[j]->name){
-				id_minpad = k;
-			}
-		}
-	
-		size_t i = j % max_pads.size();
-		//size_t i = locate_max_pad(max_pads, iter);
-		Node * nd = max_pads[i];
-		for(size_t k=0;k<pad_set.size();k++){
-			if(pad_set[k]->node->name == 
-				nd->name){	
-				pad_ptr = pad_set[k];
-				//double ref_drop_value = ref_drop_vec[k];
-
-				new_pad = pad_projection(pad_ptr, min_pads[j]);
-				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
-
-				size_t m = id_minpad;
-				pad_set[m]->node->disableX();
-				pad_set[m]->node->value = 0;
-				pad_set[m]->node = new_pad;
-				pad_set[m]->visit_flag = true;
-				// already taken care of
-				pad_set[m]->control_nodes.clear();
-				break;
-			}
-		}
-
-	}
-	// next step is to insert the min pads into max pads area
-	min_pads.clear();
-	max_pads.clear();
 }
 
 // expand from (x,y) to nearest node in grid
@@ -2977,77 +2852,6 @@ double SubCircuit::calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_v
 	}
 	avg_ref = sum_ref / count;
 	return avg_ref;
-}
-
-// use queue to search for candi pads around nd
-Node * SubCircuit::expand_candi_pads(Node *nd){
-	Node *na;
-	Node *nd_new;
-	queue<Point> q;
-	Point pt;
-	Point pt_cur;
-	stringstream sstream;
-	string pt_name;
-	bool return_flag = false;
-	q.push(nd->pt);
-	
-	double dx[4] = {3, 0, -3, 0};
-	double dy[4] = {0, 3, 0, -3};
-	// if not, expand it to neighboring area
-	while(!q.empty()&& return_flag == false){
-		pt_cur = q.front();
-		Point pt_nbr = pt_cur;
-		//expand_pad_pos(q, pt_cur);	
-		for(size_t i=0;i<4;i++){
-			pt_nbr.x = pt_cur.x + dx[i];
-			pt_nbr.y = pt_cur.y + dy[i];
-			stringstream sstream;
-			string pt_name;
-			sstream <<"n"<<pt_nbr.z<<"_"<<
-				pt_nbr.x<<"_"<<
-				pt_nbr.y;
-			pt_name = sstream.str();
-			if(has_node(pt_name)){
-				nd_new = get_node(pt_name);
-				Net *net = nd_new->nbr[TOP];
-				if(net == NULL){
-					return_flag = true;
-					break;
-				}	
-			}
-			q.push(pt_nbr);
-		}
-		q.pop();
-	}
-	while(!q.empty()){
-		q.pop();
-	}
-	if(return_flag == true){
-		return nd_new;
-	}
-	clog<<"no point for new pad. return. "<<endl;
-	return NULL;
-}
-
-void SubCircuit::move_violate_pads(vector<double> ref_drop_vec, bool local_flag){
-	Pad *pad_ptr;
-	Node * pad;
-	Node * new_pad;
-	for(size_t i=0;i<pad_set.size();i++){
-		if(pad_set[i]->control_nodes.size()==0)
-			continue;
-
-		pad_ptr = pad_set[i];
-		pad = pad_ptr->node;
-		// if violate, move this pad
-		if(pad_ptr->violate_flag == true){
-			new_pad = pad_projection(pad_ptr, pad);
-			// clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
-			pad_ptr->node = new_pad;
-			pad_ptr->control_nodes.clear();
-			pad_ptr->visit_flag = true;
-		}
-	}
 }
 
 void SubCircuit::graph_move_pads(){
@@ -3589,7 +3393,7 @@ void SubCircuit::update_node(Net * net){
 	}
 }
 
-void SubCircuit::extract_add_LDO_dc_info(){
+void SubCircuit::create_current_LDO_graph(){
 	// 1. build candidate pad graph
 	build_pad_graph(candi_pad_set);
 	// update the flag for the single LDO
@@ -3598,21 +3402,21 @@ void SubCircuit::extract_add_LDO_dc_info(){
 	extract_pads(candi_pad_set);
 	// 3. get ref_value as IR drop for each candi
 	update_pad_control_nodes(candi_pad_set);
+}
 
-	vector<Pad*> LDO_pad_vec;
+void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
+	// vector<Pad*> LDO_pad_vec;
+	// need to change into while loop
 	for(int iter =0;iter<1;iter++){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR();
 		LDO_pad_vec.push_back(pad_ptr);
-		/*for(size_t i=0;i<candi_pad_set.size();i++)
-		  clog<<"i, vol: "<<i<<" "<<*candi_pad_set[i]->node<<" "<<candi_pad_set[i]->ref_vol<<endl;
-		  clog<<"LDO shoulb be in: "<<*pad_ptr->node<<" "<<pad_ptr->ref_vol<<endl;*/
-		// 5. update the nbr flags for candi in graph
+		clog<<"after push LDO_pad_vec. "<<endl;
+		// 5. update the nbr flags for 
+		// candi in graph
 		update_single_pad_flag(pad_ptr);
-		// 6. keep adding LDO to high IR drop candi
-		// 7. when finish adding LDOs, 
-		//    rebuild the local and global net and
+		clog<<"after update single pad flag. "<<endl;
 	}
 }
 
@@ -3639,7 +3443,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(){
 
 // mark pad flag_visited in pad graph
 void SubCircuit::update_single_pad_flag(Pad* pad){
-	Pad *pad_nbr = NULL;
+	//Pad *pad_nbr = NULL;
 	Node *nd;
 	Node *nd_nbr;
 
@@ -3649,5 +3453,20 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	for(size_t j=0;j<pad->nbrs.size();j++){
 		nd_nbr = pad->nbrs[j]->node;
 		nd_nbr->flag_visited = true;
+	}
+}
+
+// create local current nets for new LDO
+void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
+	Node *nd;
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		nd = LDO_pad_vec[i]->node;
+	}
+}
+
+void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
+	Node *nd;
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		nd = LDO_pad_vec[i]->node;
 	}
 }

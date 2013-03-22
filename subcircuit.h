@@ -143,14 +143,15 @@ public:
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
-	void extract_add_LDO_dc_info();
-	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
+	void extract_add_LDO_dc_info(vector<Pad*> &LDO_pad_vec);
+	void create_current_LDO_graph();
+	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
+	void create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec);
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
 	void build_pad_graph(vector<Pad*> &pad_set);
 	void modify_graph(bool flag);
 	void print_ldo_list();
-	Node * expand_candi_pads(Node *na);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
 	void graph_move_pads();
@@ -159,9 +160,7 @@ public:
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(vector<Pad*> pad_set, size_t i);
 	void update_single_pad_flag(Pad* pad);
-	void dynamic_update_violate_ref(double VDD, vector<double> & ref_drop_vec, bool local_flag);
 	bool print_flag(Node *nd);
-	void move_violate_pads(vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
 	void update_node(Net *net);
 	void resolve_queue(vector<Node *> origin_pad_set);
