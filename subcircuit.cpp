@@ -2877,20 +2877,15 @@ Node * SubCircuit::pad_projection(
 	Pad *pad, Node *nd,
 	bool local_flag){
 	//Node *nd;
-	Node *na;
 	stringstream sstream;
 	string pt_name;
 	Node *nd_new=NULL;
    	Point pt;
 	//int gap - 10;
 
-	Net *net = nd->nbr[BOTTOM];
-	na = net->ab[0];
-	if(na->name == nd->name)
-		na = net->ab[1];
 	LDO *ldo = NULL;
 	for(size_t i=0;i<ldolist.size();i++){
-		if(ldolist[i]->A->name == na->name){
+		if(ldolist[i]->A->name == nd->name){
 			ldo = ldolist[i];
 		}
 	}
@@ -2906,23 +2901,24 @@ Node * SubCircuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	name = sstream.str();
-	clog<<"pt_name: "<<name<<endl;
+	// clog<<"pt_name: "<<name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	nd_new = get_node(name);
 	if(nd_new == NULL){
-		clog<<"null node: "<<endl;
+		// clog<<"null node: "<<endl;
 		return nd;
 	}
 	nd_new = nd_new->rep;
 	// if this node is not occupied by pad
-	clog<<"need to adjust nd_new: "<<*nd_new<<endl;
 	// need to adjust the local pads
 	Node *nb = project_local_pad(nd, nd_new, ldo);
 	if(nb->name == nd->name)
 		return nd;
 	else{
+		// clog<<"start to disable Y: "<<endl;
 		nd->disableY();
+		nb->value = nd->value;
 		nd->value = 0;
 		return nb;
 	}
@@ -2930,13 +2926,12 @@ Node * SubCircuit::pad_projection(
 
 // project local pad, setting ldo into new white spaces near current/device blocks
 Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
+	Node *nd_new_ldo;
 	int ref_x = nd_new->pt.x;
 	int ref_y = nd_new->pt.y;
-	Node *nd_new_ldo;
 	int ref_dx, ref_dy;
 	double ref_dist;
 	// if min_id == -1, stay on old wspace
-	stringstream sstream;
 	LDO ldo_ptr;
 	// find the reference distance
 	ref_dx = fabs(ref_x - nd->pt.x);
@@ -2954,20 +2949,11 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	project_ldo_node(ref_x, ref_y, ldo_ptr);
 
 	// then start to expand to find candi LDO nodes
-	nd_new_ldo = expand_ldo_location(ref_dist, ref_x, ref_y, ldo_ptr);
-	
-	/* bool flag_occupy = false;
-	// see if node is in ldo or block region
-	flag_occupy = node_in_ldo_or_block(ref_x, ref_y);
-	if(flag_occupy == true){
-		clog<<"target in modules. "<<endl;
-		// move the LDO out of this block
-	}
-	if(flag_occupy == false){
-		clog<<"target not in modules. "<<endl;
-		clog<<"new_ldo: "<<*nd_new_ldo<<endl;
-	}*/	
+	nd_new_ldo = expand_ldo_location(ref_dist, 
+			ref_x, ref_y, ldo_ptr);
+
 	ldo->A = nd_new_ldo;
+	// also need to change nd_in of LDO in ckt_g
 	return nd_new_ldo; 
 }
 
@@ -3103,43 +3089,6 @@ double SubCircuit::calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_v
 	}
 	avg_ref = sum_ref / count;
 	return avg_ref;
-}
-
-// adjust pad positions to candidate locations
-// gap of candidate grid is x=3, y=3.
-// new_pad is the projection pad
-Node * SubCircuit::adjust_pads(Node *nd){
-	Node * nd_new;
-	stringstream sstream;
-	Node * na;
-	int Gap = 3;
-	int adjust_dist = 1;
-	// if satisfied, already pad node
-	if(nd->pt.x% Gap==0 && nd->pt.y %Gap ==0)
-		return nd;
-	
-	// else start to project the node
-	int newx = (nd->pt.x+1)/Gap*Gap;
-	int newy = (nd->pt.y+1)/Gap*Gap;
-	
-	sstream<<"n"<<nd->pt.z<<"_"<<newx<<"_"<<newy;
-	if(has_node(sstream.str())){
-		nd_new = get_node(sstream.str());
-		Net *net = nd_new->nbr[TOP];
-		// can set pad node here
-		if(net == NULL){
-			//clog<<"new_node: "<<*nd_new<<endl;
-			return nd_new;
-		}else{
-			//clog<<"expand. "<<endl;
-			na = expand_candi_pads(nd_new);
-			//clog<<"new_node after expand: "<<*na<<endl;
-			return na;
-		}
-		// if not, set pad at nd_new
-		return nd_new;
-	}
-	return NULL;	
 }
 
 // use queue to search for candi pads around nd
@@ -3382,30 +3331,35 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 
 // expand to find the location of LDO around ref_x, ref_y
 // if the location is farther than ref_dist, restore back
-Node * SubCircuit::expand_ldo_location(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr){
+Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LDO &ldo_ptr){
 	Node *nd = ldo_ptr.A;
 	Node *nd_new;
 	int width = ldo_ptr.width;
 	int height = ldo_ptr.height;
+	
 	int dx[4]; int dy[4];
-
 	dx[0] = width; dx[2] = -width;
+	dx[1] = dx[3] = 0;
 	dy[1] = height; dy[3] = -height;
+	dy[0] = dy[2] = 0;
 
 	queue<Point> q;
 	Point pt;
 	pt.x = ref_x;
+	pt.y = ref_y;
+
 	Point pt_cur;
 	stringstream sstream;
 	string pt_name;
 	int return_flag = 0;;
 	// else start to search for node
 	q.push(pt);
-	double diff_x, diff_y;
+	int diff_x, diff_y;
 	double dist;
 	// if not, expand it to neighboring area
 	while(!q.empty()&& return_flag == false){
 		pt_cur = q.front();
+		// clog<<"pt_cur: "<<pt_cur<<endl;
 		Point pt_nbr = pt_cur;
 		//expand_pad_pos(q, pt_cur);	
 		for(size_t i=0;i<4;i++){
@@ -3413,7 +3367,7 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, double ref_x, double ref
 			pt_nbr.y = pt_cur.y + dy[i];
 			stringstream sstream;
 			string name;
-			sstream <<"n"<<pt_nbr.z<<"_"<<
+			sstream <<"n"<<nd->pt.z<<"_"<<
 				pt_nbr.x<<"_"<<
 				pt_nbr.y;
 			name = sstream.str();
@@ -3421,14 +3375,15 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, double ref_x, double ref
 			if(nd_new == NULL) continue;
 			nd_new = nd_new->rep;
 			if(nd_new->isS()==Y) continue;
+			// clog<<"nd_new: "<<*nd_new<<" "<<nd_new->get_geo_flag()<<endl;
 			// get candidate location
 			if(nd_new->get_geo_flag()==SBLANK){
 				diff_x = nd_new->pt.x - ref_x;
 				diff_y = nd_new->pt.y - ref_y;
 				dist = sqrt(diff_x*diff_x + diff_y*diff_y);
 				if(dist < ref_dist){
-
-					clog<<"new name: "<<*nd_new<<" "<<endl;
+					//clog<<"dist, ref_dist: "<<dist<<" "<<ref_dist<<endl;
+					// clog<<"new name: "<<*nd_new<<" "<<endl;
 					return_flag = 1;
 					break;
 				}else{// already out of range, break
