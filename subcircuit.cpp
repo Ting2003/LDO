@@ -3126,7 +3126,6 @@ void SubCircuit::mark_geo_occupation(){
 		height = ldolist[0]->height;
 	}
 
-	int count = 0;
 	Node *nd;
 	for(size_t i=0;i<nodelist.size()-1;i++){
 		nd = nodelist[i];
@@ -3167,7 +3166,9 @@ void SubCircuit::mark_geo_occupation(){
 				// clog<<"mark ldo. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SLDO);
-				count++;
+				Pad *pad_ptr = new Pad();
+				pad_ptr->node = nd;
+				candi_pad_set.push_back(pad_ptr);
 				flag_ldo = true;
 				break;
 			}
@@ -3177,10 +3178,12 @@ void SubCircuit::mark_geo_occupation(){
 		// else assign blank
 		// clog<<"mark blank. "<<endl<<endl;
 		nd->assign_geo_flag(SBLANK);
-		count++;
+		Pad *pad_ptr = new Pad();
+		pad_ptr->node = nd;
+		candi_pad_set.push_back(pad_ptr);
 	}
 	// count is the maximum candidate number for LDO
-	MAX_NUM_LDO = count;
+	MAX_NUM_LDO = candi_pad_set.size();
 }
 
 bool SubCircuit::node_in_ldo_or_block(double x, double y){
@@ -3576,4 +3579,9 @@ void SubCircuit::update_node(Net * net){
 		if( !a->is_ground() ) swap<Node*>(a,b);
 		b->set_nbr(BOTTOM, net);
 	}
+}
+
+// build candidate padlist from wspace
+void SubCircuit::build_candi_graph(){
+	
 }

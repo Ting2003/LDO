@@ -107,6 +107,7 @@ public:
 	double max_IRdrop;
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
+	vector<Pad*> candi_pad_set;
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
 	void print_pad_map(vector<Pad*> &pad_set);
@@ -128,6 +129,8 @@ public:
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_local_nets(Node *rm_node, Node *add_node);
 	void rebuild_global_nets();
+
+	void build_candi_graph();
 	double compute_stand_dev();
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);

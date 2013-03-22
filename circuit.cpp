@@ -2538,7 +2538,8 @@ void Circuit::recover_best_ldo(Node *nd_min){
 // add more LDO into circuit
 void Circuit::add_LDO_DC(){
 	// first find the node new LDO should go to
-	// 1. build candidate pad list
+	// 1. build candidate pad graph
+	ckt_l.build_candi_graph();
 	// 2. search for control nodes for all candi
 	// 3. get ref_value as IR drop for each candi
 	// 4. LDO should go to candi with maximum IR
