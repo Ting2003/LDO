@@ -3592,16 +3592,26 @@ void SubCircuit::update_node(Net * net){
 void SubCircuit::extract_add_LDO_dc_info(){
 	// 1. build candidate pad graph
 	build_pad_graph(candi_pad_set);
+	update_pad_flag(pad_set);
 	// 2. search for control nodes for all candi
 	extract_pads(candi_pad_set);
 	// 3. get ref_value as IR drop for each candi
 	update_pad_control_nodes(candi_pad_set);
+
+	vector<Pad*> LDO_pad_vec;
+	for(int iter =0;iter<1;iter++){
 	// 4. LDO should go to candi with maximum IR
 	Pad *pad_ptr = locate_candi_pad_maxIR();
+	LDO_pad_vec.push_back(pad_ptr);
+	/*for(size_t i=0;i<candi_pad_set.size();i++)
+		clog<<"i, vol: "<<i<<" "<<*candi_pad_set[i]->node<<" "<<candi_pad_set[i]->ref_vol<<endl;
+	clog<<"LDO shoulb be in: "<<*pad_ptr->node<<" "<<pad_ptr->ref_vol<<endl;*/
 	// 5. update the nbr flags for candi in graph
+	insert_new_LDO(pad_ptr);
 	// 6. keep adding LDO to high IR drop candi
 	// 7. when finish adding LDOs, 
 	//    rebuild the local and global net and
+	}
 }
 
 // return pad candi with max IR (still available candi)
@@ -3623,4 +3633,25 @@ Pad* SubCircuit::locate_candi_pad_maxIR(){
 		}
 	}
 	return pad_ptr; 
+}
+
+// insert LDO in the node: create local and global nets
+// for it, and update the flags for candi pads
+void SubCircuit::insert_new_LDO(Pad *pad){
+ }
+
+// mark pad flag_visited in pad graph
+void SubCircuit::update_pad_flag(vector<Pad*> pad_set){
+	Pad *pad = NULL;
+	Pad *pad_nbr = NULL;
+	Node *nd;
+	for(size_t i=0;i<pad_set.size();i++){
+		pad = pad_set[i];
+		pad->node->flag_qualified = true;
+		// mark nbr pads with fixed
+		for(size_t j=0;j<pad->nbrs.size();j++){
+			pad_nbr = pad->nbrs[j];
+			pad_nbr->node->flag_visited = true;
+		}
+	}
 }
