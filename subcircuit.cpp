@@ -2388,10 +2388,11 @@ double SubCircuit::locate_maxIRdrop(){
 void SubCircuit::relocate_pads(){
 	vector<Node*> pad_set_old;
 	double dist = 0;
-	
-	pad_set_old.resize(pad_set.size());
-	assign_pad_set(pad_set, pad_set_old);
-	
+
+	// record origin_pad_set before optimization
+	origin_pad_set.resize(pad_set.size());	
+	assign_pad_set(pad_set, origin_pad_set);
+
 	// stores the best ldolist
 	vector<LDO*>ldolist_best;
 	ldolist_best.resize(ldolist.size());
@@ -2414,8 +2415,9 @@ void SubCircuit::relocate_pads(){
 	for(size_t i=0;i<1;i++){//5;i++){
 		// clog<<endl<<"iter for pad move. "<<i<<endl;
 		int pad_number = 1;
-		origin_pad_set.resize(pad_set.size());	
-		assign_pad_set(pad_set, origin_pad_set);
+		// keep old ldo nodes
+		pad_set_old.resize(pad_set.size());
+		assign_pad_set(pad_set, pad_set_old);
 		// build pad connection graph
 		build_pad_graph();
 		
@@ -2436,26 +2438,19 @@ void SubCircuit::relocate_pads(){
 		/*if(i==0){
 			extract_min_max_pads(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
 		}*/
-		//clog<<"before move violate. "<<endl;
-		// update the old pad set value
-		assign_pad_set(pad_set, pad_set_old);
 		
-		//clog<<"before assign pad set. "<<endl;
 		move_violate_pads(ref_drop_vec, true);
 		
 		// move pads according to graph contraints
-		clog<<"before graph move."<<endl;		
+		clog<<"before graph move."<<endl;
 		graph_move_pads(ref_drop_vec, true);
 		
 		//clog<<"after graph move. "<<endl;
 		clear_flags();
-		
-		// actual move pads into the new spots
-		// project_pads();
-		// clog<<"before resolve direct. "<<endl;		
-		/*
-		double max_IR = resolve_direct(tran, true);
+			
+		double max_IR = resolve_direct(true);
 		// clog<<"after resolve direct. "<<endl;
+		/*
 		if(max_IR ==0)
 			break;
 		if(max_IR < min_IR){
@@ -2915,13 +2910,8 @@ Node * SubCircuit::pad_projection(
 	Node *nb = project_local_pad(nd, nd_new, ldo);
 	if(nb->name == nd->name)
 		return nd;
-	else{
-		// clog<<"start to disable Y: "<<endl;
-		nd->disableY();
-		nb->value = nd->value;
-		nd->value = 0;
+	else
 		return nb;
-	}
 }
 
 // project local pad, setting ldo into new white spaces near current/device blocks
@@ -3172,10 +3162,9 @@ void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		clog<<"old_pad: "<<*pad<<endl;
+		// clog<<"old_pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad, local_flag);
-		 // if(pad->name == "_X_n6_200_150")
-		 clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
@@ -3403,4 +3392,71 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 	}
 	// no candidate, return original node
 	return nd;
+}
+
+// rebuild the nets of LDO and solve
+double SubCircuit::resolve_direct(bool local_flag){
+	double max_IR = 0;
+	if(local_flag == false)
+		rebuild_global_nets();
+	else
+		rebuild_local_nets();
+	// need to repeat solve_init and stamp matrix, decomp matrix process
+	/*
+	pad_solve_DC(tran);
+	
+	//solve_LU_core();
+	double max_IR = locate_maxIRdrop();	
+	//double max_IRS = locate_special_maxIRdrop();
+	// clog<<"max_IR by cholmod is: "<<max_IR<<endl;
+	worst_cur = worst_cur_new;
+	t2 = clock();
+	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
+	*/
+	return max_IR;
+}
+
+// perform LDO node change
+// modify nets and nodes with the change of LDO
+void SubCircuit::rebuild_local_nets(){
+	Node *rm_node=NULL;
+	Node *add_node=NULL;
+	/*for(size_t i=0;i<origin_pad_set.size();i++){
+		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
+	}*/
+	for(size_t i=0;i<origin_pad_set.size();i++){
+		// one-one correspondence
+		rm_node = origin_pad_set[i]->rep;	
+		add_node = pad_set[i]->node->rep;
+
+		if(rm_node->name == add_node->name || 
+				add_node->isS()==Y)
+			continue;
+		// cout<<"rm_nod, add_node, na: "<<*rm_node<<" "<<*add_node<<" "<<*na<<endl;
+	
+		// modify node info
+		rm_node->disableY();
+		add_node->enableY();
+		
+		if(rm_node->is_LDO()){
+			add_node->enableLDO();
+			rm_node->disableLDO();
+		}
+		add_node->value = rm_node->value;
+		rm_node->value = 0;
+		add_node->rep = add_node;
+
+		Net *net = rm_node->nbr[TOP];
+		// should print error info
+		if(net == NULL) continue;
+
+		// modify net info
+		if(net->ab[0]->is_ground())
+			net->ab[1] = add_node;
+		else if(net->ab[1]->is_ground())
+			net->ab[0] = add_node;
+	}
+}
+
+void SubCircuit::rebuild_global_nets(){
 }

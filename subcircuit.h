@@ -108,13 +108,6 @@ public:
 	double max_IRdrop;
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
-	// vector<Node*> special_nodes;
-	// size = replist
-	// record -current that has the worst IR drop values
-	// mapping from name to Node object pointer
-	// two map node_pt lists: global and local
-	unordered_map<string, Node*> map_node_pt;
-
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
 	void print_pad_map(vector<Pad*> &pad_set);
@@ -134,7 +127,8 @@ public:
 
 	void restore_pad_set(vector<Pad*> &pad_set, vector<Node*>&pad_set_old);
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
-	void rebuild_voltage_nets(vector<Pad*> &pad_set, vector<Node*> &origin_pad_set, bool local_flag);
+	void rebuild_local_nets();
+	void rebuild_global_nets();
 	double compute_stand_dev();
 	void rebuild_voltage_nets_g(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
 	void rebuild_voltage_nets_l(vector<Pad*> pad_set, vector<Node*> origin_pad_set);
@@ -164,7 +158,7 @@ public:
 	bool print_flag(Node *nd);
 	void move_violate_pads(vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
-	double resolve_direct(Tran &tran, bool local_flag);
+	double resolve_direct(bool local_flag);
 	void resolve_queue(vector<Node *> origin_pad_set);
 	void solve_queue(vector<Node *> pad_set_old);
 	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
