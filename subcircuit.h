@@ -114,9 +114,9 @@ public:
 	void release_resource();
 	void clear_flags();
 	double update_pad_pos(double ref_drop_value, size_t i);
-	double update_pad_pos_all(vector<double> ref_drop_vec);
+	double update_pad_pos_all(vector<Pad*> pad_set);
 	void round_data(double &data);
-	Node * pad_projection(Pad *pad, Node *nd, bool local_flag);
+	Node * pad_projection(Pad *pad, Node *nd);
 	void project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
@@ -141,7 +141,8 @@ public:
 	void extract_pads(vector<Pad*> pad_set);
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
-	void update_pad_control_nodes(vector<double> & ref_drop_vec, size_t iter);
+	void update_pad_control_nodes(vector<Pad*> pad_set);
+	void extract_add_LDO_dc_info();
 	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
@@ -151,8 +152,8 @@ public:
 	Node * expand_candi_pads(Node *na);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(vector<double> ref_drop_vec, bool local_flag);
-	int locate_max_drop_pad(vector<double> vec);
+	void graph_move_pads();
+	int locate_max_drop_pad(vector<Pad*> pad_set);
 	double calc_avg_ref_drop(vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(size_t i);

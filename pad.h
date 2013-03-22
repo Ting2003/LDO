@@ -23,6 +23,7 @@ public:
 	// stores the neighboring pads for a pad
 	vector<Pad*> nbrs;
 	// sorted ref drop values of control nodes
+	double ref_vol; // stores the middle voltage value
 	vector<double> drop_vec;
 	double newx;
 	double newy;

@@ -2387,13 +2387,13 @@ void SubCircuit::relocate_pads(){
 	// find control nodes for each pad
 	extract_pads(pad_set);
 	// find the tune spot for control nodes	
-	update_pad_control_nodes(ref_drop_vec, 0);	
+	update_pad_control_nodes(pad_set);	
 
 	// find new point for all pads	
-	update_pad_pos_all(ref_drop_vec);
+	update_pad_pos_all(pad_set);
 
 	// move pads according to graph contraints
-	graph_move_pads(ref_drop_vec, true);
+	graph_move_pads();
 
 	//clog<<"after graph move. "<<endl;
 	clear_flags();
@@ -2576,14 +2576,13 @@ void SubCircuit::clear_pad_control_nodes(vector<Pad*> &pad_set){
 }
 
 // tune 50% nodes with the small IR drops
-void SubCircuit::update_pad_control_nodes(vector<double> & ref_drop_value, size_t iter){
-	ref_drop_value.resize(pad_set.size());
+void SubCircuit::update_pad_control_nodes(vector<Pad*> pad_set){
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
 		
 		double middle_value = locate_ref(i);
-		ref_drop_value[i] = middle_value;
+		pad_set[i]->ref_vol = middle_value;
 		//cout<<"middle value: "<<middle_value<<endl;
 	}
 }
@@ -2770,7 +2769,7 @@ void SubCircuit::extract_min_max_pads_new(double VDD, vector<double> ref_drop_ve
 				pad_ptr = pad_set[k];
 				//double ref_drop_value = ref_drop_vec[k];
 
-				new_pad = pad_projection(pad_ptr, min_pads[j], local_flag);
+				new_pad = pad_projection(pad_ptr, min_pads[j]);
 				//cout<<"old pad / new pad: "<<*min_pads[j]<<" "<<*new_pad<<endl;
 
 				size_t m = id_minpad;
@@ -2793,8 +2792,7 @@ void SubCircuit::extract_min_max_pads_new(double VDD, vector<double> ref_drop_ve
 // expand from (x,y) to nearest node in grid
 // fits for non-uniform grid
 Node * SubCircuit::pad_projection( 
-	Pad *pad, Node *nd,
-	bool local_flag){
+	Pad *pad, Node *nd){
 	//Node *nd;
 	stringstream sstream;
 	string pt_name;
@@ -2871,14 +2869,14 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	return nd_new_ldo; 
 }
 
-double SubCircuit::update_pad_pos_all(vector<double> ref_drop_vec){
+double SubCircuit::update_pad_pos_all(vector<Pad*> pad_set){
 	double total_dist = 0;
 	double dist = 0;
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
 
-		double ref_drop_value = ref_drop_vec[i];
+		double ref_drop_value = pad_set[i]->ref_vol;
 
 		dist = update_pad_pos(ref_drop_value, i);
 		total_dist += dist;
@@ -3040,7 +3038,7 @@ void SubCircuit::move_violate_pads(vector<double> ref_drop_vec, bool local_flag)
 		pad = pad_ptr->node;
 		// if violate, move this pad
 		if(pad_ptr->violate_flag == true){
-			new_pad = pad_projection(pad_ptr, pad, local_flag);
+			new_pad = pad_projection(pad_ptr, pad);
 			// clog<<"old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 			pad_ptr->node = new_pad;
 			pad_ptr->control_nodes.clear();
@@ -3049,18 +3047,18 @@ void SubCircuit::move_violate_pads(vector<double> ref_drop_vec, bool local_flag)
 	}
 }
 
-void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
+void SubCircuit::graph_move_pads(){
 	Node *new_pad;
 	int id=0;
 	// for(size_t i=0;i<5;i++){
 	do{
-		id = locate_max_drop_pad(ref_drop_vec);
+		id = locate_max_drop_pad(pad_set);
 		if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
 		// clog<<"old_pad: "<<*pad<<endl;
-		new_pad = pad_projection(pad_ptr, pad, local_flag);
+		new_pad = pad_projection(pad_ptr, pad);
 		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
@@ -3078,11 +3076,11 @@ void SubCircuit::graph_move_pads(vector<double> ref_drop_vec, bool local_flag){
 }
 
 // locate id that has minimum value and not visited or fixed 
-int SubCircuit::locate_max_drop_pad(vector<double> vec){
+int SubCircuit::locate_max_drop_pad(vector<Pad*> pad_set){
 	int min_id = -1;
 	double min_ref = 0;
 	bool flag = false;
-	for(size_t i=0;i<vec.size();i++){
+	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
 		if(pad_set[i]->visit_flag == true ||
@@ -3091,11 +3089,11 @@ int SubCircuit::locate_max_drop_pad(vector<double> vec){
 		//clog<<"i, vec: "<<i<<" "<<vec[i]<<endl;
 		if(flag == false){
 			flag = true;
-			min_ref = vec[i];
+			min_ref = pad_set[i]->ref_vol;
 			min_id = i;
 		}
-		else if(vec[i] < min_ref){
-			min_ref = vec[i];
+		else if(pad_set[i]->ref_vol < min_ref){
+			min_ref = pad_set[i]->ref_vol;
 			min_id = i;
 		}
 	}	
@@ -3579,4 +3577,18 @@ void SubCircuit::update_node(Net * net){
 		if( !a->is_ground() ) swap<Node*>(a,b);
 		b->set_nbr(BOTTOM, net);
 	}
+}
+
+void SubCircuit::extract_add_LDO_dc_info(){
+	// 1. build candidate pad graph
+	build_pad_graph(candi_pad_set);
+	// 2. search for control nodes for all candi
+	extract_pads(candi_pad_set);
+	update_pad_control_nodes(candi_pad_set);
+	// 3. get ref_value as IR drop for each candi
+	// 4. LDO should go to candi with maximum IR
+	// 5. update the nbr flags for candi in graph
+	// 6. keep adding LDO to high IR drop candi
+	// 7. when finish adding LDOs, 
+	//    rebuild the local and global net and
 }
