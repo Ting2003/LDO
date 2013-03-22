@@ -2386,100 +2386,36 @@ double SubCircuit::locate_maxIRdrop(){
 // 1. adjust ldo locations
 // 2. update the ldo correlated nets
 void SubCircuit::relocate_pads(){
-	vector<Node*> pad_set_old;
 	double dist = 0;
 
 	// record origin_pad_set before optimization
 	origin_pad_set.resize(pad_set.size());	
 	assign_pad_set(pad_set, origin_pad_set);
 
-	// stores the best ldolist
-	vector<LDO*>ldolist_best;
-	ldolist_best.resize(ldolist.size());
-	for(size_t i=0;i<ldolist.size();i++){
-		ldolist_best[i] = new LDO();
-		ldolist_best[i]->node.resize(ldolist[i]->node.size());
-		for(size_t j=0;j<ldolist_best[i]->node.size();j++){
-			ldolist_best[i]->node[j] = new Point(-1,-1,-1);
-			ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
-			ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
-		}
-		//clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
-	}
-
-//#if 0
+	//#if 0
 	vector<double> ref_drop_vec;
 	double min_IR = max_IRdrop;	
 	clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
-	for(size_t i=0;i<1;i++){//5;i++){
-		// clog<<endl<<"iter for pad move. "<<i<<endl;
-		int pad_number = 1;
-		// keep old ldo nodes
-		pad_set_old.resize(pad_set.size());
-		assign_pad_set(pad_set, pad_set_old);
-		// build pad connection graph
-		build_pad_graph();
+	int pad_number = 1;
+
+	// find control nodes for each pad
+	extract_pads(pad_number);
+
+	// find the tune spot for control nodes	
+	update_pad_control_nodes(ref_drop_vec, 0);	
+	// find new point for all pads	
+	dist = update_pad_pos_all(ref_drop_vec);
+
+	// move pads according to graph contraints
+	graph_move_pads(ref_drop_vec, true);
+
+	//clog<<"after graph move. "<<endl;
+	clear_flags();
+
+	rebuild_ldo_nets(true);
 		
-		// find control nodes for each pad
-		extract_pads(pad_number);
-		
-		// find the tune spot for control nodes	
-		update_pad_control_nodes(ref_drop_vec, i);	
-		//print_all_control_nodes();	
-		//if(i>=6){
-			//dynamic_update_violate_ref(VDD_G, ref_drop_vec, true);
-		//}/*
-		// find new point for all pads	
-		dist = update_pad_pos_all(ref_drop_vec);
-		
-		// move the low 10% pads into high 10% 
-		// pad area 
-		/*if(i==0){
-			extract_min_max_pads(VDD_G, pad_set, ref_drop_vec, map_node_pt_g, true);
-		}*/
-		
-		move_violate_pads(ref_drop_vec, true);
-		
-		// move pads according to graph contraints
-		clog<<"before graph move."<<endl;
-		graph_move_pads(ref_drop_vec, true);
-		
-		//clog<<"after graph move. "<<endl;
-		clear_flags();
-			
-		double max_IR = resolve_direct(true);
-		// clog<<"after resolve direct. "<<endl;
-		/*
-		if(max_IR ==0)
-			break;
-		if(max_IR < min_IR){
-			min_IR = max_IR;
-			for(size_t i=0;i<ldolist.size();i++){
-				for(int j=0;j<ldolist_best[i]->node.size();j++){
-					ldolist_best[i]->node[j]->x = ldolist[i]->node[j]->x;
-					ldolist_best[i]->node[j]->y = ldolist[i]->node[j]->y;
-					
-					// clog<<"best ldo: "<<ldolist_best[i]->node[0]->x<<" "<<ldolist_best[i]->node[0]->y<<endl;
-				}
-			}
-		}*/
-		//clog<<"min_IR, max_IR is: "<<min_IR<<" "<<max_IR<<endl;
-	}
-	
-	//ldolist = ldolist_best;
-	// recover into old local pad status
-	//clog<<"before recover local pad. "<<endl;	
-	origin_pad_set.resize(pad_set.size());	
-	//recover_local_pad(tran, ldolist_best);
-	
-	
 	ref_drop_vec.clear();
-	origin_pad_set.clear();
-	pad_set_old.clear();
-	// terminate cm and xp,bp and so on
-	//print_pad_set();
-	//cout<<nodelist<<endl;
 }
 
 // update the old pad set value
@@ -2965,12 +2901,10 @@ double SubCircuit::update_pad_pos_all(vector<double> ref_drop_vec){
 // decide pad's new pos with the weights
 // need to be tuned
 double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
-	//double total_dist=0;
 	Node *pad;
 	Pad *pad_ptr;
 	Node *nd;
 	double weight = 0;
-	//double distance = 0;
 	double pad_newx;
 	double pad_newy;
 	map<Node *, double>::iterator it;
@@ -2986,14 +2920,6 @@ double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
 		if(it->second > ref_drop_value)
 			continue;
 
-		/*if((pad_set[i]->node->name == "n0_30_74" ||
-		  pad_set[i]->node->name == "n0_135_104"||
-		  pad_set[i]->node->name == "n0_255_59")){
-		//clog<<"data: "<<pad_set[i]->data<<endl;
-		//cout<<"control node: "<<*it->first<<" "<<it->second<<endl;
-		printf("%ld %ld  %.5e\n", it->first->pt.y+1, it->first->pt.x+1, it->first->value);
-
-		}*/
 		nd = it->first;
 		weight = 1.0/it->second;
 		weighted_x += weight * nd->pt.x;
@@ -3005,35 +2931,18 @@ double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
 		pad_newx = weighted_x / sum_weight;
 		pad_newy = weighted_y / sum_weight;
 
-		// pad_newx = (pad_newx - pad->pt.x)/2+pad->pt.x;
-		//pad_newy = (pad_newy - pad->pt.y)/2+pad->pt.y;
 		round_data(pad_newx);
 		round_data(pad_newy);
-
-
-		if((pad_ptr->node->pt.x > 300 || pad_ptr->node->pt.y > 150) && (pad_newx <= 300 && pad_newy <= 150)){
-			//clog<<"band pad, new: "<<*pad_ptr->node<<" "<<pad_newx<<" "<<pad_newy<<endl;
-			pad_ptr->control_nodes.clear();
-			pad_ptr->visit_flag = true;
-
-		}else{
-
-
-			pad_ptr->newx = pad_newx;
-			pad_ptr->newy = pad_newy;
-		}
+	
+		pad_ptr->newx = pad_newx;
+		pad_ptr->newy = pad_newy;
 	}else{
 		pad_ptr->newx = pad->pt.x;
 		pad_ptr->newy = pad->pt.y;
 	}
 
-	//if(pad->name == "_X_n6_0_0")
-		// clog<<"pad, new: "<<*pad_ptr->node<<" "<<pad_ptr->newx<<" "<<pad_ptr->newy<<endl;
 	double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
-	//total_dist += temp;
-	//}
 
-	//clog<<"dist: "<<total_dist<<endl<<endl;
 	return dist;
 }
 
@@ -3395,25 +3304,11 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 }
 
 // rebuild the nets of LDO and solve
-double SubCircuit::resolve_direct(bool local_flag){
-	double max_IR = 0;
+void SubCircuit::rebuild_ldo_nets(bool local_flag){
 	if(local_flag == false)
 		rebuild_global_nets();
 	else
-		rebuild_local_nets();
-	// need to repeat solve_init and stamp matrix, decomp matrix process
-	/*
-	pad_solve_DC(tran);
-	
-	//solve_LU_core();
-	double max_IR = locate_maxIRdrop();	
-	//double max_IRS = locate_special_maxIRdrop();
-	// clog<<"max_IR by cholmod is: "<<max_IR<<endl;
-	worst_cur = worst_cur_new;
-	t2 = clock();
-	//clog<<"single solve by cholmod is: "<<1.0*(t2-t1)/CLOCKS_PER_SEC<<endl;
-	*/
-	return max_IR;
+		rebuild_local_nets();	
 }
 
 // perform LDO node change
