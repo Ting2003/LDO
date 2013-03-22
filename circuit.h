@@ -138,7 +138,7 @@ public:
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_LDOs();
-	void add_LDO();
+	void add_LDO_DC();
 	void recover_best_ldo(Node *nd_min);
 	void relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
 	void relocate_pads_graph(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);

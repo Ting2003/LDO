@@ -2376,8 +2376,6 @@ double SubCircuit::locate_maxIRdrop(){
 // 1. adjust ldo locations
 // 2. update the ldo correlated nets
 void SubCircuit::relocate_pads(){
-	double dist = 0;
-
 	// record origin_pad_set before optimization
 	origin_pad_set.resize(pad_set.size());	
 	assign_pad_set(pad_set, origin_pad_set);
@@ -2387,14 +2385,13 @@ void SubCircuit::relocate_pads(){
 	// clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	int pad_number = 1;
-
 	// find control nodes for each pad
 	extract_pads(pad_number);
-
 	// find the tune spot for control nodes	
 	update_pad_control_nodes(ref_drop_vec, 0);	
+
 	// find new point for all pads	
-	dist = update_pad_pos_all(ref_drop_vec);
+	update_pad_pos_all(ref_drop_vec);
 
 	// move pads according to graph contraints
 	graph_move_pads(ref_drop_vec, true);
