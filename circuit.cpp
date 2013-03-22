@@ -2550,7 +2550,13 @@ void Circuit::add_LDO_DC(){
 	// rebuild the local and global net and
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+	// create new LDOs in circuit
+	create_new_LDOs(LDO_pad_vec);
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	LDO_pad_vec.clear();
+}
+
+// create new LDOs in circuit
+void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 }
