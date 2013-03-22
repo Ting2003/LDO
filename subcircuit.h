@@ -139,6 +139,7 @@ public:
 	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
 	void extract_pads(vector<Pad*> pad_set);
+	Pad* locate_candi_pad_maxIR();
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);

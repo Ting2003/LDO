@@ -3584,11 +3584,28 @@ void SubCircuit::extract_add_LDO_dc_info(){
 	build_pad_graph(candi_pad_set);
 	// 2. search for control nodes for all candi
 	extract_pads(candi_pad_set);
-	update_pad_control_nodes(candi_pad_set);
 	// 3. get ref_value as IR drop for each candi
+	update_pad_control_nodes(candi_pad_set);
 	// 4. LDO should go to candi with maximum IR
+	Pad *pad_ptr = locate_candi_pad_maxIR();
 	// 5. update the nbr flags for candi in graph
 	// 6. keep adding LDO to high IR drop candi
 	// 7. when finish adding LDOs, 
 	//    rebuild the local and global net and
+}
+
+Pad* SubCircuit::locate_candi_pad_maxIR(){
+	double min_vol;
+	Pad *pad_ptr = NULL;
+	for(size_t i=0;i<pad_set.size();i++){
+		if(i==0){
+			min_vol = pad_set[i]->ref_vol;
+			pad_ptr = pad_set[i];
+		}
+		else if(pad_set[i]->ref_vol < min_vol){
+			min_vol = pad_set[i]->ref_vol;
+			pad_ptr = pad_set[i];
+		}
+	}
+	return pad_ptr; 
 }
