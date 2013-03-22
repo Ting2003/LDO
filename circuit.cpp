@@ -2469,6 +2469,8 @@ void Circuit::solve_DC_LDO(){
 	// first optimize the locations of LDOs
 	relocate_LDOs();
 
+	// then solve circuit with new information
+	solve_DC();
 	int iter = 0;
 	// while not satisfied and still have room,
 	// perform optimization
@@ -2483,5 +2485,7 @@ void Circuit::solve_DC_LDO(){
 
 void Circuit::relocate_LDOs(){
 	ckt_l.relocate_pads();
+	// update ckt global nets with the change of LDO
+	ckt_g.rebuild_global_nets();
 }
 

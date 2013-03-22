@@ -2392,7 +2392,6 @@ void SubCircuit::relocate_pads(){
 	origin_pad_set.resize(pad_set.size());	
 	assign_pad_set(pad_set, origin_pad_set);
 
-	//#if 0
 	vector<double> ref_drop_vec;
 	double min_IR = max_IRdrop;	
 	clog<<"min_IR initial is: "<<min_IR<<endl;
@@ -3316,9 +3315,11 @@ void SubCircuit::rebuild_ldo_nets(bool local_flag){
 void SubCircuit::rebuild_local_nets(){
 	Node *rm_node=NULL;
 	Node *add_node=NULL;
+
 	/*for(size_t i=0;i<origin_pad_set.size();i++){
 		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
 	}*/
+
 	for(size_t i=0;i<origin_pad_set.size();i++){
 		// one-one correspondence
 		rm_node = origin_pad_set[i]->rep;	
@@ -3341,6 +3342,9 @@ void SubCircuit::rebuild_local_nets(){
 		rm_node->value = 0;
 		add_node->rep = add_node;
 
+		// clog<<"rm_node: "<<*rm_node<<" "<<rm_node->is_LDO()<<" "<<rm_node->isS()<<endl;
+
+		// clog<<"add_node: "<<*add_node<<" "<<add_node->is_LDO()<<" "<<add_node->isS()<<endl;
 		Net *net = rm_node->nbr[TOP];
 		// should print error info
 		if(net == NULL) continue;
@@ -3350,6 +3354,7 @@ void SubCircuit::rebuild_local_nets(){
 			net->ab[1] = add_node;
 		else if(net->ab[1]->is_ground())
 			net->ab[0] = add_node;
+		//clog<<"net: "<<*net<<endl;
 	}
 }
 
@@ -3371,7 +3376,10 @@ void SubCircuit::rebuild_global_nets(){
 
 	for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
+		if(ns.size()<=0) continue;
 		net = ns[0];
+		// if(net != NULL)
+			// clog<<"net: "<<*net<<endl;
 		if(net->type == VOLTAGE)
 			vol_value = net->value;
 		else if(net->type == INDUCTANCE)
@@ -3386,11 +3394,15 @@ void SubCircuit::rebuild_global_nets(){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		for(size_t j=0;j<ns.size();j++) delete ns[j];
+		ns.clear();
 	}
+	Node *gnd = nodelist[nodelist.size()-1];
 	// and delete all the nodes except ground 
 	for(size_t i=0;i<nodelist.size()-1;i++) 
 		delete nodelist[i];
 	replist.clear();
+	nodelist.clear();
+	nodelist.push_back(gnd);
 
 	NET_TYPE net_type;
 	// start to create new nets
@@ -3403,7 +3415,7 @@ void SubCircuit::rebuild_global_nets(){
 		add_node(nd_ptr_vol);
 		// first create voltage net
 		net_type = VOLTAGE;
-		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, nodelist[0]);
+		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
 		add_net(net_vol);
 		// then create inductance net
 		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
@@ -3430,6 +3442,13 @@ void SubCircuit::rebuild_global_nets(){
 			current_value, nd_ptr_resis, nodelist[0]);
 		add_net(net_current);
 	}
+	/*clog<<"to here. "<<endl;
+	clog<<nodelist<<endl;
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		for(size_t j=0;j<ns.size();j++)
+			clog<<*ns[j]<<endl;
+	}*/
 }
 
 void SubCircuit::extract_node(char * str, Node & nd){
