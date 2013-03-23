@@ -131,6 +131,7 @@ public:
 	void rebuild_global_nets();
 	void modify_local_nets();
 	void modify_global_nets();
+	void reset_bnew();
 
 	void build_candi_graph();
 	double compute_stand_dev();
@@ -185,17 +186,21 @@ private:
 	void build_local_nets();
 	void build_global_nets();
 	void stamp_decomp_matrix_DC(bool local_flag);
-	void stamp_decomp_matrix_TR(Tran &tran, double time);
+	void stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag);
 
 	double solve_CK_with_decomp();
 	void update_ldo_current();
 	void modify_ldo_rhs();
+	void modify_ldo_rhs_TR();
+		
 	// add solve with ADI method
 	//void solve_partial_ADI();
 	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init(bool flag);
 	void configure_init();
+	void reconfigure_DC();
+	void reconfigure_TR();
 	void mark_geo_occupation();
 	void extract_node(char * str, Node & nd);
 

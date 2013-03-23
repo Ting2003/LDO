@@ -199,12 +199,18 @@ void Circuit::solve(Tran &tran){
 	// solving LDO location with DC
 	solve_DC_LDO();
 	
-	return;
+	// return;
+	
+	// link ckt nodes for local circuit
+	ckt_l.link_ckt_nodes(tran);
+	int iter = 0;
 	// go along all time steps
-	for(double time =0; time < tran.tot_t; 
+	for(double time =0; time < tran.tot_t 
+			&& iter <1; 
 			time += tran.step_t){
 		// solve one time step with LDO
 		solve_TR_LDO(tran, time);	
+		iter++;
 	}	
 }
 //endif
@@ -2201,23 +2207,44 @@ void Circuit::solve_DC(){
 	}
 }
 
-// LDO optimization for one time step
+// solve one transient step with different LDO numbers
 void Circuit::solve_TR_LDO(Tran &tran, double time){
+	ckt_l.reset_bnew();
+	ckt_g.reset_bnew();
+	// 1. first modify L and C nets
+	// 2. no need to build new nets, but modify
+	solve_TR(tran, time);
+}
+
+// solve circuit with fixed LDO for one time step
+void Circuit::solve_TR(Tran &tran, double time){
 	int iter=0;
-	double diff_opt_ldo=1;
-	// still optimize LDO, either increase 
-	// LDO number or change their locations
-	while(diff_opt_ldo >1e-3 && iter++ < 1){
+	double diff_l = 1;
+	double diff_g = 1;
+	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 1){
 		// for each location of LDO
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
 		// then update netlist
-		ckt_l.build_local_nets();
-		ckt_g.build_global_nets();
+		ckt_l.modify_local_nets();
+		ckt_g.modify_global_nets();
+		//clog<<"before stamp tr matrix. "<<endl;
 		// stamp matrix, b and decomp matrix
-		ckt_l.stamp_decomp_matrix_TR(tran, time);
-		ckt_g.stamp_decomp_matrix_TR(tran, time);
+		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
+		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+		//clog<<"after stamp tr matrix. "<<endl;
+		// solve eq with decomped matrix
+		diff_l = ckt_l.solve_CK_with_decomp();
+		// calculate ldo current from ckt_l
+		ckt_l.update_ldo_current();
+		// restamp global rhs with ldo current
+		ckt_g.modify_ldo_rhs_TR();
+		
+		diff_g = ckt_g.solve_CK_with_decomp();
+		// then throw into ldo lookup table
+		update_ldo_vout();
+		iter++;
 	}
 }
 
@@ -2455,6 +2482,7 @@ void Circuit::recover_best_ldo(Node *nd_min){
 
 // add more LDO into circuit: new_ldo_flag = true
 void Circuit::add_LDO_DC(){
+	// clog<<"initial nodelist: "<<ckt_g.nodelist.size()<<endl;
 	vector<Pad*> LDO_pad_vec;
 	// build candi graph, extract control nodes 
 	// for each LDO pad node
@@ -2469,6 +2497,11 @@ void Circuit::add_LDO_DC(){
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
+	// need to resize b and x because of extra LDOs
+	// ckt_l.reconfigure_DC();
+	ckt_g.reconfigure_DC();
+
+	// clog<<"final nodelist: "<<ckt_g.nodelist.size()<<endl;
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"new max_IR drop: "<<max_IRdrop<<endl;

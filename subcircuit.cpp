@@ -2277,6 +2277,22 @@ void SubCircuit::configure_init(){
 	   map_node[nodelist[i]->name] = nodelist[i];
 }
 
+// update length of b and x
+void SubCircuit::reconfigure_DC(){
+   size_t n= replist.size();
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+}
+
+// update length of b and x
+void SubCircuit::reconfigure_TR(){
+   size_t n= replist.size();
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+}
+
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    A.clear();
@@ -2295,14 +2311,22 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    A.clear();
 }
 
-// stamp matrix and rhs, decomp matrix for TR
-void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time){
+// stmap matrix and rhs, decomp matrix for DC
+void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){
    A.clear();
-   stamp_by_set_tr(A, bp, tran);
-   make_A_symmetric_tr(bp, xp, tran);
-   stamp_current_tr(bp, time);
+   size_t n = replist.size();
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
 
-   A.set_row(replist.size());
+   stamp_by_set_tr(A, bp, tran);
+
+   // xp comes from dc solution
+   //if(local_flag == false)
+   	make_A_symmetric_tr(bp, xp, tran);
+   //else
+	//make_A_symmetric_tr_local(bp, xp, tran);
+   stamp_current_tr(bp, time);
+   // A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
 }
@@ -2375,6 +2399,21 @@ void SubCircuit::modify_ldo_rhs(){
 	}
 }
 
+// modify rhs with new current value of LDO
+void SubCircuit::modify_ldo_rhs_TR(){
+	Node *nd;
+	size_t rid;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->nd_in;
+		rid = nd->rep->rid;
+		// clog<<"old bp: "<<bp[rid]<<endl;
+		// restore old current
+		bp[rid] += ldolist[i]->current_old;
+		// change into new one
+		bp[rid] -= ldolist[i]->current;
+		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
+	}
+}
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	for(size_t i=0;i<replist.size();i++){	
@@ -3628,4 +3667,10 @@ void SubCircuit::modify_global_nets(){
 		net->value = ldolist[i]->current;	
 		// clog<<"global nets: "<<*net<<endl;
 	}
+}
+
+void SubCircuit::reset_bnew(){
+	size_t n = replist.size();
+	bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
+	bnewp = static_cast<double *>(bnew->x);
 }
