@@ -2215,6 +2215,9 @@ void Circuit::solve_TR_LDO(Tran &tran, double time){
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
+	double THRES = VDD_G * 0.1;
+	// if(max_IRdrop > THRES)
+		add_LDO_TR(tran, time);
 }
 
 // solve circuit with fixed LDO for one time step
@@ -2534,4 +2537,7 @@ void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 	}
 	// clog<<"ckt ldolist size: "<<ldolist.size()<<endl;
 	// clog<<"ckt_l ldolist size: "<<ckt_l.ldolist.size()<<endl;
+}
+
+void Circuit::add_LDO_TR(Tran &tran, double time){
 }
