@@ -2521,7 +2521,7 @@ void Circuit::solve_DC_LDO(){
 	int iter = 0;
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// need to add more LDOs
-	if(max_IRdrop > THRES)
+	//if(max_IRdrop > THRES)
 		add_LDO_DC();
 }
 

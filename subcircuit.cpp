@@ -3433,17 +3433,14 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while(max_IRdrop > THRES && )
 	while(ldolist.size() < MAX_NUM_LDO &&
 			iter ++ <1){
-	// for(int iter =0;iter<1;iter++){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
 		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
-		// clog<<"after push LDO_pad_vec. "<<endl;
 		// 5. update the nbr flags for 
 		// candi in graph
 		update_single_pad_flag(pad_ptr);
-		// clog<<"after update single pad flag. "<<endl;
 	}
 }
 
