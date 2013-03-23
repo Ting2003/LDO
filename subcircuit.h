@@ -181,14 +181,15 @@ public:
 
 private:
 	// member functions
-	void solve_LU(Tran &tran, bool flag);
-	void solve_LU_core(Tran &tran, bool flag);
+	// void solve_LU(Tran &tran, bool flag);
+	// void solve_LU_core(Tran &tran, bool flag);
 	void build_local_nets();
 	void build_global_nets();
 	void stamp_decomp_matrix_DC(bool local_flag);
 	void stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag);
 
 	double solve_CK_with_decomp();
+	double solve_CK_with_decomp_tr(Tran &tran, double time);
 	void update_ldo_current();
 	void modify_ldo_rhs();
 	void modify_ldo_rhs_TR();
@@ -211,7 +212,6 @@ private:
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
-	void stamp_VDD_tr(double *b, Net * net);
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);
 
@@ -226,13 +226,13 @@ private:
 	void stamp_current_tr_net(double *b, Net * net, double &time);
 	void stamp_capacitance_tr(Matrix & A, Net * net, Tran &tran);
 	void stamp_inductance_tr(Matrix & A, Net * net, Tran &tran);
-	void modify_rhs_tr_0(double *b, double *xp);
+	void modify_rhs_tr_0(double *b, double *xp, Tran &tran);
 
 	void modify_rhs_tr(double *b, double *xp);
 	void set_eq_induc(Tran &tran);
 	void set_eq_capac(Tran &tran);
-	void modify_rhs_c_tr_0(Net *net, double *rhs, double *xp);
-	void modify_rhs_l_tr_0(Net *net, double *rhs, double *xp);
+	void modify_rhs_c_tr_0(Net *net, double *rhs, double *xp, Tran &tran);
+	void modify_rhs_l_tr_0(Net *net, double *rhs, double *xp, Tran &tran);
 
 	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
 	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
