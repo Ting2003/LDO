@@ -2209,6 +2209,7 @@ void Circuit::solve_DC(){
 
 // solve one transient step with different LDO numbers
 void Circuit::solve_TR_LDO(Tran &tran, double time){
+	// clear bnew before each time step
 	ckt_l.reset_bnew();
 	ckt_g.reset_bnew();
 	// 1. first modify L and C nets
@@ -2222,7 +2223,6 @@ void Circuit::solve_TR(Tran &tran, double time){
 	double diff_l = 1;
 	double diff_g = 1;
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 1){
-		// for each location of LDO
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);

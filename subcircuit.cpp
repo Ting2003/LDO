@@ -275,7 +275,7 @@ void SubCircuit::solve_LU_core(Tran &tran, bool local_flag){
    double time = 0;
    //int iter = 0;
    stamp_by_set_tr(A, bp, tran);
-   make_A_symmetric_tr(bp, xp, tran);
+   make_A_symmetric_tr(bp, tran);
    
    stamp_current_tr(bp, time);
   
@@ -529,7 +529,7 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 			break;
 		case CURRENT:
 			//for(size_t i=0;i<ns.size();i++)
-				//stamp_current_tr(b, ns[i]);
+				//stamp_current(b, ns[i]);
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
@@ -626,7 +626,7 @@ void SubCircuit::stamp_resistor(Matrix & A, Net * net){
 	}
 }
 
-// only stamp the resistor node connected to inductance
+// stamp all resistor net
 void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
    double G;
    Node * nk = net->ab[0]->rep;
@@ -635,14 +635,14 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
    size_t l = nl->rid;
    G = 1./net->value;
 
-   if( nk->isS()!=Y && !nk->is_ground()&& 
-     (nk->nbr[TOP]!=NULL && 
-      nk->nbr[TOP]->type == INDUCTANCE)) {
+   if( nk->isS()!=Y && !nk->is_ground()){
+     //(nk->nbr[TOP]!=NULL && 
+      //nk->nbr[TOP]->type == INDUCTANCE)) {
       //clog<<"net: "<<*net<<endl;
       A.push_back(k,k, G);
       //clog<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-      if(!nl->is_ground() && (nl->nbr[TOP]==NULL || 
-           nl->nbr[TOP]->type != INDUCTANCE)){
+      if(!nl->is_ground() && nl->isS()!=Y){// && (nl->nbr[TOP]==NULL || 
+           //nl->nbr[TOP]->type != INDUCTANCE)){
          if(l < k){
             A.push_back(k,l,-G);
             //clog<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
@@ -654,15 +654,16 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
       }
    }
 
-   if( nl->isS() !=Y && !nl->is_ground()&&
-     (nl->nbr[TOP]!=NULL &&
-      nl->nbr[TOP]->type == INDUCTANCE)) {
+   if( nl->isS() !=Y && !nl->is_ground()){//&&
+     // (nl->nbr[TOP]!=NULL &&
+      // nl->nbr[TOP]->type == INDUCTANCE)) {
 
       //clog<<"net: "<<*net<<endl;
       A.push_back(l,l, G);
       //clog<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-      if(!nk->is_ground() && (nk->nbr[TOP]==NULL ||
-           nk->nbr[TOP]->type != INDUCTANCE)){
+      if(!nk->is_ground() && nk->isS()!=Y){//
+		      // (nk->nbr[TOP]==NULL ||
+           // nk->nbr[TOP]->type != INDUCTANCE)){
          if(k < l){
             A.push_back(l,k,-G);
             //clog<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
@@ -1325,7 +1326,8 @@ void SubCircuit::make_A_symmetric(double *b){
         }
 }
 
-void SubCircuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
+// only inductance is connected to voltage source
+void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
 	int type = INDUCTANCE;
 	NetList & ns = net_set[type];
 	NetList::iterator it;
@@ -1348,8 +1350,8 @@ void SubCircuit::make_A_symmetric_tr(double *b, double *x, Tran &tran){
            size_t id = q->rid;
            double G = tran.step_t / ((*it)->value*2);
            
-           //b[id] += p->value * G;
-           b[id] += x[p->rid] *G;
+           b[id] += p->value * G;
+           // b[id] += x[p->rid] *G;
            //clog<<"stamp p->value, G, b: "<<p->value<<" "<<G<<" "<<b[id]<<endl;
         }
 }
@@ -2319,14 +2321,15 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    bp = static_cast<double *> (b->x);
 
    stamp_by_set_tr(A, bp, tran);
+   // clog<<"after stamp by set tr. "<<endl;
 
    // xp comes from dc solution
-   //if(local_flag == false)
-   	make_A_symmetric_tr(bp, xp, tran);
-   //else
-	//make_A_symmetric_tr_local(bp, xp, tran);
+   if(local_flag == false)
+   	make_A_symmetric_tr(bp, tran);
+   else
+	make_A_symmetric_local(bp);
    stamp_current_tr(bp, time);
-   // A.set_row(replist.size());
+   A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
 }

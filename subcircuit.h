@@ -78,7 +78,7 @@ public:
         
         void make_A_symmetric(double *bp);
 	void make_A_symmetric_local(double *b);
-	void make_A_symmetric_tr(double *b, double *x, Tran &tran);
+	void make_A_symmetric_tr(double *b, Tran &tran);
 	//void make_A_symmetric_block();
       //void make_A_symmetric_block_tr(Tran &tran);
 
