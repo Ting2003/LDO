@@ -198,9 +198,6 @@ private:
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
 
-	// add solve with ADI method
-	//void solve_partial_ADI();
-	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init();
 	void solve_DC();
