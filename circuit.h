@@ -138,7 +138,7 @@ public:
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_LDOs();
-	void add_LDO_DC();
+	void add_LDO_DC(bool new_ldo_flag);
 	void create_new_LDOs(vector<Pad*> LDO_pad_vec);
 	void recover_best_ldo(Node *nd_min);
 	void relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);
@@ -203,7 +203,7 @@ private:
 	//double solve_ADI_DC();
 	// initialize things before solve_iteration
 	void solve_init();
-	void solve_DC();
+	void solve_DC(bool new_ldo_flag);
 	void solve_DC_LDO();
 	void solve_TR_LDO(Tran &tran, double time);
 

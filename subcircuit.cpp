@@ -195,8 +195,7 @@ void SubCircuit::solve_init(bool flag){
 		clog<<"i, ldo_A, ldo_in: "<<i<<" "<<*ldolist[i]->A<<" "<<nd->is_LDO()<<" "<<*ldolist[i]->nd_in<<endl;
 	}*/
 	//clog<<"before build pad set. "<<endl;
-	if(pad_set.size()==0)	
-		build_pad_set();
+	build_pad_set();
 
 	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
 	//clog<<"replist.size: "<<replist.size()<<endl;
@@ -2209,16 +2208,22 @@ void SubCircuit::build_local_nets(){
 		delete ns[i];
 	}
 	ns.clear();
+	Node *gnd = NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
 	// then create new ones
 	Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->A;
 		nd->value = VDD_G;
-		Net *net = new Net(VOLTAGE, VDD_G, nd, nodelist[nodelist.size()-1]);
+		Net *net = new Net(VOLTAGE, VDD_G, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
-		//clog<<"add net: "<<*net<<endl;
+		// clog<<"add local net: "<<*net<<endl;
 	}
 	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
@@ -2239,16 +2244,23 @@ void SubCircuit::build_global_nets(){
 	ns.clear();
 	// then create new ones
 	Node *nd;
+	Node *gnd = NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
+
 	double current;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
 		current = ldolist[i]->current;
 		//current = 0.3;
-		Net *net = new Net(CURRENT, current, nd, nodelist[nodelist.size()-1]);
+		Net *net = new Net(CURRENT, current, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[BOTTOM] = net;
-		//clog<<"add net: "<<*net<<endl;
+		// clog<<"add global net: "<<*net<<endl;
 	}
 }
 
@@ -3039,7 +3051,7 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 // if the location is farther than ref_dist, restore back
 Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LDO &ldo_ptr){
 	Node *nd = ldo_ptr.A;
-	Node *nd_new;
+	Node *nd_new = NULL;
 	int width = ldo_ptr.width;
 	int height = ldo_ptr.height;
 	
@@ -3215,6 +3227,7 @@ void SubCircuit::rebuild_global_nets(){
 		sprintf(name, "_Y_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_vol = new Node(nd_temp);
+		nd_ptr_vol->enableY();
 		nd_ptr_vol->rep = nd_ptr_vol;
 		add_node(nd_ptr_vol);
 		// first create voltage net
@@ -3226,6 +3239,7 @@ void SubCircuit::rebuild_global_nets(){
 		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_induc = new Node(nd_temp);
+		nd_ptr_induc->enableX();
 		nd_ptr_induc->rep = nd_ptr_induc;
 		add_node(nd_ptr_induc);
 		net_type = INDUCTANCE;
@@ -3410,18 +3424,19 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	for(int iter =0;iter<1;iter++){
 		// 4. LDO should go to candi with 
 		// maximum IR
-		Pad *pad_ptr = locate_candi_pad_maxIR();
+		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
+		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
-		clog<<"after push LDO_pad_vec. "<<endl;
+		// clog<<"after push LDO_pad_vec. "<<endl;
 		// 5. update the nbr flags for 
 		// candi in graph
 		update_single_pad_flag(pad_ptr);
-		clog<<"after update single pad flag. "<<endl;
+		// clog<<"after update single pad flag. "<<endl;
 	}
 }
 
 // return pad candi with max IR (still available candi)
-Pad* SubCircuit::locate_candi_pad_maxIR(){
+Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
@@ -3438,6 +3453,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(){
 			pad_ptr = pad_set[i];
 		}
 	}
+	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
 	return pad_ptr; 
 }
 
@@ -3448,11 +3464,13 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	Node *nd_nbr;
 
 	nd = pad->node;
+	//clog<<"pad node: "<<*nd<<endl;
 	nd->flag_visited = true;
 	// mark nbr pads with visited
 	for(size_t j=0;j<pad->nbrs.size();j++){
 		nd_nbr = pad->nbrs[j]->node;
 		nd_nbr->flag_visited = true;
+		// clog<<"mark nbr: "<<*nd_nbr<<endl;
 	}
 }
 
@@ -3479,17 +3497,35 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	double induc_value = 0;
 	double resis_value = 0;
 	double current_value = 0;
+	Net *net;
 
 	char name[MAX_BUF];
 
+	for(int type =0 ;type <NUM_NET_TYPE;type++){
+		NetList &ns = net_set[type];
+		if(ns.size()<=0) continue;
+		net = ns[0];
+		// if(net != NULL)
+			// clog<<"net: "<<*net<<endl;
+		if(net->type == VOLTAGE)
+			vol_value = net->value;
+		else if(net->type == INDUCTANCE)
+			induc_value = net->value;
+		else if(net->type == RESISTOR)
+			resis_value = net->value;
+		else if(net->type == CURRENT)
+			current_value = net->value;
+	}
+
 	Node *gnd = nodelist[nodelist.size()-1];
 	NET_TYPE net_type;
-	int ldo_z = ldolist[0]->nd_in->pt.z;
+	long ldo_z = ldolist[0]->nd_in->pt.z;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
 		sprintf(name, "_Y_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_vol = new Node(nd_temp);
+		nd_ptr_vol->enableY();
 		nd_ptr_vol->rep = nd_ptr_vol;
 		add_node(nd_ptr_vol);
 		// first create voltage net
@@ -3501,6 +3537,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		sprintf(name, "_X_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_induc = new Node(nd_temp);
+		nd_ptr_induc->enableX();
 		nd_ptr_induc->rep = nd_ptr_induc;
 		add_node(nd_ptr_induc);
 		net_type = INDUCTANCE;
@@ -3524,5 +3561,33 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 			current_value, nd_ptr_resis, nodelist[0]);
 		add_net(net_current);
 		update_node(net_current);
+	}
+}
+
+// only modify vol net values for LDO
+void SubCircuit::modify_local_nets(){
+	Node *nd;
+	Net *net;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->A;
+		net = nd->nbr[TOP];
+		// should report error
+		if(net == NULL) continue;
+		net->value = nd->value;
+		// clog<<*net<<endl;
+	}
+}
+
+// only modify current net values for LDO
+void SubCircuit::modify_global_nets(){
+	Node *nd;
+	Net *net;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->nd_in;
+		net = nd->nbr[BOTTOM];
+		// should report error
+		if(net == NULL) continue;
+		net->value = ldolist[i]->current;	
+		// clog<<*net<<endl;
 	}
 }

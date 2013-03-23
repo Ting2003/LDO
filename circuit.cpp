@@ -2250,7 +2250,7 @@ void solve_a_line(Node *nd, DIRECTION d){
 */
 
 // solve_DC with LDO locations
-void Circuit::solve_DC(){
+void Circuit::solve_DC(bool new_LDO_flag){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
@@ -2261,10 +2261,13 @@ void Circuit::solve_DC(){
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
+		// clog<<"after pad set: "<<endl;
+		//for(size_t i=0;i<ckt_l.pad_set.size();i++)
+			//clog<<"i, pad_set: "<<i<<" "<<*ckt_l.pad_set[i]->node<<endl;
 
 		// then update netlist
-		ckt_l.build_local_nets();
-		ckt_g.build_global_nets();
+		ckt_l.modify_local_nets();
+		ckt_g.modify_global_nets();
 
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_DC(true);
@@ -2461,9 +2464,15 @@ double Circuit::locate_maxIRdrop(){
 void Circuit::solve_DC_LDO(){
 	map<Node*, double> ldo_best;
 	pair<Node*, double> ldo_pair;
+	// build new nets for the single LDo
+	ckt_l.build_local_nets();
+	ckt_g.build_global_nets();
+
+	bool new_ldo_flag = false;
 	// first get IR drop values
-	solve_DC();
+	solve_DC(false);
 	double max_IRdrop = locate_maxIRdrop();
+	// clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
 	ldo_pair.first = nd;
 	ldo_pair.second = max_IRdrop;
@@ -2479,7 +2488,11 @@ void Circuit::solve_DC_LDO(){
 	for(int i=0;i<5;i++){
 		// optimize the locations of LDO and resolve
 		relocate_LDOs();
-		solve_DC();
+		// build new nets for the single LDo
+		ckt_l.build_local_nets();
+		ckt_g.build_global_nets();
+
+		solve_DC(new_ldo_flag);
 		max_IRdrop = locate_maxIRdrop();
 		// clog<<"second max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
@@ -2503,7 +2516,7 @@ void Circuit::solve_DC_LDO(){
 	}
 	// switch to the best ldo
 	recover_best_ldo(nd_min);
-	solve_DC();
+	solve_DC(new_ldo_flag);
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"final max_IR: "<<max_IRdrop<<endl;
 
@@ -2511,12 +2524,13 @@ void Circuit::solve_DC_LDO(){
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
-	// while(max_IRdrop > THRES &&) 
+	new_ldo_flag = true;
+	// while(max_IRdrop > THRES &&)
 	while(ldolist.size() < ckt_l.MAX_NUM_LDO && 
 		iter++ < 1){
 		// if number not satisfied, 
 		// need to add more LDOs
-		add_LDO_DC();
+		add_LDO_DC(new_ldo_flag);
 	}
 }
 
@@ -2535,28 +2549,47 @@ void Circuit::recover_best_ldo(Node *nd_min){
 	//clog<<"final best ldo: "<<*ldolist[0]->A<<endl;
 }
 
-// add more LDO into circuit
-void Circuit::add_LDO_DC(){
-	clog<<"enter add LDO DC. "<<endl;
+// add more LDO into circuit: new_ldo_flag = true
+void Circuit::add_LDO_DC(bool new_ldo_flag){
 	vector<Pad*> LDO_pad_vec;
 	// build candi graph, extract control nodes 
 	// for each LDO pad node
 	ckt_l.create_current_LDO_graph();
-	clog<<"after create LDO graph. "<<endl;
+	// clog<<"after create LDO graph. "<<endl;
 	// first find the node new LDO should go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
-	clog<<"after extract add LDO info. "<<endl;
+	// clog<<"after extract add LDO info. "<<endl;
 	// 7. when finish adding LDOs, 
 	// rebuild the local and global net and
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
-	solve_DC();
+	clog<<"working on solve DC after create new LDO. "<<endl;
+	solve_DC(new_ldo_flag);
 	max_IRdrop = locate_maxIRdrop();
 	LDO_pad_vec.clear();
 }
 
 // create new LDOs in circuit
 void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
+	LDO *ldo_ptr;
+	stringstream sstream;
+	int pt_z = ldolist[0]->nd_in->pt.z;
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		ldo_ptr = new LDO();
+		ldo_ptr->A = LDO_pad_vec[i]->node;
+		ldo_ptr->width = ldolist[0]->width;
+		ldo_ptr->height = ldolist[0]->height;
+		// build nd_in node
+		sstream.str("");
+		sstream<<"n"<<pt_z<<"_"<<ldo_ptr->A->pt.x<<"_"<<ldo_ptr->A->pt.y;
+		ldo_ptr->nd_in = get_node(sstream.str());
+		ldolist.push_back(ldo_ptr);
+		// synchronize ckt_l and ckt_g with ckt
+		ckt_l.ldolist.push_back(ldo_ptr);
+		ckt_g.ldolist.push_back(ldo_ptr);
+	}
+	// clog<<"ckt ldolist size: "<<ldolist.size()<<endl;
+	// clog<<"ckt_l ldolist size: "<<ckt_l.ldolist.size()<<endl;
 }

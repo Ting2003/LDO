@@ -129,6 +129,8 @@ public:
 	void assign_pad_set(vector<Pad*> pad_set, vector<Node*>&pad_set_old);
 	void rebuild_local_nets(Node *rm_node, Node *add_node);
 	void rebuild_global_nets();
+	void modify_local_nets();
+	void modify_global_nets();
 
 	void build_candi_graph();
 	double compute_stand_dev();
@@ -139,7 +141,7 @@ public:
 	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
 	void extract_pads(vector<Pad*> pad_set);
-	Pad* locate_candi_pad_maxIR();
+	Pad* locate_candi_pad_maxIR(vector<Pad*> pad_set);
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
