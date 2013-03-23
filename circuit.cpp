@@ -2250,7 +2250,7 @@ void solve_a_line(Node *nd, DIRECTION d){
 */
 
 // solve_DC with LDO locations
-void Circuit::solve_DC(bool new_LDO_flag){
+void Circuit::solve_DC(){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
@@ -2468,9 +2468,8 @@ void Circuit::solve_DC_LDO(){
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
 
-	bool new_ldo_flag = false;
 	// first get IR drop values
-	solve_DC(false);
+	solve_DC();
 	double max_IRdrop = locate_maxIRdrop();
 	// clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
@@ -2492,7 +2491,7 @@ void Circuit::solve_DC_LDO(){
 		ckt_l.build_local_nets();
 		ckt_g.build_global_nets();
 
-		solve_DC(new_ldo_flag);
+		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
 		// clog<<"second max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
@@ -2516,7 +2515,7 @@ void Circuit::solve_DC_LDO(){
 	}
 	// switch to the best ldo
 	recover_best_ldo(nd_min);
-	solve_DC(new_ldo_flag);
+	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"final max_IR: "<<max_IRdrop<<endl;
 
@@ -2524,13 +2523,12 @@ void Circuit::solve_DC_LDO(){
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
-	new_ldo_flag = true;
 	// while(max_IRdrop > THRES &&)
 	while(ldolist.size() < ckt_l.MAX_NUM_LDO && 
 		iter++ < 1){
 		// if number not satisfied, 
 		// need to add more LDOs
-		add_LDO_DC(new_ldo_flag);
+		add_LDO_DC();
 	}
 }
 
@@ -2550,7 +2548,7 @@ void Circuit::recover_best_ldo(Node *nd_min){
 }
 
 // add more LDO into circuit: new_ldo_flag = true
-void Circuit::add_LDO_DC(bool new_ldo_flag){
+void Circuit::add_LDO_DC(){
 	vector<Pad*> LDO_pad_vec;
 	// build candi graph, extract control nodes 
 	// for each LDO pad node
@@ -2566,7 +2564,7 @@ void Circuit::add_LDO_DC(bool new_ldo_flag){
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
 	clog<<"working on solve DC after create new LDO. "<<endl;
-	solve_DC(new_ldo_flag);
+	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	LDO_pad_vec.clear();
 }
