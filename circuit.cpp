@@ -2261,7 +2261,6 @@ void Circuit::solve_DC(){
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
-		// clog<<"after pad set: "<<endl;
 		//for(size_t i=0;i<ckt_l.pad_set.size();i++)
 			//clog<<"i, pad_set: "<<i<<" "<<*ckt_l.pad_set[i]->node<<endl;
 
@@ -2563,9 +2562,9 @@ void Circuit::add_LDO_DC(){
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
-	clog<<"working on solve DC after create new LDO. "<<endl;
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
+	clog<<"new max_IR drop: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }
 
@@ -2582,7 +2581,7 @@ void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 		// build nd_in node
 		sstream.str("");
 		sstream<<"n"<<pt_z<<"_"<<ldo_ptr->A->pt.x<<"_"<<ldo_ptr->A->pt.y;
-		ldo_ptr->nd_in = get_node(sstream.str());
+		ldo_ptr->nd_in = ckt_g.get_node(sstream.str());
 		ldolist.push_back(ldo_ptr);
 		// synchronize ckt_l and ckt_g with ckt
 		ckt_l.ldolist.push_back(ldo_ptr);

@@ -3186,6 +3186,12 @@ void SubCircuit::rebuild_global_nets(){
 	double current_value = 0;
 
 	char name[MAX_BUF];
+	Node *gnd =NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
 
 	for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
@@ -3209,7 +3215,6 @@ void SubCircuit::rebuild_global_nets(){
 		for(size_t j=0;j<ns.size();j++) delete ns[j];
 		ns.clear();
 	}
-	Node *gnd = nodelist[nodelist.size()-1];
 	// keep the old nd_in node
 	int old_z = ldolist[0]->nd_in->pt.z;
 	// and delete all the nodes except ground 
@@ -3234,7 +3239,7 @@ void SubCircuit::rebuild_global_nets(){
 		net_type = VOLTAGE;
 		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
 		add_net(net_vol);
-		update_node(net_vol);
+		nd_ptr_vol->nbr[TOP] = net_vol;
 		// then create inductance net
 		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3245,7 +3250,8 @@ void SubCircuit::rebuild_global_nets(){
 		net_type = INDUCTANCE;
 		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
 		add_net(net_induc);
-		update_node(net_induc);
+		nd_ptr_induc->nbr[TOP] = net_induc;
+		nd_ptr_vol->nbr[BOTTOM] = net_induc;
 		// then create resistance net 
 		sprintf(name, "n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3256,13 +3262,14 @@ void SubCircuit::rebuild_global_nets(){
 		Net *net_resis = new Net(net_type, 
 			resis_value, nd_ptr_resis, nd_ptr_induc);
 		add_net(net_resis);
-		update_node(net_resis);
+		nd_ptr_resis->nbr[TOP] = net_resis;
+		nd_ptr_induc->nbr[BOTTOM] = net_resis;
 		// then create current net 
 		net_type = CURRENT;
 		Net *net_current = new Net(net_type, 
-			current_value, nd_ptr_resis, nodelist[0]);
+			current_value, nd_ptr_resis, gnd);
 		add_net(net_current);
-		update_node(net_current);
+		nd_ptr_resis->nbr[BOTTOM] = net_current;
 	}
 	// then update ldo->nd_in;
 	for(size_t i=0;i<ldolist.size();i++){
@@ -3477,12 +3484,19 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 // create local current nets for new LDO
 void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
+	Node *gnd =NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
+
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
 		nd->enableY();
 		nd->enableLDO();
 		nd->value = VDD_G;
-		Net *net = new Net(VOLTAGE, VDD_G, nd, nodelist[nodelist.size()-1]);
+		Net *net = new Net(VOLTAGE, VDD_G, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
@@ -3498,6 +3512,12 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	double resis_value = 0;
 	double current_value = 0;
 	Net *net;
+	Node *gnd = NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
 
 	char name[MAX_BUF];
 
@@ -3517,7 +3537,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 			current_value = net->value;
 	}
 
-	Node *gnd = nodelist[nodelist.size()-1];
+	// Node *gnd = nodelist[nodelist.size()-1];
 	NET_TYPE net_type;
 	long ldo_z = ldolist[0]->nd_in->pt.z;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
@@ -3531,8 +3551,10 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		// first create voltage net
 		net_type = VOLTAGE;
 		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
+		// clog<<"new vol net: "<<*net_vol<<endl;
+		nd_ptr_vol->nbr[TOP] = net_vol;
 		add_net(net_vol);
-		update_node(net_vol);
+		// update_node(net_vol);
 		// then create inductance net
 		sprintf(name, "_X_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3543,7 +3565,11 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		net_type = INDUCTANCE;
 		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
 		add_net(net_induc);
-		update_node(net_induc);
+
+		// clog<<"new induc net: "<<*net_induc<<endl;
+		nd_ptr_induc->nbr[TOP] = net_induc;
+		nd_ptr_vol->nbr[BOTTOM] = net_induc;
+		// update_node(net_induc);
 		// then create resistance net 
 		sprintf(name, "n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
@@ -3554,13 +3580,20 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		Net *net_resis = new Net(net_type, 
 			resis_value, nd_ptr_resis, nd_ptr_induc);
 		add_net(net_resis);
-		update_node(net_resis);
+
+		// clog<<"new resis net: "<<*net_resis<<endl;
+		nd_ptr_resis->nbr[TOP] = net_resis;
+		nd_ptr_induc->nbr[BOTTOM] = net_resis;
+		// update_node(net_resis);
 		// then create current net 
 		net_type = CURRENT;
 		Net *net_current = new Net(net_type, 
-			current_value, nd_ptr_resis, nodelist[0]);
+			current_value, nd_ptr_resis, gnd);
 		add_net(net_current);
-		update_node(net_current);
+
+		// clog<<"new cur net: "<<*net_current<<endl;
+		nd_ptr_resis->nbr[BOTTOM] = net_current;
+		//update_node(net_current);
 	}
 }
 
@@ -3574,7 +3607,7 @@ void SubCircuit::modify_local_nets(){
 		// should report error
 		if(net == NULL) continue;
 		net->value = nd->value;
-		// clog<<*net<<endl;
+		// clog<<"local nets: "<<*net<<endl;
 	}
 }
 
@@ -3586,8 +3619,11 @@ void SubCircuit::modify_global_nets(){
 		nd = ldolist[i]->nd_in;
 		net = nd->nbr[BOTTOM];
 		// should report error
-		if(net == NULL) continue;
+		if(net == NULL){
+			clog<<"null net: "<<*nd<<endl;
+			continue;
+		}
 		net->value = ldolist[i]->current;	
-		// clog<<*net<<endl;
+		// clog<<"global nets: "<<*net<<endl;
 	}
 }
