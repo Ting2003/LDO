@@ -710,7 +710,7 @@ void SubCircuit::stamp_capacitance_dc(Matrix & A, Net * net){
 
 // stamp inductance Geq = delta_t/(2L)
 void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
-	//clog<<"net: "<<*net<<endl;
+	// clog<<"net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -723,28 +723,28 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	if( nk->isS()!=Y  && !nk->is_ground()) {
 		// -1 is to clear formal inserted 1 at (k,k)
 		A.push_back(k,k, Geq-1);
-		//clog<<"("<<k<<" "<<k<<" "<<Geq-1<<")"<<endl;
+		// clog<<"("<<k<<" "<<k<<" "<<Geq-1<<")"<<endl;
 		//clog<<nl->isS()<<endl;
 		if(!nl->is_ground()&& nl->isS()!=Y && k>l){
 			A.push_back(k,l,-Geq);
-		        //clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+		        // clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		// -1 is to clear formal inserted 1 at (l,l)
 		A.push_back(l,l, Geq-1);
-		//clog<<"("<<l<<" "<<l<<" "<<Geq-1<<")"<<endl;
+		// clog<<"("<<l<<" "<<l<<" "<<Geq-1<<")"<<endl;
 		if(!nk->is_ground() && nk->isS()!=Y && l>k){
 			A.push_back(l,k,-Geq);
-			//clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			// clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
 
 // stamp capacitance Geq = 2C/delta_t
 void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
-	//clog<<"net: "<<*net<<endl;
+	// clog<<"net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -753,24 +753,24 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 	// Geq = 2*C / delta_t
 	Geq = (2*net->value) / tran.step_t;
 	//net->value = Geq;
-	//clog<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
+	// clog<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
 	// Ieq = i(t) + 2*C / delta_t * v(t)
 
 	if( nk->isS()!=Y  && !nk->is_ground()) {
 		A.push_back(k,k, Geq);
-		//clog<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
+		// clog<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		if(!nl->is_ground()&& k > l){
 			A.push_back(k,l,-Geq);
-			//clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+			// clog<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		A.push_back(l,l, Geq);
-		//clog<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
+		// clog<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground()&& l > k){
 			A.push_back(l,k,-Geq);
-			//clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			// clog<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
@@ -781,7 +781,7 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran
 	double i_t = 0;
 	double temp = 0;
 	double Ieq = 0;
-	//clog<<"c net: "<<*net<<endl;
+	// clog<<"c net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
         // nk point to Z node
@@ -808,8 +808,7 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran
 	//i_t = (b->value - a->value) / r->value;
 	i_t = (x[id_b] - x[id_a]) / r->value;
 	//if(b->value != x[id_b] || a->value != x[id_a])
-	   //cout<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<
-	     //x[id_a]<<" "<<x[id_b]<<endl;
+	 //  clog<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<x[id_a]<<" "<<x[id_b]<<endl;
 	//clog<<"i_t: "<<i_t<<endl;
 	//temp = 2*net->value / tran.step_t * 
 		//(nk->value - nl->value);
@@ -826,24 +825,22 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran
         else
          temp = 2*net->value/tran.step_t *(x[k] - x[l]);
 	//if(nk->value != x[k] || nl->value != x[l])
-	   //cout<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
+	 //  clog<<"k, l, x_k, x_l: "<<nk->value<<endl;
 	     //x[k]<<" "<<x[l]<<endl;
-	//clog<<"nk-nl "<<(nk->value - nl->value)<<" "<<2*net->value/tran.step_t<<" "<<temp<<endl;
+	// clog<<"nk-nl "<<nk->value<<" "<<2*net->value/tran.step_t<<" "<<temp<<endl;
 	
 	Ieq  = (i_t + temp);
 	//clog<< "Ieq is: "<<Ieq<<endl;
 	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
 	if(!nk->is_ground()&& nk->isS()!=Y){
 		 rhs[k] += Ieq;	// for VDD SubCircuit
-		//clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
+		// clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
 	}
 	if(!nl->is_ground()&& nl->isS()!=Y){
 		 rhs[l] += -Ieq; 
 		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
 	}
 }
-
-
 
 // add Ieq into rhs
 // Ieq = i(t) + 2*C / delta_t *v(t)
@@ -899,7 +896,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 // add Ieq into rhs
 // Ieq = i(t) + delta_t / (2*L) *v(t)
 void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran){
-	//clog<<"l net: "<<*net<<endl;
+	// clog<<"l net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
 	// nk point to X node
@@ -916,12 +913,13 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran)
 	//temp = tran.step_t / (2*net->value) * 
 		//(nl->value - nk->value);
 	temp = tran.step_t / (2*net->value)*(x[l] - x[k]);
+	clog<<"Geq: "<<tran.step_t / (2*net->value)<<endl;
 	// temp = net->value *(x[l] - x[k]);	
 	//if(nk->value != x[k] || nl->value != x[l])
-	   //clog<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
-	     //x[k]<<" "<<x[l]<<endl;
+	   // clog<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
+	    // x[k]<<" "<<x[l]<<endl;
 
-	//clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
+	// clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
 	
 	Net *r = nk->nbr[BOTTOM];
 	Node *a = r->ab[0]->rep;
@@ -941,14 +939,14 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran)
 
 	//clog<<"resiste r: "<<*r<<endl;
 	//clog<<*a<<" "<<*b<<endl;
-	//clog<<"a, b, r, i_t: "<<a->value<<" "<<b->value<<" "<<
-		//r->value<<" "<<i_t<<endl;
+	// clog<<"a, b, r, i_t: "<<a->value<<" "<<b->value<<" "<<
+		// r->value<<" "<<i_t<<endl;
        
         // push inductance nodes into node_set_x
         //clog<<*nk<<" "<<k<<endl;
         //clog<<*b<<" "<<id_b<<endl;
 	Ieq  = i_t + temp;
-	//clog<<"Ieq: "<<Ieq<<endl;
+	// clog<<"Ieq: "<<Ieq<<endl;
 	if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
@@ -1237,6 +1235,8 @@ void SubCircuit::make_A_symmetric_local(double *b){
 		else continue;
 		size_t id = q->rep->rid;
 		double G = 1.0 / (*it)->value;
+		// clog<<"net: "<<*(*it)<<endl;
+		// clog<<"id, p_val, G, b: "<<id<<" "<<p->value<<" "<<G<<" "<<b[id]<<endl;
 		b[id] += p->value * G;
 	}	
 }
@@ -1282,7 +1282,7 @@ void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
            if( (*it) == NULL ) continue;
            assert( fzero((*it)->value) == false );
            if(!((*it)->ab[0]->rep->isS()==Y || (*it)->ab[1]->rep->isS()==Y)) continue;
-           //clog<<"net: "<<*(*it)<<endl;
+           // clog<<"net: "<<*(*it)<<endl;
            // node p points to Y node
            if((*it)->ab[0]->rep->isS()==Y){
               p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
@@ -1297,7 +1297,7 @@ void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
            
            b[id] += p->value * G;
            // b[id] += x[p->rid] *G;
-           //clog<<"stamp p->value, G, b: "<<p->value<<" "<<G<<" "<<b[id]<<endl;
+           // clog<<"stamp p->value, G, b: "<<p->value<<" "<<G<<" "<<b[id]<<endl;
         }
 }
 
@@ -2294,16 +2294,21 @@ double SubCircuit::solve_CK_with_decomp(){
 
 // solve eq with decomped matrix
 double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
-	// for(size_t i=0;i<replist.size();i++)
-		// cout<<"i, bp: "<<i<<" "<<bp[i]<<endl;
-   	modify_rhs_tr_0(bnewp, xp, tran);
-
+	for(size_t i=0;i<replist.size();i++)
+		bnewp[i] = bp[i];
+	modify_rhs_tr_0(bnewp, xp, tran);
+	for(size_t i=0;i<replist.size();i++)
+		 cout<<"i, bp: "<<i<<" "<<bp[i]<<" "<<bnewp[i]<<endl;
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
+	clog<<"after solve tr. "<<endl;
+	for(size_t i=0;i<replist.size();i++)
+		cout<<"i, xp: "<<i<<" "<<xp[i]<<" "<<*replist[i]<<endl;
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
+	clog<<"diff: "<<diff<<endl;
 	// cout<<nodelist<<endl;
 	return diff;
 }

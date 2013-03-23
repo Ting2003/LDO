@@ -2242,13 +2242,13 @@ void Circuit::solve_TR(Tran &tran, double time){
 		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 		clog<<"after stamp tr matrix. "<<endl;
 		// solve eq with decomped matrix
-		diff_l = ckt_l.solve_CK_with_decomp();
+		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs_TR();
 		
-		diff_g = ckt_g.solve_CK_with_decomp();
+		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;
