@@ -2520,15 +2520,9 @@ void Circuit::solve_DC_LDO(){
 
 	int iter = 0;
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
-	// while not satisfied and still have room,
-	// perform optimization
-	// while(max_IRdrop > THRES &&)
-	while(ldolist.size() < ckt_l.MAX_NUM_LDO && 
-		iter++ < 1){
-		// if number not satisfied, 
-		// need to add more LDOs
+	// need to add more LDOs
+	if(max_IRdrop > THRES)
 		add_LDO_DC();
-	}
 }
 
 void Circuit::relocate_LDOs(){
@@ -2553,7 +2547,7 @@ void Circuit::add_LDO_DC(){
 	// for each LDO pad node
 	ckt_l.create_current_LDO_graph();
 	// clog<<"after create LDO graph. "<<endl;
-	// first find the node new LDO should go to
+	// first find the node new LDOs should go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
 	// clog<<"after extract add LDO info. "<<endl;
 	// 7. when finish adding LDOs, 

@@ -3426,9 +3426,14 @@ void SubCircuit::create_current_LDO_graph(){
 }
 
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
-	// vector<Pad*> LDO_pad_vec;
-	// need to change into while loop
-	for(int iter =0;iter<1;iter++){
+	int iter = 0;
+	double THRES = VDD_G * 0.1;
+	// while not satisfied and still have room,
+	// perform optimization
+	// while(max_IRdrop > THRES && )
+	while(ldolist.size() < MAX_NUM_LDO &&
+			iter ++ <1){
+	// for(int iter =0;iter<1;iter++){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
