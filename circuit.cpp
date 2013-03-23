@@ -197,7 +197,7 @@ void Circuit::solve(Tran &tran){
 	// config subckt, start cholmod for ckt_g and l
 	solve_init();
 	// solving LDO location with DC
-	solve_DC_LDO();
+	 solve_DC_LDO();
 	
 	// return;
 	
@@ -2227,20 +2227,17 @@ void Circuit::solve_TR(Tran &tran, double time){
 	for(size_t i=0;i<ckt_l.nodelist.size()-1;i++)
 		clog<<"i, Ynode?: "<<i<<" "<<*ckt_l.nodelist[i]<<" "<<ckt_l.nodelist[i]->isS()<<endl;
 	*/
-	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 1){
+	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
 		// update and sort nodes
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
-		// clog<<"ckt_l nodelist: "<<ckt_l.nodelist<<endl;
 
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_g.modify_global_nets();
-		clog<<"before stamp tr matrix. "<<endl;
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
 		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
-		clog<<"after stamp tr matrix. "<<endl;
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
 		// calculate ldo current from ckt_l
@@ -2249,6 +2246,7 @@ void Circuit::solve_TR(Tran &tran, double time){
 		ckt_g.modify_ldo_rhs_TR();
 		
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
+		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;

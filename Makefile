@@ -19,7 +19,7 @@ CFLAGS=-Wall -Wextra -pipe -O2 -msse4.2 -mssse3 -mfpmath=sse -march=native -fope
 #LDFLAGS=-s -Wl,-O1,-hash-style=gnu
 LDFLAGS=
 
-PACKAGE= ../pg_tr_p/package_ck
+PACKAGE= ../pg_dc_p/package_ck
 
 CHOLMOD= $(PACKAGE)/CHOLMOD
 CHOLMOD_LIB_DIR=$(CHOLMOD)/Lib

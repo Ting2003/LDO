@@ -13,7 +13,7 @@
 using std::pair;
 using namespace std;
 // important: each node has at most 4 connected nets
-enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, UNDEFINED};
+enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, BOTTOP, UNDEFINED};
 enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE};
 enum S_NODE{X, Y, Z};
 enum GEO_MARK{SBLANK, SBLOCK, SLDO};

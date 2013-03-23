@@ -6,14 +6,14 @@ using namespace std;
 // empty constructor
 Node::Node():name(""),pt(Point(-1,-1,-1)), rid(0),
 	value(0.0), flag(-1), rep(NULL){
-	for(int i=0;i<6;i++) this->nbr[i] = NULL;
+	for(int i=0;i<7;i++) this->nbr[i] = NULL;
 	flag_visited = false;
 }
 
 Node::Node(string n, Point _pt, int x, double v): 
 	name(n), pt(_pt), rid(0), 
 	value(v), flag(x), rep(NULL) {
-	for(int i=0;i<6;i++) this->nbr[i] = NULL;
+	for(int i=0;i<7;i++) this->nbr[i] = NULL;
 	flag_visited = false;
 }
 

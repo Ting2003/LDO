@@ -45,9 +45,9 @@ public:
 	string name;		// node name
 	Point pt;		// coordinate
 	// only 2 possible cases:
-	// {TOP, BOTTOM, EAST, WEST}
+	// {TOP, BOTTOM, EAST, WEST} and BOTTOP for Z node
 	// {TOP, BOTTOM, NORTH, SOUTH}
-	Net * nbr[6];		// neighboring nets
+	Net * nbr[7];		// neighboring nets
 
 	size_t rid;		// id in rep_list
 	size_t id;		// id in nodelist

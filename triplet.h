@@ -48,6 +48,7 @@ public:
 	Triplet operator + (const Triplet & B) const;
 
 	friend class Algebra;
+	friend class SubCircuit;
 private:
 	vector<size_t> Ti;
 	vector<size_t> Tj;

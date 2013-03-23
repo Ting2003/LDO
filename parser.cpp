@@ -222,6 +222,7 @@ void Parser::update_node(Net * net){
 			// bottom for z node has been taken by 
 			// current
 			a->set_nbr(TOP, net);
+			b->set_nbr(BOTTOP, net);
 		}
 	}
 	else if(net->type == RESISTOR && b->isS()!= -1 && a->isS() ==-1){
@@ -231,6 +232,7 @@ void Parser::update_node(Net * net){
 		}
 		else if(b->isS() == Z){
 			b->set_nbr(TOP, net);
+			a->set_nbr(BOTTOP, net);
 		}
 	}
 	else if( a->get_layer() == b->get_layer() ){
