@@ -198,6 +198,8 @@ void Circuit::solve(Tran &tran){
 	solve_init();
 	// solving LDO location with DC
 	 solve_DC_LDO();
+	 // clear flag_visited for the pads
+	 ckt_l.clear_flags();
 	
 	// return;
 	
@@ -209,7 +211,8 @@ void Circuit::solve(Tran &tran){
 			&& iter <1; 
 			time += tran.step_t){
 		// solve one time step with LDO
-		solve_TR_LDO(tran, time);	
+		solve_TR_LDO(tran, time);
+		ckt_l.clear_flags();
 		iter++;
 	}	
 }
@@ -2539,5 +2542,22 @@ void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 	// clog<<"ckt_l ldolist size: "<<ckt_l.ldolist.size()<<endl;
 }
 
+// working on add LDOs to TR step
 void Circuit::add_LDO_TR(Tran &tran, double time){
+	// temporary storing newly added LDOs
+	vector<Pad*> LDO_pad_vec;
+	// find the node where new LDOs shoudl go to
+	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	// rebuild local and global net
+	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
+	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+	// create new LDOs in circuit
+	create_new_LDOs(LDO_pad_vec);
+	// resize b and x because of the extra LDOs
+	ckt_g.reconfigure_DC();
+	solve_TR(tran, time);
+	max_IRdrop = locate_maxIRdrop();
+	clog<<"new max_IR drop for TR: "<<max_IRdrop<<endl;
+	LDO_pad_vec.clear();
+
 }

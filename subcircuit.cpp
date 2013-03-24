@@ -2919,15 +2919,10 @@ int SubCircuit::locate_max_drop_pad(vector<Pad*> pad_set){
 }
 
 void SubCircuit::clear_flags(){
-	Pad *pad;
+	Node *nd;
 	for(size_t i=0;i<pad_set.size();i++){
-		pad = pad_set[i];
-		pad->visit_flag = false;
-		pad->fix_flag = false;
-		pad->violate_flag = false;
-		//nd->region_flag = false;
-		//nd->fix_flag = false;
-		//nd->visit_flag = false;
+		nd = pad_set[i]->node;
+		nd->flag_visited = false;
 	}
 }
 
