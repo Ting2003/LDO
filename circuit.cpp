@@ -2441,17 +2441,14 @@ void Circuit::solve_DC_LDO(){
 	// need to keep best ldolist in the trial
 	// stores the best ldolist	
 	for(int i=0;i<5;i++){
-		// optimize the locations of LDO and resolve
+		// optimize the locations of LDO and rebuild nets
 		relocate_LDOs();
-		// build new nets for the single LDo
-		ckt_l.build_local_nets();
-		ckt_g.build_global_nets();
 
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		// clog<<"second max_IR: "<<max_IRdrop<<endl;
+		clog<<"second max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
-		// clog<<"new ldo node: "<<*nd<<endl;
+		clog<<"new ldo node: "<<*nd<<endl;
 		ldo_pair.first = nd;
 		ldo_pair.second = max_IRdrop;
 		ldo_best.insert(ldo_pair);
