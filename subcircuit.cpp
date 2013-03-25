@@ -2221,8 +2221,10 @@ void SubCircuit::configure_init(){
 void SubCircuit::reconfigure_DC(){
    size_t n= replist.size();
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
+   bnewp = static_cast<double *> (bnew->x);
 }
 
 // update length of b and x
@@ -2269,7 +2271,10 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    else
 	make_A_symmetric_local(bp);
    A.set_row(replist.size());
+   // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
+   A.merge();
+   clog<<A<<endl;
    A.clear();
 }
 
@@ -2295,9 +2300,10 @@ double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
 	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    	xp = static_cast<double *> (x->x);
 	//clog<<"after solve tr. "<<endl;
-	// for(size_t i=0;i<replist.size();i++)
-		// clog<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
-		//  cout<<"i, xp: "<<i<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	for(size_t i=0;i<replist.size();i++){
+		clog<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
+		// cout<<"i, xp: "<<i<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	}
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
@@ -2920,8 +2926,8 @@ int SubCircuit::locate_max_drop_pad(vector<Pad*> pad_set){
 
 void SubCircuit::clear_flags(){
 	Node *nd;
-	for(size_t i=0;i<pad_set.size();i++){
-		nd = pad_set[i]->node;
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		nd = candi_pad_set[i]->node;
 		nd->flag_visited = false;
 	}
 }
@@ -3227,6 +3233,7 @@ void SubCircuit::rebuild_global_nets(){
 		Node *nd_ptr_vol = new Node(nd_temp);
 		nd_ptr_vol->enableY();
 		nd_ptr_vol->rep = nd_ptr_vol;
+		nd_ptr_vol->value = pad_set[0]->node->value;
 		add_node(nd_ptr_vol);
 		// first create voltage net
 		net_type = VOLTAGE;
@@ -3421,6 +3428,8 @@ void SubCircuit::create_current_LDO_graph(){
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
 	int iter = 0;
 	double THRES = VDD_G * 0.1;
+	for(size_t i=0;i<ldolist.size();i++)
+		clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
 	// while(max_IRdrop > THRES && )
@@ -3429,7 +3438,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
-		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		 clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// 5. update the nbr flags for 
 		// candi in graph
@@ -3442,17 +3451,24 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
+	// for(size_t i=0;i<pad_set.size();i++)
+		// clog<<"i, pad_set_flag: "<<i<<" "<<*pad_set[i]->node<<" "<<pad_set[i]->node->flag_visited<<endl;
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->node->flag_visited == true)
 			continue;
+		// skip the one that already has pad
+		if(pad_set[i]->node->isS()==Y)
+			 continue;
 		if(flag == false){
 			min_vol = pad_set[i]->ref_vol;
 			pad_ptr = pad_set[i];
+			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 			flag = true;
 		}
 		else if(pad_set[i]->ref_vol < min_vol){
 			min_vol = pad_set[i]->ref_vol;
 			pad_ptr = pad_set[i];
+			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 		}
 	}
 	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
@@ -3541,6 +3557,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		extract_node(name, nd_temp);
 		Node *nd_ptr_vol = new Node(nd_temp);
 		nd_ptr_vol->enableY();
+		nd_ptr_vol->value = pad_set[0]->node->value;
 		nd_ptr_vol->rep = nd_ptr_vol;
 		add_node(nd_ptr_vol);
 		// first create voltage net
