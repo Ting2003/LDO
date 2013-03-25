@@ -3115,22 +3115,9 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 // perform LDO node change
 // modify nets and nodes with the change of LDO
 void SubCircuit::rebuild_local_nets(Node *rm_node, Node *add_node){
-	//Node *rm_node=NULL;
-	//Node *add_node=NULL;
-
-	/*for(size_t i=0;i<origin_pad_set.size();i++){
-		clog<<"old/new: "<<*origin_pad_set[i]<<" "<<*pad_set[i]->node<<endl;
-	}*/
-
-	//for(size_t i=0;i<origin_pad_set.size();i++){
-		// one-one correspondence
-		//rm_node = origin_pad_set[i]->rep;	
-		//add_node = pad_set[i]->node->rep;
-
 		if(rm_node->name == add_node->name)
 			return;
-		// clog<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;
-	
+		 // clog<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;	
 		// modify node info
 		rm_node->disableY();
 		add_node->enableY();
@@ -3156,7 +3143,9 @@ void SubCircuit::rebuild_local_nets(Node *rm_node, Node *add_node){
 		else if(net->ab[1]->is_ground())
 			net->ab[0] = add_node;
 		ldolist[0]->A = add_node;
-		//clog<<"net: "<<*net<<endl;
+		// clog<<"ldolist[0]->A: "<<*ldolist[0]->A<<endl;
+		rm_node->nbr[TOP] = NULL;
+		add_node->nbr[TOP] = net;
 	//}
 }
 	
@@ -3170,7 +3159,9 @@ void SubCircuit::rebuild_global_nets(){
 	Node *nd = net->ab[0];
 	if(nd->is_ground())
 		nd = ns[0]->ab[1];
+	nd->nbr[BOTTOM] = NULL;
 	nd = ldolist[0]->nd_in;
+	nd->nbr[BOTTOM] = net;
 	nd->value = ldolist[0]->current;
 }
 
@@ -3324,7 +3315,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
-		 clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// 5. update the nbr flags for 
 		// candi in graph

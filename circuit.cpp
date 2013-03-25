@@ -2427,7 +2427,7 @@ void Circuit::solve_DC_LDO(){
 	// first get IR drop values
 	solve_DC();
 	double max_IRdrop = locate_maxIRdrop();
-	clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
+	// clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
 	ldo_pair.first = nd;
 	ldo_pair.second = max_IRdrop;
@@ -2446,9 +2446,8 @@ void Circuit::solve_DC_LDO(){
 
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		clog<<"second max_IR: "<<max_IRdrop<<endl;
+		// clog<<"second max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
-		clog<<"new ldo node: "<<*nd<<endl;
 		ldo_pair.first = nd;
 		ldo_pair.second = max_IRdrop;
 		ldo_best.insert(ldo_pair);
@@ -2457,7 +2456,7 @@ void Circuit::solve_DC_LDO(){
 	Node *nd_min = NULL;
 	double min_IR=0;
 	for(it = ldo_best.begin();it!=ldo_best.end();it++){
-		//clog<<"ldo best list: "<<*it->first<<" "<< it->second<<endl;
+		// clog<<"ldo best list: "<<*it->first<<" "<< it->second<<endl;
 		if(it ==  ldo_best.begin()){
 			min_IR = it->second;
 			nd_min = it->first;
@@ -2477,7 +2476,7 @@ void Circuit::solve_DC_LDO(){
 	// need to add more LDOs
 	//if(max_IRdrop > THRES)
 		add_LDO_DC();
-		clog<<"after add_LDO_DC. "<<endl;
+		// clog<<"after add_LDO_DC. "<<endl;
 }
 
 void Circuit::relocate_LDOs(){
@@ -2488,11 +2487,11 @@ void Circuit::relocate_LDOs(){
 
 // recover the SubCircuit with best ldo location
 void Circuit::recover_best_ldo(Node *nd_min){
-	//clog<<"nd_min: "<<*nd_min<<endl;
-	//clog<<"ldo node: "<<*ldolist[0]->A<<endl;
-	ckt_l.rebuild_local_nets(ldolist[0]->A, nd_min);
+	// clog<<"nd_min: "<<*nd_min<<endl;
+	// clog<<"ldo node: "<<*ckt_l.ldolist[0]->A<<endl;
+	ckt_l.rebuild_local_nets(ckt_l.ldolist[0]->A, nd_min);
+	// clog<<"final best ldo: "<<*ckt_l.ldolist[0]->A<<endl;
 	ckt_g.rebuild_global_nets();
-	//clog<<"final best ldo: "<<*ldolist[0]->A<<endl;
 }
 
 // add more LDO into circuit: new_ldo_flag = true
