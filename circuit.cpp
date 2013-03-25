@@ -168,6 +168,9 @@ void Circuit::solve_init(){
 	ckt_g.lx = lx; ckt_g.gx = gx; 
 	ckt_g.ly = ly; ckt_g.gy = gy;
 
+	// update and sort nodes
+	ckt_l.solve_init(true);
+	ckt_g.solve_init(false);
 	// configure subckt, start cholmod process
 	ckt_l.configure_init();
 	ckt_g.configure_init();
@@ -196,6 +199,9 @@ void Circuit::solve(Tran &tran){
 	// assign nodes and nets to ckt_g and l
 	// config subckt, start cholmod for ckt_g and l
 	solve_init();
+	// build pad set: local build LDO list - need update
+	ckt_l.build_pad_set();
+	ckt_g.build_pad_set();
 	// solving LDO location with DC
 	 solve_DC_LDO();
 	 // clear flag_visited for the pads
@@ -2182,22 +2188,13 @@ void Circuit::solve_DC(){
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
-		// for each location of LDO
-		// update and sort nodes
-		ckt_l.solve_init(true);
-		ckt_g.solve_init(false);
-		//for(size_t i=0;i<ckt_l.pad_set.size();i++)
-			//clog<<"i, pad_set: "<<i<<" "<<*ckt_l.pad_set[i]->node<<endl;
-
-		// clear and resize b, bnew and x
-		ckt_l.reconfigure_DC();
-		ckt_g.reconfigure_DC();
-
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_g.modify_global_nets();
 
 		// stamp matrix, b and decomp matrix
+		// global grid only need stamp matrix once: Ting Yu
+		// need modify
 		ckt_l.stamp_decomp_matrix_DC(true);
 		ckt_g.stamp_decomp_matrix_DC(false);
 		
@@ -2243,8 +2240,8 @@ void Circuit::solve_TR(Tran &tran, double time){
 		ckt_l.solve_init(true);
 		ckt_g.solve_init(false);
 		// clear and resize bnew before each time step
-		ckt_l.reconfigure_DC();
-		ckt_g.reconfigure_DC();
+		// ckt_l.reconfigure_DC();
+		// ckt_g.reconfigure_DC();
 
 		// then update netlist
 		ckt_l.modify_local_nets();
@@ -2430,7 +2427,7 @@ void Circuit::solve_DC_LDO(){
 	// first get IR drop values
 	solve_DC();
 	double max_IRdrop = locate_maxIRdrop();
-	// clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
+	clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
 	ldo_pair.first = nd;
 	ldo_pair.second = max_IRdrop;

@@ -189,13 +189,9 @@ void SubCircuit::solve_init(bool flag){
 			p->rid = p->rep->rid;
 		//clog<<"p->rep: "<<*p->rep<<endl;
 	}
-	/*for(size_t i=0;i<ldolist.size();i++){
-		Node *nd = ldolist[i]->A;
-
-		clog<<"i, ldo_A, ldo_in: "<<i<<" "<<*ldolist[i]->A<<" "<<nd->is_LDO()<<" "<<*ldolist[i]->nd_in<<endl;
-	}*/
+	
 	//clog<<"before build pad set. "<<endl;
-	build_pad_set();
+	// build_pad_set();
 
 	//clog<<"nodelist.size: "<<nodelist.size()<<endl;
 	//clog<<"replist.size: "<<replist.size()<<endl;
@@ -2219,16 +2215,6 @@ void SubCircuit::configure_init(){
    map_node.clear();
    for(size_t i=0;i<nodelist.size()-1;i++)
 	   map_node[nodelist[i]->name] = nodelist[i];
-}
-
-// update length of b and x
-void SubCircuit::reconfigure_DC(){
-   size_t n= replist.size();
-   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
-   bnewp = static_cast<double *> (bnew->x);
 }
 
 // update length of b and x
