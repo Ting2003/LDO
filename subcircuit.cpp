@@ -711,7 +711,7 @@ void SubCircuit::stamp_capacitance_dc(Matrix & A, Net * net){
 
 // stamp inductance Geq = delta_t/(2L)
 void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
-	// cout<<"induc net: "<<*net<<endl;
+	 cout<<"induc net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -724,21 +724,21 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	if( nk->isS()!=Y  && !nk->is_ground()) {
 		// -1 is to clear formal inserted 1 at (k,k)
 		A.push_back(k,k, Geq);
-		// cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
+		 cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		//clog<<nl->isS()<<endl;
 		if(!nl->is_ground()&& nl->isS()!=Y && k>l){
 			A.push_back(k,l,-Geq);
-		        // cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+		         cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		// -1 is to clear formal inserted 1 at (l,l)
 		A.push_back(l,l, Geq);
-		// cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
+		 cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground() && nk->isS()!=Y && l>k){
 			A.push_back(l,k,-Geq);
-			// cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			 cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
@@ -806,20 +806,22 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran
 
 	size_t id_a = a->rid;
 	size_t id_b = b->rid;
-	//i_t = (b->value - a->value) / r->value;
-	i_t = (x[id_b] - x[id_a]) / r->value;
+	i_t = (b->value - a->value) / r->value;
+	// i_t = (x[id_b] - x[id_a]) / r->value;
 	       
         // push 2 nodes into node_set_x
         //clog<<*nk<<" "<<k<<endl;
 	if(nk->is_ground())
-	 temp = 2*net->value/tran.step_t*(0-x[l]);
-	 // temp = net->value *(-x[l]);
+	// temp = 2*net->value/tran.step_t*(0-x[l]);
+		temp = 2*net->value/tran.step_t *(-nl->value);
         else if(nl->is_ground()){
-         temp = 2*net->value/tran.step_t *(x[k]);
-	 // temp = net->value *x[k];
+         //temp = 2*net->value/tran.step_t *(x[k]);
+		temp = 2*net->value / tran.step_t *nk->value;
         }
         else
-         temp = 2*net->value/tran.step_t *(x[k] - x[l]);
+        //temp = 2*net->value/tran.step_t *(x[k] - x[l]);
+        	temp = 2*net->value/tran.step_t *
+			(nk->value - nl->value);
 		
 	Ieq  = (i_t + temp);
 	//clog<< "Ieq is: "<<Ieq<<endl;
@@ -888,7 +890,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 // add Ieq into rhs
 // Ieq = i(t) + delta_t / (2*L) *v(t)
 void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran){
-	// clog<<"l net: "<<*net<<endl;
+	//  clog<<"l net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
 	// nk point to X node
@@ -902,16 +904,16 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran)
 
 	double i_t = 0;
 	double temp = 0;
-	//temp = tran.step_t / (2*net->value) * 
-		//(nl->value - nk->value);
-	temp = tran.step_t / (2*net->value)*(x[l] - x[k]);
+	temp = tran.step_t / (2*net->value) * 
+		(nl->value - nk->value);
+	// temp = tran.step_t / (2*net->value)*(x[l] - x[k]);
 	//clog<<"Geq: "<<tran.step_t / (2*net->value)<<endl;
 	// temp = net->value *(x[l] - x[k]);	
 	//if(nk->value != x[k] || nl->value != x[l])
 	   // clog<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
 	    // x[k]<<" "<<x[l]<<endl;
 
-	// clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
+	//clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
 	
 	Net *r = nk->nbr[BOTTOM];
 	Node *a = r->ab[0]->rep;
@@ -923,10 +925,10 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran)
 	}
 	size_t id_a = a->rid;
 	size_t id_b = b->rid;
-	i_t = (x[id_a] - x[id_b]) / r->value;
-	//i_t = (a->value - b->value) / r->value;
+	//i_t = (x[id_a] - x[id_b]) / r->value;
+	i_t = (a->value - b->value) / r->value;
         //if(b->value != x[id_b] || a->value != x[id_a])
-	   //clog<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<
+	 //  clog<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<
 	     //x[id_a]<<" "<<x[id_b]<<endl;
 
 	//clog<<"resiste r: "<<*r<<endl;
@@ -1091,7 +1093,7 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 // no current source at voltage source, save
 void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 	// find the non-ground node
-	// cout<<"vol net: "<<*net<<endl;
+	 cout<<"vol net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
@@ -1103,11 +1105,11 @@ void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 		// this node connects to a VDD and a current
 		// assert( feqn(1.0, b[id]) ); // the current should be stamped
 		b[id] = net->value;	    // modify it
-		// cout<<"b: ="<<id<<" "<<net->value<<endl;
+		 cout<<"b: ="<<id<<" "<<net->value<<endl;
 	}
 	else{
 		b[id] += net->value;
-		// cout<<"b: +"<<id<<" "<<net->value<<endl;
+		 cout<<"b: +"<<id<<" "<<net->value<<endl;
 	}
 }
 
@@ -1217,6 +1219,8 @@ void SubCircuit::make_A_symmetric_local(double *b){
 	for(it=ns.begin();it!=ns.end();it++){
 		if( (*it) == NULL ) continue;
 			assert( fzero((*it)->value) == false );
+		if((*it)->ab[0]->isS()==Y && (*it)->ab[1]->isS()==Y)
+			continue;
 		// node a points to X node
 		if((*it)->ab[0]->isS()==Y){
 			p = (*it)->ab[0]; q = (*it)->ab[1];
@@ -2273,8 +2277,8 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    A.set_row(replist.size());
    // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
-   A.merge();
-   clog<<A<<endl;
+   //A.merge();
+   //clog<<A<<endl;
    A.clear();
 }
 
@@ -2300,10 +2304,10 @@ double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
 	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    	xp = static_cast<double *> (x->x);
 	//clog<<"after solve tr. "<<endl;
-	for(size_t i=0;i<replist.size();i++){
-		clog<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
-		// cout<<"i, xp: "<<i<<" "<<xp[i]<<" "<<*replist[i]<<endl;
-	}
+	 for(size_t i=0;i<replist.size();i++){
+		 // cout<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
+		 clog<<"i, bnewp, xp: "<<i<<" "<<bnewp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	 }
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
@@ -3244,7 +3248,8 @@ void SubCircuit::rebuild_global_nets(){
 		sprintf(name, "_X_n%ld_%ld_%ld", ldolist[i]->nd_in->pt.z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_induc = new Node(nd_temp);
-		nd_ptr_induc->enableX();
+		nd_ptr_induc->enableX();	
+		nd_ptr_induc->value = nd_ptr_vol->value-0.01;
 		nd_ptr_induc->rep = nd_ptr_induc;
 		add_node(nd_ptr_induc);
 		net_type = INDUCTANCE;
@@ -3257,6 +3262,7 @@ void SubCircuit::rebuild_global_nets(){
 		extract_node(name, nd_temp);
 		Node *nd_ptr_resis = new Node(nd_temp);
 		nd_ptr_resis->rep = nd_ptr_resis;
+		nd_ptr_resis->value = nd_ptr_vol->value-0.01;
 		add_node(nd_ptr_resis);
 		net_type = RESISTOR;
 		Net *net_resis = new Net(net_type, 
@@ -3428,8 +3434,8 @@ void SubCircuit::create_current_LDO_graph(){
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
 	int iter = 0;
 	double THRES = VDD_G * 0.1;
-	for(size_t i=0;i<ldolist.size();i++)
-		clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
+	// for(size_t i=0;i<ldolist.size();i++)
+		//clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
 	// while(max_IRdrop > THRES && )
@@ -3572,6 +3578,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		extract_node(name, nd_temp);
 		Node *nd_ptr_induc = new Node(nd_temp);
 		nd_ptr_induc->enableX();
+		nd_ptr_induc->value = nd_ptr_vol->value-0.01;
 		nd_ptr_induc->rep = nd_ptr_induc;
 		add_node(nd_ptr_induc);
 		net_type = INDUCTANCE;
@@ -3586,6 +3593,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		sprintf(name, "n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
 		extract_node(name, nd_temp);
 		Node *nd_ptr_resis = new Node(nd_temp);
+		nd_ptr_resis->value = nd_ptr_vol->value-0.01;
 		nd_ptr_resis->rep = nd_ptr_resis;
 		add_node(nd_ptr_resis);
 		net_type = RESISTOR;

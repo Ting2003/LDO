@@ -207,11 +207,13 @@ void Circuit::solve(Tran &tran){
 	ckt_l.link_ckt_nodes(tran);
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
+	clog<<endl;
 	// go along all time steps
 	for(double time =0; time < tran.tot_t 
 			&& iter <1; 
 			time += tran.step_t){
 		// solve one time step with LDO
+		clog<<"before solve TR LDO. "<<endl;
 		solve_TR_LDO(tran, time);
 		ckt_l.clear_flags();
 		iter++;
@@ -2217,6 +2219,7 @@ void Circuit::solve_DC(){
 
 // solve one transient step with different LDO numbers
 void Circuit::solve_TR_LDO(Tran &tran, double time){
+	// clog<<ckt_l.nodelist<<endl;
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
@@ -2246,21 +2249,19 @@ void Circuit::solve_TR(Tran &tran, double time){
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_g.modify_global_nets();
-		// before stamp matrix, need to clean bp and bnewp
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
-		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
 		clog<<"after solve local "<<endl;
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
+
+		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 		// restamp global rhs with ldo current
-		ckt_g.modify_ldo_rhs_TR();
-	
-		// diff_g = 0;
+		ckt_g.modify_ldo_rhs_TR();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
-		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;
@@ -2482,6 +2483,7 @@ void Circuit::solve_DC_LDO(){
 	// need to add more LDOs
 	//if(max_IRdrop > THRES)
 		add_LDO_DC();
+		clog<<"after add_LDO_DC. "<<endl;
 }
 
 void Circuit::relocate_LDOs(){
@@ -2558,6 +2560,8 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+
+	clog<<ckt_g.nodelist<<endl;
 	clog<<"after create local and global ldo nets. "<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
