@@ -2217,9 +2217,6 @@ void Circuit::solve_DC(){
 
 // solve one transient step with different LDO numbers
 void Circuit::solve_TR_LDO(Tran &tran, double time){
-	// clear bnew before each time step
-	ckt_l.reset_bnew();
-	ckt_g.reset_bnew();
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
@@ -2519,9 +2516,6 @@ void Circuit::add_LDO_DC(){
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
-	// need to resize and clear b and x because of extra LDOs
-	// ckt_l.reconfigure_DC();
-	// ckt_g.reconfigure_DC();
 
 	// clog<<"final nodelist: "<<ckt_g.nodelist.size()<<endl;
 	solve_DC();

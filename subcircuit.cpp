@@ -3639,9 +3639,3 @@ void SubCircuit::modify_global_nets(){
 		// clog<<"global nets: "<<*net<<endl;
 	}
 }
-
-void SubCircuit::reset_bnew(){
-	size_t n = replist.size();
-	bnew = cholmod_zeros(n,1,CHOLMOD_REAL, cm);
-	bnewp = static_cast<double *>(bnew->x);
-}

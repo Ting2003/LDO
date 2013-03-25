@@ -131,7 +131,6 @@ public:
 	void rebuild_global_nets();
 	void modify_local_nets();
 	void modify_global_nets();
-	void reset_bnew();
 
 	void build_candi_graph();
 	double compute_stand_dev();
