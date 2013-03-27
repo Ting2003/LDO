@@ -570,6 +570,7 @@ void SubCircuit::modify_rhs_tr_0(Tran &tran){
 		}
 	}
 }
+
 // update rhs by transient nets
 void SubCircuit::modify_rhs_tr(double * b, double *x){
 	for(int type=0;type<NUM_NET_TYPE;type++){
@@ -1140,13 +1141,14 @@ void SubCircuit:: save_tr_nodes(Tran &tran, double *x){
 }
 
 // assign value back to transient nodes
-void SubCircuit:: save_ckt_nodes(Tran &tran, double *x){
+void SubCircuit:: save_ckt_nodes(Tran &tran){
    size_t id=0;
+   // clog<<"ckt nodes number: "<<ckt_nodes.size()<<endl;
    for(size_t j=0;j<ckt_nodes.size();j++){
-	 //cout<<"nodes: "<<ckt_nodes[j].node->name<<endl;
+	 // clog<<"nodes: "<<ckt_nodes[j].node->name<<" / ";
          id = ckt_nodes[j].node->rep->rid;
-	 //cout<<"value: "<<x[id]<<endl;
-         ckt_nodes[j].value.push_back(x[id]);
+	 // clog<<"value: "<<xp[id]<<endl;
+         ckt_nodes[j].value.push_back(xp[id]);
       }
 }
 
@@ -2236,7 +2238,7 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    A.clear();
 }
 
-// stmap matrix and rhs, decomp matrix for DC
+// stamp matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){
    A.clear();
    size_t n = replist.size();
@@ -3512,12 +3514,16 @@ void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
 
 // reset b
 void SubCircuit::reset_b(){
+   size_t n = replist.size();
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 }
 
 // reset bnew
 void SubCircuit::reset_bnew(){
+   size_t n = replist.size();
    bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bnewp = static_cast<double *> (bnew->x);
 }
+
+
