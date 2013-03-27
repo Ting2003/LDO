@@ -2221,6 +2221,8 @@ void Circuit::solve_TR_LDO(Tran &tran, double time){
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
 	double THRES = VDD_G * 0.1;
+
+	clog<<endl<<" before add LDO TR. "<<endl;
 	// if(max_IRdrop > THRES)
 		add_LDO_TR(tran, time);
 }
@@ -2243,7 +2245,6 @@ void Circuit::solve_TR(Tran &tran, double time){
 	ckt_l.modify_rhs_tr_0(tran);
 	ckt_g.modify_rhs_tr_0(tran);
 
-	clog<<"enter solve_TR. "<<endl;
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
 		// then update netlist
 		ckt_l.modify_local_nets();
@@ -2263,11 +2264,13 @@ void Circuit::solve_TR(Tran &tran, double time){
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs_TR();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
-		clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;
 	}
+	locate_maxIRdrop();		
+	clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
 
 // readin LDO lookup table
@@ -2567,6 +2570,6 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	solve_TR(tran, time);
 	// clog<<"after solve_ITR. "<<endl;
 	max_IRdrop = locate_maxIRdrop();
-	clog<<"new max_IR drop for TR: "<<max_IRdrop<<endl;
+	clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }

@@ -707,7 +707,7 @@ void SubCircuit::stamp_capacitance_dc(Matrix & A, Net * net){
 
 // stamp inductance Geq = delta_t/(2L)
 void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
-	 cout<<"induc net: "<<*net<<endl;
+	// cout<<"induc net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -720,11 +720,11 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	if( nk->isS()!=Y  && !nk->is_ground()) {
 		// -1 is to clear formal inserted 1 at (k,k)
 		A.push_back(k,k, Geq);
-		 cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
+		// cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		//clog<<nl->isS()<<endl;
 		if(!nl->is_ground()&& nl->isS()!=Y && k>l){
 			A.push_back(k,l,-Geq);
-		         cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+		        // cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
@@ -906,10 +906,7 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 	// temp = tran.step_t / (2*net->value)*(x[l] - x[k]);
 	//clog<<"Geq: "<<tran.step_t / (2*net->value)<<endl;
 	// temp = net->value *(x[l] - x[k]);	
-	//if(nk->value != x[k] || nl->value != x[l])
-	   // clog<<"k, l, x_k, x_l: "<<nk->value<<" "<<nl->value<<" "<<
-	    // x[k]<<" "<<x[l]<<endl;
-
+	
 	//clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
 	
 	Net *r = nk->nbr[BOTTOM];
@@ -932,7 +929,7 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
         //clog<<*b<<" "<<id_b<<endl;
 	Ieq  = i_t + temp;
 	net->Ieq = Ieq;
-	cout<<"Ieq: "<<Ieq<<endl;
+	// cout<<"Ieq: "<<Ieq<<endl;
 	/*if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
@@ -2295,7 +2292,7 @@ double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
-	clog<<"diff: "<<diff<<endl;
+	// clog<<"diff: "<<diff<<endl;
 	// cout<<nodelist<<endl;
 	return diff;
 }
@@ -3407,6 +3404,7 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	long ldo_z = ldolist[0]->nd_in->pt.z;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
+		sstream.str("");
 		sstream<<"n"<<ldo_z<<"_"<<nd->pt.x<<"_"<<nd->pt.y;
 		nd_in = get_node(sstream.str());
 		// clog<<"nd:"<<*nd<<" nd_in: "<<*nd_in<<endl;
