@@ -210,16 +210,15 @@ void Circuit::solve(Tran &tran){
 	// return;
 	
 	// link ckt nodes for local circuit
-	ckt_l.link_ckt_nodes(tran);
+	// ckt_l.link_ckt_nodes(tran);
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
 	// go along all time steps
 	for(double time =0; time < tran.tot_t 
-			&& iter <1; 
+			&& iter <10; 
 			time += tran.step_t){
 		// solve one time step with LDO
-		clog<<"before solve TR LDO. "<<endl;
 		solve_TR_LDO(tran, time);
 		ckt_l.clear_flags();
 		iter++;
@@ -2220,11 +2219,14 @@ void Circuit::solve_TR_LDO(Tran &tran, double time){
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
+	clog<<endl<<"====== time: "<<time<<" ===="<<endl;
+	clog<<"Initial IR is: "<<max_IRdrop<<endl;
 	double THRES = VDD_G * 0.1;
 
-	clog<<endl<<" before add LDO TR. "<<endl;
 	// if(max_IRdrop > THRES)
 		add_LDO_TR(tran, time);
+
+	clog<<"optimized IR is: "<<max_IRdrop<<endl;
 }
 
 // solve circuit with fixed LDO for one time step
@@ -2270,7 +2272,7 @@ void Circuit::solve_TR(Tran &tran, double time){
 		iter++;
 	}
 	locate_maxIRdrop();		
-	clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
+	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
 
 // readin LDO lookup table
@@ -2556,6 +2558,9 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	vector<Pad*> LDO_pad_vec;
 	// find the node where new LDOs shoudl go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	// if no room to add new LDO pad, return
+	if(LDO_pad_vec.size()==0)
+		return;
 	// clog<<"after extract add LDO sc info. "<<endl;
 	// clog<<"original global replist size: "<<replist.size()<<endl;
 	// rebuild local and global net
@@ -2564,12 +2569,14 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 
 	// clog<<ckt_g.nodelist<<endl;
 	// clog<<"after create local and global ldo nets. "<<endl;
+	for(size_t i=0;i<LDO_pad_vec.size();i++)
+		clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
 	// clog<<"create new LDOs. "<<endl;
 	solve_TR(tran, time);
 	// clog<<"after solve_ITR. "<<endl;
 	max_IRdrop = locate_maxIRdrop();
-	clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
+	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }
