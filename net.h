@@ -21,6 +21,8 @@ public:
 	int id;		// index of each net
 	// store the pulse parameter for current net
 	double V1, V2, TD, Tr, Tf, PW, Period;
+	double Ieq; // stores the equivalent current
+		    // needed for the L and C nets
 
 };
 

@@ -224,16 +224,20 @@ private:
 	void stamp_current_tr_net(double *b, Net * net, double &time);
 	void stamp_capacitance_tr(Matrix & A, Net * net, Tran &tran);
 	void stamp_inductance_tr(Matrix & A, Net * net, Tran &tran);
-	void modify_rhs_tr_0(double *b, double *xp, Tran &tran);
+	void modify_rhs_tr_0(Tran &tran);
 
 	void modify_rhs_tr(double *b, double *xp);
 	void set_eq_induc(Tran &tran);
 	void set_eq_capac(Tran &tran);
-	void modify_rhs_c_tr_0(Net *net, double *rhs, double *xp, Tran &tran);
-	void modify_rhs_l_tr_0(Net *net, double *rhs, double *xp, Tran &tran);
+	void modify_rhs_c_tr_0(Net *net, Tran &tran);
+	void modify_rhs_l_tr_0(Net *net, Tran &tran);
 
-	void modify_rhs_c_tr(Net *net, double *rhs, double *xp);
-	void modify_rhs_l_tr(Net *net, double *rhs, double *xp);
+	void modify_rhs_c_tr(Net *net, double *xp, double *x);
+	void modify_rhs_l_tr(Net *net, double *xp, double *x);
+	void modify_rhs_Ieq(double *rhs);
+	void modify_rhs_Ieq_c(Net *net, double *rhs);
+	void modify_rhs_Ieq_l(Net *net, double *rhs);
+
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo);

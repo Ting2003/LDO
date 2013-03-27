@@ -556,16 +556,16 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 }
 
 // update rhs by transient nets
-void SubCircuit::modify_rhs_tr_0(double * b, double *x, Tran &tran){
+void SubCircuit::modify_rhs_tr_0(Tran &tran){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		if(type ==CAPACITANCE){	
 			for(size_t i=0;i<ns.size();i++)
-				modify_rhs_c_tr_0(ns[i], b, x, tran);
+				modify_rhs_c_tr_0(ns[i], tran);
 		}
 		else if(type == INDUCTANCE){
 			for(size_t i=0;i<ns.size();i++){
-				modify_rhs_l_tr_0(ns[i], b, x, tran);	
+				modify_rhs_l_tr_0(ns[i], tran);	
 			}
 		}
 	}
@@ -774,7 +774,7 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 
 // add Ieq into rhs
 // Ieq = i(t) + 2*C / delta_t *v(t)
-void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran){
+void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 	double i_t = 0;
 	double temp = 0;
 	double Ieq = 0;
@@ -820,16 +820,17 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, double * rhs, double *x, Tran &tran
 			(nk->value - nl->value);
 		
 	Ieq  = (i_t + temp);
+	net->Ieq = Ieq;
 	//clog<< "Ieq is: "<<Ieq<<endl;
 	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
-	if(!nk->is_ground()&& nk->isS()!=Y){
+	/*if(!nk->is_ground()&& nk->isS()!=Y){
 		 rhs[k] += Ieq;	// for VDD SubCircuit
 		// clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
 	}
 	if(!nl->is_ground()&& nl->isS()!=Y){
 		 rhs[l] += -Ieq; 
 		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
-	}
+	}*/
 }
 
 // add Ieq into rhs
@@ -885,7 +886,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 
 // add Ieq into rhs
 // Ieq = i(t) + delta_t / (2*L) *v(t)
-void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran){
+void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 	//  clog<<"l net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
@@ -923,28 +924,23 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, double *rhs, double *x, Tran &tran)
 	size_t id_b = b->rid;
 	//i_t = (x[id_a] - x[id_b]) / r->value;
 	i_t = (a->value - b->value) / r->value;
-        //if(b->value != x[id_b] || a->value != x[id_a])
-	 //  clog<<"a, b, x_a, x_b: "<<a->value<<" "<<b->value<<" "<<
-	     //x[id_a]<<" "<<x[id_b]<<endl;
-
-	//clog<<"resiste r: "<<*r<<endl;
-	//clog<<*a<<" "<<*b<<endl;
-	// clog<<"a, b, r, i_t: "<<a->value<<" "<<b->value<<" "<<
-		// r->value<<" "<<i_t<<endl;
-       
-        // push inductance nodes into node_set_x
+	// clog<<"a->value, b->value, r->value, it: "<<a->value<<" "<<b->value<<" "<<r->value<<" "<<i_t<<endl;
+	// clog<<"temp: "<<temp<<endl;
+                
+	// push inductance nodes into node_set_x
         //clog<<*nk<<" "<<k<<endl;
         //clog<<*b<<" "<<id_b<<endl;
 	Ieq  = i_t + temp;
-	// clog<<"Ieq: "<<Ieq<<endl;
-	if(nk->isS() !=Y && !nk->is_ground()){
+	net->Ieq = Ieq;
+	cout<<"Ieq: "<<Ieq<<endl;
+	/*if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
 	}
 	if(nl->isS()!=Y && !nl->is_ground()){
 		 rhs[l] += -Ieq; // VDD SubCircuit
 		//clog<<*nl<<" "<<rhs[l]<<endl;
-	}
+	}*/
 }
 
 // add Ieq into rhs
@@ -1089,7 +1085,7 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 // no current source at voltage source, save
 void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 	// find the non-ground node
-	 cout<<"vol net: "<<*net<<endl;
+	// cout<<"vol net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
@@ -1101,11 +1097,11 @@ void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
 		// this node connects to a VDD and a current
 		// assert( feqn(1.0, b[id]) ); // the current should be stamped
 		b[id] = net->value;	    // modify it
-		 cout<<"b: ="<<id<<" "<<net->value<<endl;
+		// cout<<"b: ="<<id<<" "<<net->value<<endl;
 	}
 	else{
 		b[id] += net->value;
-		 cout<<"b: +"<<id<<" "<<net->value<<endl;
+		// cout<<"b: +"<<id<<" "<<net->value<<endl;
 	}
 }
 
@@ -2249,6 +2245,8 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    size_t n = replist.size();
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
+   bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bnewp = static_cast<double *> (bnew->x);
 
    stamp_by_set_tr(A, bp, tran);
    // clog<<"after stamp by set tr. "<<endl;
@@ -2260,11 +2258,10 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    	make_A_symmetric_tr(bp, tran);
    else
 	make_A_symmetric_local(bp);
-   A.set_row(replist.size());
    // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
-   //A.merge();
-   //clog<<A<<endl;
+   // A.merge();
+   // clog<<A<<endl;
    A.clear();
 }
 
@@ -2285,15 +2282,16 @@ double SubCircuit::solve_CK_with_decomp(){
 double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
 	for(size_t i=0;i<replist.size();i++)
 		bnewp[i] = bp[i];
-	modify_rhs_tr_0(bnewp, xp, tran);
+	// modify rhs with Ieq
+	modify_rhs_Ieq(bnewp);
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, bnew, cm);
    	xp = static_cast<double *> (x->x);
 	//clog<<"after solve tr. "<<endl;
-	 for(size_t i=0;i<replist.size();i++){
-		 // cout<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
-		 clog<<"i, bnewp, xp: "<<i<<" "<<bnewp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
-	 }
+	//for(size_t i=0;i<replist.size();i++){
+		 // clog<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
+		// cout<<"i, bnewp, xp: "<<i<<" "<<bnewp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	 //}
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
@@ -2330,7 +2328,7 @@ void SubCircuit::update_ldo_current(){
 			ldolist[i]->current;
 		// assign new current
 		ldolist[i]->current = current;
-		//clog<<"ldo current: "<<current<<endl;
+		// clog<<"ldo old / new current: "<<ldolist[i]->current_old<<" "<<current<<endl;
 	}
 }
 
@@ -3393,11 +3391,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 
 // need to create all the RLVI nets
 void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
-	Node *nd;
-	Node nd_temp;
-	double vol_value = 0;
-	double induc_value = 0;
-	double resis_value = 0;
+	Node *nd, *nd_in;
 	double current_value = 0;
 	Net *net;
 	Node *gnd = NULL;
@@ -3407,83 +3401,24 @@ void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 			break;
 		}
 
-	char name[MAX_BUF];
-
-	for(int type =0 ;type <NUM_NET_TYPE;type++){
-		NetList &ns = net_set[type];
-		if(ns.size()<=0) continue;
-		net = ns[0];
-		// if(net != NULL)
-			// clog<<"net: "<<*net<<endl;
-		if(net->type == VOLTAGE)
-			vol_value = net->value;
-		else if(net->type == INDUCTANCE)
-			induc_value = net->value;
-		else if(net->type == RESISTOR)
-			resis_value = net->value;
-		else if(net->type == CURRENT)
-			current_value = net->value;
-	}
-
+	stringstream sstream;
 	// Node *gnd = nodelist[nodelist.size()-1];
 	NET_TYPE net_type;
 	long ldo_z = ldolist[0]->nd_in->pt.z;
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
-		sprintf(name, "_Y_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
-		extract_node(name, nd_temp);
-		Node *nd_ptr_vol = new Node(nd_temp);
-		nd_ptr_vol->enableY();
-		nd_ptr_vol->value = pad_set[0]->node->value;
-		nd_ptr_vol->rep = nd_ptr_vol;
-		add_node(nd_ptr_vol);
-		// first create voltage net
-		net_type = VOLTAGE;
-		Net *net_vol = new Net(net_type, vol_value, nd_ptr_vol, gnd);
-		// clog<<"new vol net: "<<*net_vol<<endl;
-		nd_ptr_vol->nbr[TOP] = net_vol;
-		add_net(net_vol);
-		// update_node(net_vol);
-		// then create inductance net
-		sprintf(name, "_X_n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
-		extract_node(name, nd_temp);
-		Node *nd_ptr_induc = new Node(nd_temp);
-		nd_ptr_induc->enableX();
-		nd_ptr_induc->value = nd_ptr_vol->value-0.01;
-		nd_ptr_induc->rep = nd_ptr_induc;
-		add_node(nd_ptr_induc);
-		net_type = INDUCTANCE;
-		Net *net_induc = new Net(net_type, induc_value, nd_ptr_induc, nd_ptr_vol);
-		add_net(net_induc);
-
-		// clog<<"new induc net: "<<*net_induc<<endl;
-		nd_ptr_induc->nbr[TOP] = net_induc;
-		nd_ptr_vol->nbr[BOTTOM] = net_induc;
-		// update_node(net_induc);
-		// then create resistance net 
-		sprintf(name, "n%ld_%ld_%ld", ldo_z, nd->pt.x, nd->pt.y);
-		extract_node(name, nd_temp);
-		Node *nd_ptr_resis = new Node(nd_temp);
-		nd_ptr_resis->value = nd_ptr_vol->value-0.01;
-		nd_ptr_resis->rep = nd_ptr_resis;
-		add_node(nd_ptr_resis);
-		net_type = RESISTOR;
-		Net *net_resis = new Net(net_type, 
-			resis_value, nd_ptr_resis, nd_ptr_induc);
-		add_net(net_resis);
-
-		// clog<<"new resis net: "<<*net_resis<<endl;
-		nd_ptr_resis->nbr[TOP] = net_resis;
-		nd_ptr_induc->nbr[BOTTOM] = net_resis;
+		sstream<<"n"<<ldo_z<<"_"<<nd->pt.x<<"_"<<nd->pt.y;
+		nd_in = get_node(sstream.str());
+		// clog<<"nd:"<<*nd<<" nd_in: "<<*nd_in<<endl;
 		// update_node(net_resis);
 		// then create current net 
 		net_type = CURRENT;
 		Net *net_current = new Net(net_type, 
-			current_value, nd_ptr_resis, gnd);
+			current_value, nd_in, gnd);
 		add_net(net_current);
 
 		// clog<<"new cur net: "<<*net_current<<endl;
-		nd_ptr_resis->nbr[BOTTOM] = net_current;
+		nd_in->nbr[BOTTOM] = net_current;
 		//update_node(net_current);
 	}
 }
@@ -3516,5 +3451,63 @@ void SubCircuit::modify_global_nets(){
 		}
 		net->value = ldolist[i]->current;	
 		// clog<<"global nets: "<<*net<<endl;
+	}
+}
+
+void SubCircuit::modify_rhs_Ieq(double *rhs){
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		if(type ==CAPACITANCE){	
+			for(size_t i=0;i<ns.size();i++)
+				modify_rhs_Ieq_c(ns[i], rhs);
+		}
+		else if(type == INDUCTANCE){
+			for(size_t i=0;i<ns.size();i++){
+				modify_rhs_Ieq_l(ns[i], rhs);	
+			}
+		}
+	}
+}
+
+void SubCircuit::modify_rhs_Ieq_c(Net *net, double *rhs){
+	Node *nk = net->ab[0]->rep;
+	Node *nl = net->ab[1]->rep;
+        // nk point to Z node
+        if(nk->isS() != Z){
+		swap<Node *>(nk, nl);
+		swap<Node*>(net->ab[0], net->ab[1]);
+	}
+	//clog<<"nk, nl: "<<*nk<<" "<<*nl<<endl;
+	size_t k = nk->rid;
+	size_t l = nl->rid;
+	
+	if(!nk->is_ground()&& nk->isS()!=Y){
+		 rhs[k] += net->Ieq;	// for VDD SubCircuit
+		// clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
+	}
+	if(!nl->is_ground()&& nl->isS()!=Y){
+		 rhs[l] += -net->Ieq; 
+		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
+	}
+}
+
+void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
+	Node *nk = net->ab[0]->rep;
+	Node *nl = net->ab[1]->rep;
+	// nk point to X node
+	if(nk->isS() !=X){ 
+		swap<Node*>(nk, nl);
+		swap<Node*>(net->ab[0], net->ab[1]);
+	}
+	size_t k = nk->rid;
+	size_t l = nl->rid;
+
+	if(nk->isS() !=Y && !nk->is_ground()){
+		 rhs[k] += net->Ieq; // VDD SubCircuit
+		//clog<<*nk<<" "<<rhs[k]<<endl;
+	}
+	if(nl->isS()!=Y && !nl->is_ground()){
+		 rhs[l] += -net->Ieq; // VDD SubCircuit
+		//clog<<*nl<<" "<<rhs[l]<<endl;
 	}
 }

@@ -2235,26 +2235,31 @@ void Circuit::solve_TR(Tran &tran, double time){
 	for(size_t i=0;i<ckt_l.nodelist.size()-1;i++)
 		clog<<"i, Ynode?: "<<i<<" "<<*ckt_l.nodelist[i]<<" "<<ckt_l.nodelist[i]->isS()<<endl;
 	*/
-	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 1){
-		// update and sort nodes
-		ckt_l.solve_init(true);
-		ckt_g.solve_init(false);
-		// clear and resize bnew before each time step
-		// ckt_l.reconfigure_DC();
-		// ckt_g.reconfigure_DC();
 
+	// only need to stamp matrix once per t step
+	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+
+	// stores the Ieq for both C and L nets 
+	ckt_l.modify_rhs_tr_0(tran);
+	ckt_g.modify_rhs_tr_0(tran);
+
+	clog<<"enter solve_TR. "<<endl;
+	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_g.modify_global_nets();
+		// clog<<"after modify local and global nets. "<<endl;
+
 		// stamp matrix, b and decomp matrix
 		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
+		// clog<<"after stamp matrix. "<<endl;
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
-		clog<<"after solve local "<<endl;
+		// clog<<"after solve local "<<endl;
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
+		// clog<<"ckt_g nodelist: "<<ckt_g.nodelist<<endl;
 
-		ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs_TR();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
@@ -2548,19 +2553,19 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	vector<Pad*> LDO_pad_vec;
 	// find the node where new LDOs shoudl go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
-	clog<<"after extract add LDO sc info. "<<endl;
-	clog<<"original global replist size: "<<replist.size()<<endl;
+	// clog<<"after extract add LDO sc info. "<<endl;
+	// clog<<"original global replist size: "<<replist.size()<<endl;
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 
-	clog<<ckt_g.nodelist<<endl;
-	clog<<"after create local and global ldo nets. "<<endl;
+	// clog<<ckt_g.nodelist<<endl;
+	// clog<<"after create local and global ldo nets. "<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
-	clog<<"create new LDOs. "<<endl;
+	// clog<<"create new LDOs. "<<endl;
 	solve_TR(tran, time);
-	clog<<"after solve_ITR. "<<endl;
+	// clog<<"after solve_ITR. "<<endl;
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"new max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
