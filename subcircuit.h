@@ -238,6 +238,9 @@ private:
 	void modify_rhs_Ieq_c(Net *net, double *rhs);
 	void modify_rhs_Ieq_l(Net *net, double *rhs);
 
+	void reset_b();
+	void reset_bnew();
+
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo);

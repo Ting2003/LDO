@@ -3509,3 +3509,15 @@ void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
 		//clog<<*nl<<" "<<rhs[l]<<endl;
 	}
 }
+
+// reset b
+void SubCircuit::reset_b(){
+   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bp = static_cast<double *> (b->x);
+}
+
+// reset bnew
+void SubCircuit::reset_bnew(){
+   bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   bnewp = static_cast<double *> (bnew->x);
+}

@@ -209,8 +209,6 @@ void Circuit::solve(Tran &tran){
 	
 	// return;
 	
-	// link ckt nodes for local circuit
-	// ckt_l.link_ckt_nodes(tran);
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
@@ -263,6 +261,38 @@ void Circuit::build_subcircuit(){
 
 	// mark the geometry with occupy info
 	ckt_l.mark_geo_occupation();
+}
+
+// verify final solution with optimized LDOs
+void Circuit::verify_solve(Tran &tran){
+   size_t n = replist.size();	// replist dosn't contain ground node
+   if( n == 0 ) return;		// No node    
+   ckt_l.build_pad_set();
+   ckt_g.build_pad_set();
+
+   ckt_l.reset_b();
+   ckt_g.reset_b();
+   // first solve DC solution
+   solve_DC();
+
+   // link ckt nodes for local circuit
+   ckt_l.link_ckt_nodes(tran);
+   
+   ckt_l.reset_bnew();
+   ckt_g.reset_bnew();
+   // build the solver for 1st time step
+   double time = 0;
+   ckt_l.stamp_decomp_matrix_TR(tran, time, true);
+   ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+   // stores the Ieq for both C and L nets 
+   ckt_l.modify_rhs_tr_0(tran);
+   ckt_g.modify_rhs_tr_0(tran);
+
+   time += tran.step_t;
+   for(; time < tran.tot_t;
+		   time += tran.step_t){
+   	verify_TR(tran, time);
+   }
 }
 
 #if 0
@@ -2184,6 +2214,8 @@ void Circuit::solve_DC(){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
+
+	ckt_g.stamp_decomp_matrix_DC(false);
 	// still optimize LDO, either increase 
 	// LDO number or change their locations
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
@@ -2195,7 +2227,6 @@ void Circuit::solve_DC(){
 		// global grid only need stamp matrix once: Ting Yu
 		// need modify
 		ckt_l.stamp_decomp_matrix_DC(true);
-		ckt_g.stamp_decomp_matrix_DC(false);
 		
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
@@ -2477,6 +2508,7 @@ void Circuit::solve_DC_LDO(){
 	}
 	// switch to the best ldo
 	recover_best_ldo(nd_min);
+	ldo_best.clear();
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"final max_IR: "<<max_IRdrop<<endl;
@@ -2579,4 +2611,46 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	max_IRdrop = locate_maxIRdrop();
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
+}
+
+// verify the transient simulation
+void Circuit::verify_TR(Tran &tran, double time){
+	int iter=0;
+	double diff_l = 1;
+	double diff_g = 1;
+	
+	// only need to stamp matrix once per t step
+	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+
+	// stores the Ieq for both C and L nets 
+	ckt_l.modify_rhs_tr_0(tran);
+	ckt_g.modify_rhs_tr_0(tran);
+
+	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
+		// then update netlist
+		ckt_l.modify_local_nets();
+		ckt_g.modify_global_nets();
+		// clog<<"after modify local and global nets. "<<endl;
+
+		// stamp matrix, b and decomp matrix
+		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
+		// clog<<"after stamp matrix. "<<endl;
+		// solve eq with decomped matrix
+		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
+		// clog<<"after solve local "<<endl;
+		// calculate ldo current from ckt_l
+		ckt_l.update_ldo_current();
+		// clog<<"ckt_g nodelist: "<<ckt_g.nodelist<<endl;
+
+		// restamp global rhs with ldo current
+		ckt_g.modify_ldo_rhs_TR();	
+		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
+		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// then throw into ldo lookup table
+		update_ldo_vout();
+		iter++;
+	}
+	locate_maxIRdrop();		
+	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
+	
 }
