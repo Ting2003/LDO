@@ -206,19 +206,20 @@ private:
 	void count_merge_nodes();
 
 	// methods of stamping the matrix
-	void stamp_by_set(Matrix & A, double * b);
+	void stamp_by_set(Matrix & A);
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
-	void stamp_VDD(Matrix & A, double *b, Net * net);
-	void stamp_rhs_DC(double time, bool local_flag);
+	void stamp_VDD(Matrix & A, Net * net);
+	void stamp_rhs_DC(bool local_flag);
 	void stamp_rhs_VDD(double *bp, Net *net);
 	void restamp_ldo_rhs(double time, bool local_flag);
 	void stamp_induc_rhs_dc(double *b, Net * net);
 	void release_resources();
-	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
+	void stamp_inductance_dc(Matrix & A, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);
 
-	void stamp_by_set_tr(Matrix & A, double *b, Tran &tran);
+	void stamp_by_set_tr(Matrix & A, Tran &tran);
+	void stamp_rhs_tr(bool local_flag, double time, Tran &tran);
 	void stamp_resistor_tr(Matrix & A, Net * net);
 	void current_tr(Net *net, double &time);
 	

@@ -451,7 +451,7 @@ void SubCircuit::copy_node_voltages(double * x, size_t &size, bool from){
 
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
-void SubCircuit::stamp_by_set(Matrix & A, double * b){
+void SubCircuit::stamp_by_set(Matrix & A){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -462,8 +462,6 @@ void SubCircuit::stamp_by_set(Matrix & A, double * b){
 			}
 			break;
 		case CURRENT:
-			for(size_t i=0;i<ns.size();i++)
-				stamp_current(b, ns[i]);
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
@@ -471,7 +469,7 @@ void SubCircuit::stamp_by_set(Matrix & A, double * b){
 				    !ns[i]->ab[0]->is_ground() &&
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
-				stamp_VDD(A, b, ns[i]);
+				stamp_VDD(A, ns[i]);
 			}
 			break;
 		case CAPACITANCE:
@@ -480,7 +478,7 @@ void SubCircuit::stamp_by_set(Matrix & A, double * b){
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_dc(A, b, ns[i]);	
+				stamp_inductance_dc(A, ns[i]);	
 			}
 			break;
 		default:
@@ -516,7 +514,7 @@ void SubCircuit::stamp_current_tr_1(double *bp, double *b, double &time){
 }
 
 // stamp the transient matrix
-void SubCircuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
+void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -536,7 +534,7 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 				    !ns[i]->ab[0]->is_ground() &&
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
-				stamp_VDD(A, b, ns[i]);
+				stamp_VDD(A, ns[i]);
 			}
 			break;
 		case CAPACITANCE:
@@ -670,15 +668,13 @@ void SubCircuit::stamp_induc_rhs_dc(double *b, Net * net){
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
-		A.push_back(l,l, 1);
 		if(!nk->is_ground())
 		// general stamping
 		b[l] = b[k];
 	}
 }
 
-
-void SubCircuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
+void SubCircuit::stamp_inductance_dc(Matrix & A, Net * net){
 	//clog<<"net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
@@ -689,22 +685,10 @@ void SubCircuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
 	if( nk->isS()!=Y && !nk->is_ground()) {
 		A.push_back(k,k, 1);
 		// general stamping
-		if(!nl->is_ground())
-		// A.push_back(k,l,-1);
-		// make it symmetric
-			b[k] = b[l];
-		//clog<<"("<<k<<" "<<k<<" "<<1<<")"<<endl;
-		//clog<<"("<<k<<" "<<l<<" "<<-1<<")"<<endl;
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		A.push_back(l,l, 1);
-		if(!nk->is_ground())
-		// general stamping
-		// A.push_back(l,k,-1);
-		b[l] = b[k];
-		//clog<<"("<<l<<" "<<l<<" "<<1<<")"<<endl;
-		//clog<<"("<<l<<" "<<k<<" "<<-1<<")"<<endl;
 	}
 }
 
@@ -1104,26 +1088,14 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 
 // stamp a voltage source
 // no current source at voltage source, save
-void SubCircuit::stamp_VDD(Matrix & A, double * b, Net * net){
+void SubCircuit::stamp_VDD(Matrix & A, Net * net){
 	// find the non-ground node
 	// cout<<"vol net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
 	A.push_back(id, id, 1.0);
-	//cout<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;
-	Net * south = X->rep->nbr[SOUTH];
-	if( south != NULL &&
-	    south->type == CURRENT ){
-		// this node connects to a VDD and a current
-		// assert( feqn(1.0, b[id]) ); // the current should be stamped
-		b[id] = net->value;	    // modify it
-		// cout<<"b: ="<<id<<" "<<net->value<<endl;
-	}
-	else{
-		b[id] += net->value;
-		// cout<<"b: +"<<id<<" "<<net->value<<endl;
-	}
+	//cout<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;	
 }
 
 // decide transient step current values
@@ -2250,12 +2222,9 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 
-   stamp_by_set(A, bp);
+   stamp_by_set(A);
+   stamp_rhs_DC(local_flag);
 
-   if(local_flag == false)
-   	make_A_symmetric(bp);
-   else
-	make_A_symmetric_local(bp);
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
@@ -2270,16 +2239,9 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bnewp = static_cast<double *> (bnew->x);
 
-   stamp_by_set_tr(A, bp, tran);
+   stamp_by_set_tr(A, tran);
+   stamp_rhs_tr(local_flag, time, tran);
    // clog<<"after stamp by set tr. "<<endl;
-
-   if(local_flag == true)
-   	stamp_current_tr(bp, time);
-   // xp comes from dc solution
-   if(local_flag == false)
-   	make_A_symmetric_tr(bp, tran);
-   else
-	make_A_symmetric_local(bp);
    // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
    // A.merge();
@@ -3549,8 +3511,49 @@ void SubCircuit::reset_bnew(){
    bnewp = static_cast<double *> (bnew->x);
 }
 
+void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		switch(type){
+		case CURRENT:
+			if(local_flag == false){
+				// stamp global current
+				for(size_t i=0;i<ns.size();i++)
+					stamp_current(bp, ns[i]);
+			}
+			else{// stamp local current
+				for(size_t i=0;i<ns.size();i++)
+					stamp_current_tr_net(bp, ns[i], time);
+			}
+			break;
+		case VOLTAGE:
+			for(size_t i=0;i<ns.size();i++){
+				if( fzero(ns[i]->value)  && 
+				    !ns[i]->ab[0]->is_ground() &&
+				    !ns[i]->ab[1]->is_ground() )
+					continue; // it's a 0v via
+				stamp_rhs_VDD(bp, ns[i]);
+			}
+			break;
+		case RESISTOR:
+		case CAPACITANCE:
+		case INDUCTANCE:
+			break;
+		default:
+			report_exit("Unknwon net type\n");
+			break;
+		}
+	}
+	// make_A_symmetric
+	if(local_flag == false)
+		make_A_symmetric_tr(bp, tran);
+	else
+		make_A_symmetric_local(bp);
+
+}
+
 // restamp bp with LDO
-void SubCircuit::stamp_rhs_DC(double time, bool local_flag){
+void SubCircuit::stamp_rhs_DC(bool local_flag){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
