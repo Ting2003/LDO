@@ -333,7 +333,7 @@ int Parser::create_circuits(){
 }
 
 // parse ldo file
-void Parser::parse_ldo(char *filename, int *count){
+void Parser::parse_ldo(char *filename){
 	FILE * f;
 	f = fopen(filename, "r");
 	if( f == NULL ) 
@@ -349,7 +349,7 @@ void Parser::parse_ldo(char *filename, int *count){
 			break;
 		case 'l':
 		case 'L':
-			parse_ldo_line(line, count);
+			parse_ldo_line(line);
 			break;
 		case 'w':
 		case 'W':
@@ -415,7 +415,7 @@ void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
 		}
 	}
 	fclose(f);
-	parse_ldo(filename_ldo, count);
+	parse_ldo(filename_ldo);
 
 	// release map_node resource
 	/*for(size_t i=0;i<(*p_ckts).size();i++){
@@ -461,9 +461,9 @@ void Parser::parse_dot(char *line, Tran &tran){
 	}
 }
 
-void Parser::parse_ldo_line(char *line, int *count){
+void Parser::parse_ldo_line(char *line){
 	LDO *ldo_ptr;
-	int x, y;
+	// int x, y;
 	char *chs;
 	char *saveptr;
 	char sA[MAX_BUF];
@@ -481,7 +481,7 @@ void Parser::parse_ldo_line(char *line, int *count){
 	//char name[MAX_BUF];
 
 	ldo_ptr = new LDO();
-	Point *pt;
+	// Point *pt;
 	
 	chs = strtok_r(line, sep, &saveptr);
 	ldo_ptr->name = chs;

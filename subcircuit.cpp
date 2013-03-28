@@ -798,8 +798,8 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 		swap<Node*>(net->ab[0], net->ab[1]);
 	}
 	//clog<<"nk, nl: "<<*nk<<" "<<*nl<<endl;
-	size_t k = nk->rid;
-	size_t l = nl->rid;
+	//size_t k = nk->rid;
+	//size_t l = nl->rid;
 
 	Net *r = nk->nbr[TOP];
 	Node *a = r->ab[0]->rep;
@@ -811,8 +811,8 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 	}
 	//clog<<"a, b: "<<*a<<" "<<*b<<endl;
 
-	size_t id_a = a->rid;
-	size_t id_b = b->rid;
+	//size_t id_a = a->rid;
+	//size_t id_b = b->rid;
 	i_t = (b->value - a->value) / r->value;
 	// i_t = (x[id_b] - x[id_a]) / r->value;
 	       
@@ -906,8 +906,8 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 		swap<Node*>(nk, nl);
 		swap<Node*>(net->ab[0], net->ab[1]);
 	}
-	size_t k = nk->rid;
-	size_t l = nl->rid;
+	//size_t k = nk->rid;
+	//size_t l = nl->rid;
 	double Ieq = 0;
 
 	double i_t = 0;
@@ -928,8 +928,8 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 		swap<Node*>(a, b);
 		swap<Node*>(r->ab[0], r->ab[1]);
 	}
-	size_t id_a = a->rid;
-	size_t id_b = b->rid;
+	//size_t id_a = a->rid;
+	//size_t id_b = b->rid;
 	//i_t = (x[id_a] - x[id_b]) / r->value;
 	i_t = (a->value - b->value) / r->value;
 	// clog<<"a->value, b->value, r->value, it: "<<a->value<<" "<<b->value<<" "<<r->value<<" "<<i_t<<endl;
@@ -1139,7 +1139,7 @@ void SubCircuit:: save_tr_nodes(Tran &tran, double *x){
 }
 
 // assign value back to transient nodes
-void SubCircuit:: save_ckt_nodes(Tran &tran){
+void SubCircuit:: save_ckt_nodes(){
    size_t id=0;
    // clog<<"ckt nodes number: "<<ckt_nodes.size()<<endl;
    for(size_t j=0;j<ckt_nodes.size();j++){
@@ -1192,7 +1192,7 @@ void SubCircuit:: release_tr_nodes(Tran &tran){
    }
 }
 
-void SubCircuit:: release_ckt_nodes(Tran &tran){
+void SubCircuit:: release_ckt_nodes(){
    for(size_t j=0;j<ckt_nodes.size();j++){
          ckt_nodes[j].node = NULL;
    }
@@ -1823,7 +1823,7 @@ double SubCircuit::solve_CK_with_decomp(){
 }
 
 // solve eq with decomped matrix
-double SubCircuit::solve_CK_with_decomp_tr(Tran &tran, double time){
+double SubCircuit::solve_CK_with_decomp_tr(){
 	// modify rhs with Ieq
 	modify_rhs_Ieq(bp);
 	// solve the eq
@@ -2938,7 +2938,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd, *nd_in;
 	double current_value = 0;
-	Net *net;
+	// Net *net;
 	Node *gnd = NULL;
 	for(size_t i=0;i<nodelist.size();i++)
 		if(nodelist[i]->is_ground()){

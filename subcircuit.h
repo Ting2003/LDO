@@ -188,7 +188,7 @@ private:
 	void stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag);
 
 	double solve_CK_with_decomp();
-	double solve_CK_with_decomp_tr(Tran &tran, double time);
+	double solve_CK_with_decomp_tr();
 	void update_ldo_current();
 	void modify_ldo_rhs();
 	void modify_ldo_rhs_TR();
@@ -257,13 +257,13 @@ private:
 	//bool place_ldo(double ref_dist, double ref_x, double ref_y, LDO &ldo_ptr, vector<int> &candi_wspace);
 
 	void release_tr_nodes(Tran &tran);
-	void release_ckt_nodes(Tran &tran);
+	void release_ckt_nodes();
 	void print_ckt_nodes(Tran &tran);
 	void save_ckt_nodes_to_tr(Tran &tran);
 	void link_tr_nodes(Tran &tran);
 	void link_ckt_nodes(Tran &tran);
 	void save_tr_nodes(Tran &tran, double *x);
-	void save_ckt_nodes(Tran &tran);
+	void save_ckt_nodes();
 
 	void print_tr_nodes(Tran &tran);
 
