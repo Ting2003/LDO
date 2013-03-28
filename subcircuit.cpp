@@ -2221,7 +2221,13 @@ void SubCircuit::reconfigure_TR(){
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    stamp_by_set(A);
-   stamp_rhs_DC(local_flag);
+   stamp_rhs_DC();
+   // only make A symmetric for local
+   if(local_flag == true)
+	make_A_symmetric_local(bp);	
+   else
+	make_A_symmetric(bp);
+
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
@@ -2232,6 +2238,12 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    
    stamp_by_set_tr(A, tran);
    stamp_rhs_tr(local_flag, time, tran);
+   // make_A_symmetric
+   if(local_flag == false)
+	make_A_symmetric_tr(bp, tran);
+   else
+	make_A_symmetric_local(bp);
+
    // clog<<"after stamp by set tr. "<<endl;
    // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
@@ -3541,16 +3553,11 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 			break;
 		}
 	}
-	// make_A_symmetric
-	if(local_flag == false)
-		make_A_symmetric_tr(bp, tran);
-	else
-		make_A_symmetric_local(bp);
-
+	
 }
 
 // restamp bp with LDO
-void SubCircuit::stamp_rhs_DC(bool local_flag){
+void SubCircuit::stamp_rhs_DC(){
 	size_t n = replist.size();
    	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    	bp = static_cast<double *> (b->x);
@@ -3584,11 +3591,6 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 			break;
 		}
 	}	
-	// only make A symmetric for local
-	if(local_flag == true)
-		make_A_symmetric_local(bp);	
-	else
-		make_A_symmetric(bp);
 }
 
 
