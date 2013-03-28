@@ -1870,6 +1870,10 @@ void SubCircuit::update_ldo_current(){
 			// ldolist[i]->current;
 		// assign new current
 		ldolist[i]->current = current;
+		// also update the current net in ckt_g
+		Net *net_g = ldolist[i]->nd_in->nbr[BOTTOM];
+		if(net_g->type == CURRENT)
+			net_g->value = current;
 		// clog<<"ldo old / new current: "<<ldolist[i]->current_old<<" "<<current<<endl;
 	}
 }
@@ -1880,24 +1884,6 @@ void SubCircuit::update_ldo_vin(){
 		ldolist[i]->vin = ldolist[i]->nd_in->value;
 	}
 }*/
-
-#if 0
-// modify rhs with new current value of LDO
-void SubCircuit::modify_ldo_rhs(){
-	Node *nd;
-	size_t rid;
-	for(size_t i=0;i<ldolist.size();i++){
-		nd = ldolist[i]->nd_in;
-		rid = nd->rep->rid;
-		// clog<<"old bp: "<<bp[rid]<<endl;
-		// restore old current
-		bp[rid] += ldolist[i]->current_old;
-		// change into new one
-		bp[rid] -= ldolist[i]->current;
-		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
-	}
-}
-#endif
 
 // modify rhs with new current value of LDO
 void SubCircuit::modify_ldo_rhs(){
@@ -3142,32 +3128,6 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 		default:
 			report_exit("Unknwon net type\n");
 			break;
-		}
-	}
-	// only make A symmetric for local
-	if(local_flag == true)
-		make_A_symmetric_local(bp);	
-	else
-		make_A_symmetric(bp);
-}
-
-
-// restamp bp with LDO
-void SubCircuit::restamp_ldo_rhs(double time, bool local_flag){
-	// stamp voltage net
-	for(int type = 0; type < NUM_NET_TYPE;type++){
-		NetPtrVector & ns = net_set[type];
-		if(type == VOLTAGE){
-			for(size_t i=0;i<ns.size();i++){
-				if( fzero(ns[i]->value)  && 
-						!ns[i]->ab[0]->is_ground() &&
-						!ns[i]->ab[1]->is_ground() )
-					continue; // it's a 0v via
-				stamp_rhs_VDD(bp, ns[i]);
-			}
-		}else if(type == CURRENT){
-			for(size_t i=0;i<ns.size();i++)
-				stamp_current_tr_net(bp, ns[i], time);
 		}
 	}
 	// only make A symmetric for local

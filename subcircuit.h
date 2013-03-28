@@ -212,7 +212,6 @@ private:
 	void stamp_VDD(Matrix & A, Net * net);
 	void stamp_rhs_DC(bool local_flag);
 	void stamp_rhs_VDD(double *bp, Net *net);
-	void restamp_ldo_rhs(double time, bool local_flag);
 	void stamp_induc_rhs_dc(double *b, Net * net);
 	void release_resources();
 	void stamp_inductance_dc(Matrix & A, Net * net);

@@ -202,6 +202,11 @@ void Circuit::solve(Tran &tran){
 	// build pad set: local build LDO list - need update
 	ckt_l.build_pad_set();
 	ckt_g.build_pad_set();
+
+	// build new nets for the single LDo
+	ckt_l.build_local_nets();
+	ckt_g.build_global_nets();
+//#if 0	
 	// solving LDO location with DC
 	solve_DC_LDO();
 	// clear flag_visited for the pads
@@ -223,6 +228,7 @@ void Circuit::solve(Tran &tran){
 	}
 	clog<<endl;
 	clog<<"==== entering verfy stage ==== "<<endl;
+//#endif
 	verify_solve(tran);
 
 	// release resouces
@@ -2227,12 +2233,15 @@ void Circuit::solve_DC(){
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
 		// calculate ldo current from ckt_l
+		// update global current net
 		ckt_l.update_ldo_current();
 
+		ckt_g.reset_b();
 		ckt_g.modify_global_nets();
 	
 		// restamp global rhs with ldo current
-		ckt_g.modify_ldo_rhs();
+		ckt_g.stamp_rhs_DC(false);
+		// ckt_g.modify_ldo_rhs();
 		
 		diff_g = ckt_g.solve_CK_with_decomp();
 		// then throw into ldo lookup table
@@ -2289,16 +2298,18 @@ void Circuit::solve_TR(Tran &tran, double time){
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
+		ckt_g.reset_b();
 		ckt_g.modify_global_nets();
 		// restamp global rhs with ldo current
-		ckt_g.modify_ldo_rhs();	
+		// ckt_g.modify_ldo_rhs();	
+		ckt_g.stamp_rhs_tr(false, time, tran);
 		diff_g = ckt_g.solve_CK_with_decomp_tr();
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;
 	}
-	locate_maxIRdrop();		
+	// locate_maxIRdrop();		
 	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
 
@@ -2457,9 +2468,6 @@ double Circuit::locate_maxIRdrop(){
 void Circuit::solve_DC_LDO(){
 	map<Node*, double> ldo_best;
 	pair<Node*, double> ldo_pair;
-	// build new nets for the single LDo
-	ckt_l.build_local_nets();
-	ckt_g.build_global_nets();
 
 	// first get IR drop values
 	solve_DC();
@@ -2538,6 +2546,8 @@ void Circuit::add_LDO_DC(){
 	ckt_l.create_current_LDO_graph();
 	// first find the node new LDOs should go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	if(LDO_pad_vec.size()==0)
+		return;
 	// 7. when finish adding LDOs, 
 	// rebuild the local and global net and
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
@@ -2583,8 +2593,6 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	// if no room to add new LDO pad, return
 	if(LDO_pad_vec.size()==0)
 		return;
-	// clog<<"after extract add LDO sc info. "<<endl;
-	// clog<<"original global replist size: "<<replist.size()<<endl;
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
@@ -2616,16 +2624,16 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		// update ldo vol net values  
 		ckt_l.modify_local_nets();
 		// restamp bp
-		ckt_l.restamp_ldo_rhs(time, true);
+		ckt_l.stamp_rhs_tr(true, time, tran);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr();
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
+		ckt_g.reset_b();
 		ckt_g.modify_global_nets();
-
 		// modify global bp
-		ckt_g.modify_ldo_rhs();	
+		ckt_g.stamp_rhs_tr(false, time, tran);	
 		diff_g = ckt_g.solve_CK_with_decomp_tr();
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
@@ -2634,6 +2642,6 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 	}
 	// save ckt_nodes value for t step
 	ckt_l.save_ckt_nodes();
-	locate_maxIRdrop();		
+	// locate_maxIRdrop();		
 	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
