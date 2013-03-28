@@ -2630,7 +2630,7 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		// update ldo vol net values  
 		ckt_l.modify_local_nets();
 		// restamp bp
-		ckt_l.restamp_ldo_rhs(time);
+		ckt_l.restamp_ldo_rhs(time, true);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
 		// calculate ldo current from ckt_l

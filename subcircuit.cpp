@@ -655,6 +655,29 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
    }
 }
 
+void SubCircuit::stamp_induc_rhs_dc(double *b, Net * net){
+	//clog<<"net: "<<*net<<endl;
+	double G;
+	Node * nk = net->ab[0]->rep;
+	Node * nl = net->ab[1]->rep;
+	size_t k = nk->rid;
+	size_t l = nl->rid;
+	G = 1./net->value;
+	if( nk->isS()!=Y && !nk->is_ground()) {
+		// general stamping
+		if(!nl->is_ground())
+			b[k] = b[l];
+	}
+
+	if( nl->isS() !=Y && !nl->is_ground()) {
+		A.push_back(l,l, 1);
+		if(!nk->is_ground())
+		// general stamping
+		b[l] = b[k];
+	}
+}
+
+
 void SubCircuit::stamp_inductance_dc(Matrix & A, double *b, Net * net){
 	//clog<<"net: "<<*net<<endl;
 	double G;
@@ -3527,11 +3550,46 @@ void SubCircuit::reset_bnew(){
 }
 
 // restamp bp with LDO
-void SubCircuit::restamp_ldo_rhs(double time){
-	Node *nd;
-	size_t rid;
-	Net *net;
-	Node *na, *nb;
+void SubCircuit::stamp_rhs_DC(double time, bool local_flag){
+	for(int type=0;type<NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		switch(type){
+		case CURRENT:
+			for(size_t i=0;i<ns.size();i++)
+				stamp_current(bp, ns[i]);
+			break;
+		case VOLTAGE:
+			for(size_t i=0;i<ns.size();i++){
+				if( fzero(ns[i]->value)  && 
+				    !ns[i]->ab[0]->is_ground() &&
+				    !ns[i]->ab[1]->is_ground() )
+					continue; // it's a 0v via
+				stamp_rhs_VDD(bp, ns[i]);
+			}
+			break;
+		case RESISTOR:
+		case CAPACITANCE:
+			break;
+		case INDUCTANCE:
+			for(size_t i=0;i<ns.size();i++){
+				stamp_induc_rhs_dc(bp, ns[i]);	
+			}
+			break;
+		default:
+			report_exit("Unknwon net type\n");
+			break;
+		}
+	}	
+	// only make A symmetric for local
+	if(local_flag == true)
+		make_A_symmetric_local(bp);	
+	else
+		make_A_symmetric(bp);
+}
+
+
+// restamp bp with LDO
+void SubCircuit::restamp_ldo_rhs(double time, bool local_flag){
 	// stamp voltage net
 	for(int type = 0; type < NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
@@ -3541,7 +3599,7 @@ void SubCircuit::restamp_ldo_rhs(double time){
 						!ns[i]->ab[0]->is_ground() &&
 						!ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
-				stamp_ldo_VDD(bp, ns[i]);
+				stamp_rhs_VDD(bp, ns[i]);
 			}
 		}else if(type == CURRENT){
 			for(size_t i=0;i<ns.size();i++)
@@ -3549,11 +3607,14 @@ void SubCircuit::restamp_ldo_rhs(double time){
 		}
 	}
 	// only make A symmetric for local
-	make_A_symmetric_local(bp);	
+	if(local_flag == true)
+		make_A_symmetric_local(bp);	
+	else
+		make_A_symmetric(bp);
 }
 
 // stamp ldo VDD net into bp
-void SubCircuit::stamp_ldo_VDD(double *bp, Net *net){
+void SubCircuit::stamp_rhs_VDD(double *bp, Net *net){
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;

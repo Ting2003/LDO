@@ -210,8 +210,10 @@ private:
 	void stamp_resistor(Matrix & A, Net * net);
 	void stamp_current(double * b, Net * net);
 	void stamp_VDD(Matrix & A, double *b, Net * net);
-	void stamp_ldo_VDD(double *bp, Net *net);
-	void restamp_ldo_rhs(double time);
+	void stamp_rhs_DC(double time, bool local_flag);
+	void stamp_rhs_VDD(double *bp, Net *net);
+	void restamp_ldo_rhs(double time, bool local_flag);
+	void stamp_induc_rhs_dc(double *b, Net * net);
 	void release_resources();
 	void stamp_inductance_dc(Matrix & A, double *b, Net * net);
 	void stamp_capacitance_dc(Matrix & A, Net * net);
