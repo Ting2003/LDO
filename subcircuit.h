@@ -165,13 +165,6 @@ public:
 	bool print_flag(Node *nd);
 	void modify_newxy(vector<Pad*> &pad_set);
 	void update_node(Net *net);
-	void resolve_queue(vector<Node *> origin_pad_set);
-	void solve_queue(vector<Node *> pad_set_old);
-	void initialize_queue(vector<Node *> pad_set_old, queue <Node*> &q);
-	double update_single_iter(vector<Node *> pad_set_old);
-	double update_value(Node *nd);
-	size_t update_queue(queue<Node *>&q, Node *nd);
-	void solve_GS();
 	void print_all_control_nodes();
 	//////// end functions for pad ////////
 
@@ -286,24 +279,8 @@ private:
         cholmod_dense *b, *x;
         double *bp, *xp;
 
-	// set s_col_FFS and FBS
-	void solve_eq_set();
-	int* s_col_FFS;
-	int* s_col_FBS;
 	// ********* sparse vectors ******
-	Path_Graph pg;
-	int *path_b, *path_x;
-	int len_path_b, len_path_x;
 	int flag_ck;
-	 void find_super();
-	 void update_node_set_bx();                               
-         void parse_path_table();
-         void build_path_graph();                
-         void build_FFS_path();
-         void build_FBS_path();                  
-         void set_up_path_table();               
-         void find_path(vector<size_t>&node_set, List_G &path);
-       
 	vector<Node_TR_PRINT> ckt_nodes;
 	// ************** member variables *******************
 	NodePtrVector nodelist;		// a set of nodes
