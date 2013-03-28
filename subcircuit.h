@@ -245,7 +245,6 @@ private:
 	void modify_rhs_Ieq_l(Net *net, double *rhs);
 
 	void reset_b();
-	void reset_bnew();
 
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
@@ -285,12 +284,9 @@ private:
 	int *Li, *Lp, *Lnz;
         cholmod_common c, *cm;
 
-        cholmod_dense *b, *x, *bnew;
+        cholmod_dense *b, *x;
         double *bp, *xp;
-        double *bnewp;
 
-	void solve_eq(double *X);
-	void solve_eq_sp(double*X);
 	// set s_col_FFS and FBS
 	void solve_eq_set();
 	int* s_col_FFS;

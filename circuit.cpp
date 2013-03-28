@@ -282,9 +282,6 @@ void Circuit::verify_solve(Tran &tran){
    // link ckt nodes for local circuit
    ckt_l.link_ckt_nodes(tran);
    
-   ckt_l.reset_bnew();
-   ckt_g.reset_bnew();
-
    double time = 0;
    // stamp A and bp, and decompose
    ckt_l.stamp_decomp_matrix_TR(tran, time, true);
@@ -2244,6 +2241,7 @@ void Circuit::solve_DC(){
 		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		iter++;
 	}
+	// locate_maxIRdrop();		
 }
 
 // solve one transient step with different LDO numbers
@@ -2274,6 +2272,7 @@ void Circuit::solve_TR(Tran &tran, double time){
 	*/
 
 	// only need to stamp matrix once per t step
+	ckt_l.stamp_decomp_matrix_TR(tran, time, true);
 	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 
 	// stores the Ieq for both C and L nets 
@@ -2281,21 +2280,16 @@ void Circuit::solve_TR(Tran &tran, double time){
 	ckt_g.modify_rhs_tr_0(tran);
 
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
+		ckt_l.reset_b();
 		// then update netlist
 		ckt_l.modify_local_nets();
-		ckt_g.modify_global_nets();
-		// clog<<"after modify local and global nets. "<<endl;
-
-		// stamp matrix, b and decomp matrix
-		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
-		// clog<<"after stamp matrix. "<<endl;
+		ckt_l.stamp_rhs_tr(true, time, tran);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
-		// clog<<"after solve local "<<endl;
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
-		// clog<<"ckt_g nodelist: "<<ckt_g.nodelist<<endl;
 
+		ckt_g.modify_global_nets();
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
@@ -2602,6 +2596,7 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 		clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
+	ckt_l.build_pad_set();
 	// clog<<"create new LDOs. "<<endl;
 	solve_TR(tran, time);
 	// clog<<"after solve_ITR. "<<endl;
