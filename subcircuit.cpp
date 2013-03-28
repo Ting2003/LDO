@@ -2232,10 +2232,7 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
 void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){
    
    stamp_by_set_tr(A, tran);
-   stamp_rhs_tr(local_flag, time, tran);
-   
-   // clog<<"after stamp by set tr. "<<endl;
-   // cholmod_free_factor(&L, cm);
+   stamp_rhs_tr(local_flag, time, tran); 
    Algebra::CK_decomp(A, L, cm);
    // A.merge();
    // clog<<A<<endl;

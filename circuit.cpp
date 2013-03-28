@@ -203,9 +203,9 @@ void Circuit::solve(Tran &tran){
 	ckt_l.build_pad_set();
 	ckt_g.build_pad_set();
 	// solving LDO location with DC
-	 solve_DC_LDO();
-	 // clear flag_visited for the pads
-	 ckt_l.clear_flags();
+	solve_DC_LDO();
+	// clear flag_visited for the pads
+	ckt_l.clear_flags();
 	
 	// return;
 	
@@ -2486,7 +2486,6 @@ void Circuit::solve_DC_LDO(){
 	for(int i=0;i<5;i++){
 		// optimize the locations of LDO and rebuild nets
 		relocate_LDOs();
-
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
 		// clog<<"second max_IR: "<<max_IRdrop<<endl;
@@ -2540,23 +2539,19 @@ void Circuit::recover_best_ldo(Node *nd_min){
 
 // add more LDO into circuit: new_ldo_flag = true
 void Circuit::add_LDO_DC(){
-	// clog<<"initial nodelist: "<<ckt_g.nodelist.size()<<endl;
 	vector<Pad*> LDO_pad_vec;
 	// build candi graph, extract control nodes 
 	// for each LDO pad node
 	ckt_l.create_current_LDO_graph();
-	// clog<<"after create LDO graph. "<<endl;
 	// first find the node new LDOs should go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
-	// clog<<"after extract add LDO info. "<<endl;
 	// 7. when finish adding LDOs, 
 	// rebuild the local and global net and
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
-
-	// clog<<"final nodelist: "<<ckt_g.nodelist.size()<<endl;
+	ckt_l.build_pad_set();
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"new max_IR drop: "<<max_IRdrop<<endl;
