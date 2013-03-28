@@ -199,8 +199,7 @@ private:
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
 	void verify_solve(Tran &tran);
-	void verify_TR(Tran &tran, double time);
-	void verify_first_step(Tran &tran);
+	void verify_one_LDO_step(Tran &tran, double time);
 
 	// initialize things before solve_iteration
 	void solve_init();

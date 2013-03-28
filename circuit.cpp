@@ -224,6 +224,10 @@ void Circuit::solve(Tran &tran){
 	clog<<endl;
 	clog<<"==== entering verfy stage ==== "<<endl;
 	verify_solve(tran);
+
+	// release resouces
+	ckt_l.release_resources();
+	ckt_g.release_resources();	
 }
 //endif
 
@@ -280,15 +284,18 @@ void Circuit::verify_solve(Tran &tran){
    
    ckt_l.reset_bnew();
    ckt_g.reset_bnew();
- 
-   clog<<"before verify first step. "<<endl;
-   verify_first_step(tran);
 
-   double time = tran.step_t;
-   for(; time < tran.tot_t;
+   double time = 0;
+   // stamp A and bp, and decompose
+   ckt_l.stamp_decomp_matrix_TR(tran, time, true);
+   ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+
+   for(time = 0; time < tran.tot_t;
 		   time += tran.step_t){
-   	verify_TR(tran, time);
+   	verify_one_LDO_step(tran, time);
    }
+   ckt_l.save_ckt_nodes_to_tr(tran);
+   clog<<"after verify solve." <<endl;
 }
 
 #if 0
@@ -2609,74 +2616,29 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	LDO_pad_vec.clear();
 }
 
-// verify the transient simulation
-void Circuit::verify_TR(Tran &tran, double time){
+void Circuit::verify_one_LDO_step(Tran &tran, double time){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
-	
-	// only need to stamp matrix once per t step
-	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
 
 	// stores the Ieq for both C and L nets 
 	ckt_l.modify_rhs_tr_0(tran);
 	ckt_g.modify_rhs_tr_0(tran);
-
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
-		// then update netlist
+		// clear bp
+		ckt_l.reset_b();
+		// update ldo vol net values  
 		ckt_l.modify_local_nets();
-		ckt_g.modify_global_nets();
-		// clog<<"after modify local and global nets. "<<endl;
-
-		// stamp matrix, b and decomp matrix
-		ckt_l.stamp_decomp_matrix_TR(tran, time, true);
-		// clog<<"after stamp matrix. "<<endl;
-		// solve eq with decomped matrix
-		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
-		// clog<<"after solve local "<<endl;
-		// calculate ldo current from ckt_l
-		ckt_l.update_ldo_current();
-		// clog<<"ckt_g nodelist: "<<ckt_g.nodelist<<endl;
-
-		// restamp global rhs with ldo current
-		ckt_g.modify_ldo_rhs_TR();	
-		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
-		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
-		// then throw into ldo lookup table
-		update_ldo_vout();
-		iter++;
-	}
-	locate_maxIRdrop();		
-	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
-	
-}
-
-// solve first time step
-void Circuit::verify_first_step(Tran &tran){
-	// build the solver for 1st time step
-	double time = 0;
-	double diff_l = 0;
-	double diff_g = 0;
-	int iter = 0;
-	// stamp A and bp
-	ckt_l.stamp_decomp_matrix_TR(tran, time, true);
-	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
-	
-	// stores the Ieq for both C and L nets 
-	ckt_l.modify_rhs_tr_0(tran);
-	ckt_g.modify_rhs_tr_0(tran);
-
-	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
-		// then update netlist
-		ckt_l.modify_local_nets();
-		ckt_g.modify_global_nets();
-
+		// restamp bp
+		ckt_l.restamp_ldo_rhs(time);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr(tran, time);
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
-		// restamp global rhs with ldo current
+		ckt_g.modify_global_nets();
+
+		// modify global bp
 		ckt_g.modify_ldo_rhs_TR();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
@@ -2686,6 +2648,6 @@ void Circuit::verify_first_step(Tran &tran){
 	}
 	// save ckt_nodes value for t step
 	ckt_l.save_ckt_nodes(tran);
-	locate_maxIRdrop();
-	// clog<<"max Ir drop: "<<max_IRdrop<<endl;
+	locate_maxIRdrop();		
+	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }

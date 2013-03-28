@@ -3526,4 +3526,53 @@ void SubCircuit::reset_bnew(){
    bnewp = static_cast<double *> (bnew->x);
 }
 
+// restamp bp with LDO
+void SubCircuit::restamp_ldo_rhs(double time){
+	Node *nd;
+	size_t rid;
+	Net *net;
+	Node *na, *nb;
+	// stamp voltage net
+	for(int type = 0; type < NUM_NET_TYPE;type++){
+		NetPtrVector & ns = net_set[type];
+		if(type == VOLTAGE){
+			for(size_t i=0;i<ns.size();i++){
+				if( fzero(ns[i]->value)  && 
+						!ns[i]->ab[0]->is_ground() &&
+						!ns[i]->ab[1]->is_ground() )
+					continue; // it's a 0v via
+				stamp_ldo_VDD(bp, ns[i]);
+			}
+		}else if(type == CURRENT){
+			for(size_t i=0;i<ns.size();i++)
+				stamp_current_tr_net(bp, ns[i], time);
+		}
+	}
+	// only make A symmetric for local
+	make_A_symmetric_local(bp);	
+}
 
+// stamp ldo VDD net into bp
+void SubCircuit::stamp_ldo_VDD(double *bp, Net *net){
+	Node * X = net->ab[0];
+	if( X->is_ground() ) X = net->ab[1];
+	size_t id = X->rep->rid;
+	Net * south = X->rep->nbr[SOUTH];
+	if( south != NULL &&
+	    south->type == CURRENT ){
+		bp[id] = net->value;	    // modify it
+		// cout<<"b: ="<<id<<" "<<net->value<<endl;
+	}
+	else{
+		bp[id] += net->value;
+		// cout<<"b: +"<<id<<" "<<net->value<<endl;
+	}
+}
+
+void SubCircuit::release_resources(){
+	cholmod_free_dense(&b, cm);
+	cholmod_free_dense(&bnew, cm);
+	cholmod_free_factor(&L, cm);
+	cholmod_free_dense(&x, cm);
+	cholmod_finish(&c);
+}
