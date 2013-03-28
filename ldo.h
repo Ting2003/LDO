@@ -20,7 +20,7 @@ public:
 	double voltage;
 	// current extracted from this LDO
 	double current;
-	double current_old;
+	// double current_old;
 };
 
 // current block in polygon format

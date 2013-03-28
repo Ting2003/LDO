@@ -2218,23 +2218,22 @@ void Circuit::solve_DC(){
 	double diff_l = 1;
 	double diff_g = 1;
 
+	// first atamp matrix: already symmetric
+	ckt_l.stamp_decomp_matrix_DC(true);
 	ckt_g.stamp_decomp_matrix_DC(false);
-	// still optimize LDO, either increase 
-	// LDO number or change their locations
+	// solve DC with fixed number of LDOs
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
+		ckt_l.reset_b();
 		// then update netlist
 		ckt_l.modify_local_nets();
-		ckt_g.modify_global_nets();
-
-		// stamp matrix, b and decomp matrix
-		// global grid only need stamp matrix once: Ting Yu
-		// need modify
-		ckt_l.stamp_decomp_matrix_DC(true);
-		
+		ckt_l.stamp_rhs_DC(true);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
+
+		ckt_g.modify_global_nets();
+	
 		// restamp global rhs with ldo current
 		ckt_g.modify_ldo_rhs();
 		
@@ -2298,7 +2297,7 @@ void Circuit::solve_TR(Tran &tran, double time){
 		// clog<<"ckt_g nodelist: "<<ckt_g.nodelist<<endl;
 
 		// restamp global rhs with ldo current
-		ckt_g.modify_ldo_rhs_TR();	
+		ckt_g.modify_ldo_rhs();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
@@ -2639,7 +2638,7 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		ckt_g.modify_global_nets();
 
 		// modify global bp
-		ckt_g.modify_ldo_rhs_TR();	
+		ckt_g.modify_ldo_rhs();	
 		diff_g = ckt_g.solve_CK_with_decomp_tr(tran, time);
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table

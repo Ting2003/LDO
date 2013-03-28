@@ -2221,13 +2221,8 @@ void SubCircuit::reconfigure_TR(){
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    stamp_by_set(A);
-   stamp_rhs_DC();
-   // only make A symmetric for local
-   if(local_flag == true)
-	make_A_symmetric_local(bp);	
-   else
-	make_A_symmetric(bp);
-
+   stamp_rhs_DC(local_flag);
+   
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
@@ -2238,12 +2233,7 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    
    stamp_by_set_tr(A, tran);
    stamp_rhs_tr(local_flag, time, tran);
-   // make_A_symmetric
-   if(local_flag == false)
-	make_A_symmetric_tr(bp, tran);
-   else
-	make_A_symmetric_local(bp);
-
+   
    // clog<<"after stamp by set tr. "<<endl;
    // cholmod_free_factor(&L, cm);
    Algebra::CK_decomp(A, L, cm);
@@ -2311,8 +2301,8 @@ void SubCircuit::update_ldo_current(){
 			// clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<current<<endl;
 		}
 		// copy old current
-		ldolist[i]->current_old = 
-			ldolist[i]->current;
+		//ldolist[i]->current_old = 
+			// ldolist[i]->current;
 		// assign new current
 		ldolist[i]->current = current;
 		// clog<<"ldo old / new current: "<<ldolist[i]->current_old<<" "<<current<<endl;
@@ -2326,6 +2316,7 @@ void SubCircuit::update_ldo_vin(){
 	}
 }*/
 
+#if 0
 // modify rhs with new current value of LDO
 void SubCircuit::modify_ldo_rhs(){
 	Node *nd;
@@ -2341,9 +2332,10 @@ void SubCircuit::modify_ldo_rhs(){
 		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
 	}
 }
+#endif
 
 // modify rhs with new current value of LDO
-void SubCircuit::modify_ldo_rhs_TR(){
+void SubCircuit::modify_ldo_rhs(){
 	Node *nd;
 	size_t rid;
 	for(size_t i=0;i<ldolist.size();i++){
@@ -2354,6 +2346,7 @@ void SubCircuit::modify_ldo_rhs_TR(){
 		// clog<<"new bp: "<<rid<<" "<<bp[rid]<<endl;
 	}
 }
+
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	for(size_t i=0;i<replist.size();i++){	
@@ -3553,11 +3546,15 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 			break;
 		}
 	}
-	
+	// make_A_symmetric
+	if(local_flag == false)
+		make_A_symmetric_tr(bp, tran);
+	else
+		make_A_symmetric_local(bp);
 }
 
 // restamp bp with LDO
-void SubCircuit::stamp_rhs_DC(){
+void SubCircuit::stamp_rhs_DC(bool local_flag){
 	size_t n = replist.size();
    	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    	bp = static_cast<double *> (b->x);
@@ -3590,7 +3587,12 @@ void SubCircuit::stamp_rhs_DC(){
 			report_exit("Unknwon net type\n");
 			break;
 		}
-	}	
+	}
+	// only make A symmetric for local
+	if(local_flag == true)
+		make_A_symmetric_local(bp);	
+	else
+		make_A_symmetric(bp);
 }
 
 
