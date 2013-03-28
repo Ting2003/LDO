@@ -452,6 +452,7 @@ void SubCircuit::copy_node_voltages(double * x, size_t &size, bool from){
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
 void SubCircuit::stamp_by_set(Matrix & A){
+   	A.clear();
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -515,6 +516,8 @@ void SubCircuit::stamp_current_tr_1(double *bp, double *b, double &time){
 
 // stamp the transient matrix
 void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
+   	A.clear();
+	
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -2217,14 +2220,8 @@ void SubCircuit::reconfigure_TR(){
 
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
-   A.clear();
-   size_t n = replist.size();
-   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
-
    stamp_by_set(A);
    stamp_rhs_DC(local_flag);
-
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    A.clear();
@@ -2232,13 +2229,7 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
 
 // stamp matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){
-   A.clear();
-   size_t n = replist.size();
-   b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bp = static_cast<double *> (b->x);
-   bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
-   bnewp = static_cast<double *> (bnew->x);
-
+   
    stamp_by_set_tr(A, tran);
    stamp_rhs_tr(local_flag, time, tran);
    // clog<<"after stamp by set tr. "<<endl;
@@ -3512,6 +3503,12 @@ void SubCircuit::reset_bnew(){
 }
 
 void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
+	size_t n = replist.size();
+	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   	bp = static_cast<double *> (b->x);
+   	bnew = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   	bnewp = static_cast<double *> (bnew->x);
+
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -3554,6 +3551,10 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 
 // restamp bp with LDO
 void SubCircuit::stamp_rhs_DC(bool local_flag){
+	size_t n = replist.size();
+   	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
+   	bp = static_cast<double *> (b->x);
+
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
