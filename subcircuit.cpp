@@ -1494,10 +1494,8 @@ void SubCircuit::relocate_pads(){
 	// find new point for all pads	
 	update_pad_pos_all(pad_set);
 
-	clog<<"before graph move. "<<endl;
 	// move pads according to graph contraints
 	graph_move_pads();
-	clog<<"after graph move. "<<endl;
 
 	//clog<<"after graph move. "<<endl;
 	clear_flags();
@@ -1800,7 +1798,7 @@ Node * SubCircuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	name = sstream.str();
-	clog<<"pt_name: "<<name<<endl;
+	// clog<<"pt_name: "<<name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	nd_new = get_node(name);
@@ -1841,12 +1839,13 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	// 1. project to nearest LDO candi nodes
 	// update ref_x and ref_y
 	project_ldo_node(ref_x, ref_y, ldo_ptr);
-	clog<<"projected ref_x and y: "<<ref_x<<" "<<ref_y<<endl;
+	// clog<<"projected ref_x and y: "<<ref_x<<" "<<ref_y<<endl;
 
 	// then start to expand to find candi LDO nodes
 	nd_new_ldo = expand_ldo_location(ref_dist, 
 			ref_x, ref_y, ldo_ptr);
 
+	// clog<<"nd_new_ldo: "<<*nd_new_ldo<<endl;
 	ldo->A = nd_new_ldo;
 	// also need to change nd_in of LDO in ckt_g
 	return nd_new_ldo; 
@@ -1965,14 +1964,12 @@ void SubCircuit::graph_move_pads(){
 	// for(size_t i=0;i<5;i++){
 	// do{
 		// id = locate_max_drop_pad(pad_set);
-		clog<<"id: "<<id<<endl;
 		// if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		clog<<"old_pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
-		clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
@@ -2169,9 +2166,9 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 	// if no candidates, return original node
 	if(min_nd == NULL)
 		return ldo_ptr.A;
-	clog<<"min_dist, min_nd: "<<min_dist<<" "<<*min_nd<<" "<<endl;
+	// clog<<"min_dist, min_nd: "<<min_dist<<" "<<*min_nd<<" "<<endl;
 	// else return candidate node
-	return nd;
+	return min_nd;
 }
 
 // perform LDO node change
@@ -2371,13 +2368,17 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		//clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
-	// while(max_IRdrop > THRES && )
-	while(ldolist.size() < MAX_NUM_LDO &&
-			iter ++ <1){
+	while(max_IRdrop > THRES && 
+		ldolist.size() < MAX_NUM_LDO && LDO_pad_vec.size() <5){
 		// 4. LDO should go to candi with 
 		// maximum IR
-		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
-		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
+		/*clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
+
+		clog<<"pad nbr: "<<*pad_ptr->nbrs[i]->node<<endl;
+		}
+		*/
 		LDO_pad_vec.push_back(pad_ptr);
 		// 5. update the nbr flags for 
 		// candi in graph
