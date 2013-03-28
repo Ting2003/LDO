@@ -206,9 +206,11 @@ void Circuit::solve(Tran &tran){
 	// build new nets for the single LDo
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
+	clog<<"before solve DC LDO. "<<endl;
 //#if 0	
 	// solving LDO location with DC
 	solve_DC_LDO();
+	clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
 	ckt_l.clear_flags();
 	
@@ -2247,7 +2249,7 @@ void Circuit::solve_DC(){
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		
-		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		iter++;
 	}
 	// locate_maxIRdrop();		
@@ -2472,7 +2474,7 @@ void Circuit::solve_DC_LDO(){
 	// first get IR drop values
 	solve_DC();
 	double max_IRdrop = locate_maxIRdrop();
-	// clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
+	clog<<"initial max_IRdrop: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
 	ldo_pair.first = nd;
 	ldo_pair.second = max_IRdrop;
@@ -2490,7 +2492,7 @@ void Circuit::solve_DC_LDO(){
 		relocate_LDOs();
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		// clog<<"second max_IR: "<<max_IRdrop<<endl;
+		clog<<"second max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
 		ldo_pair.first = nd;
 		ldo_pair.second = max_IRdrop;
@@ -2509,8 +2511,10 @@ void Circuit::solve_DC_LDO(){
 			nd_min = it->first;
 		}
 	}
+	clog<<"best ldo: "<<*nd_min<<endl;
 	// switch to the best ldo
 	recover_best_ldo(nd_min);
+	clog<<"after recover. "<<endl;
 	ldo_best.clear();
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();

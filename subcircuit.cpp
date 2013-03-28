@@ -1494,8 +1494,10 @@ void SubCircuit::relocate_pads(){
 	// find new point for all pads	
 	update_pad_pos_all(pad_set);
 
+	clog<<"before graph move. "<<endl;
 	// move pads according to graph contraints
 	graph_move_pads();
+	clog<<"after graph move. "<<endl;
 
 	//clog<<"after graph move. "<<endl;
 	clear_flags();
@@ -1798,7 +1800,7 @@ Node * SubCircuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	name = sstream.str();
-	// clog<<"pt_name: "<<name<<endl;
+	clog<<"pt_name: "<<name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	nd_new = get_node(name);
@@ -1839,6 +1841,7 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	// 1. project to nearest LDO candi nodes
 	// update ref_x and ref_y
 	project_ldo_node(ref_x, ref_y, ldo_ptr);
+	clog<<"projected ref_x and y: "<<ref_x<<" "<<ref_y<<endl;
 
 	// then start to expand to find candi LDO nodes
 	nd_new_ldo = expand_ldo_location(ref_dist, 
@@ -1960,15 +1963,16 @@ void SubCircuit::graph_move_pads(){
 	Node *new_pad;
 	int id=0;
 	// for(size_t i=0;i<5;i++){
-	do{
-		id = locate_max_drop_pad(pad_set);
-		if(id==-1) break;
+	// do{
+		// id = locate_max_drop_pad(pad_set);
+		clog<<"id: "<<id<<endl;
+		// if(id==-1) break;
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
-		// clog<<"old_pad: "<<*pad<<endl;
+		clog<<"old_pad: "<<*pad<<endl;
 		new_pad = pad_projection(pad_ptr, pad);
-		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
+		clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
 		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
@@ -1981,7 +1985,7 @@ void SubCircuit::graph_move_pads(){
 		// assign later, after creating X node
 		pad_ptr->node = new_pad;
 		pad_ptr->control_nodes.clear();
-	}while(id != -1);
+	// }while(id != -1);
 }
 
 // locate id that has minimum value and not visited or fixed 
@@ -2135,76 +2139,38 @@ bool SubCircuit::node_in_ldo_or_block(double x, double y){
 // expand to find the location of LDO around ref_x, ref_y
 // if the location is farther than ref_dist, restore back
 Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LDO &ldo_ptr){
-	Node *nd = ldo_ptr.A;
-	Node *nd_new = NULL;
-	int width = ldo_ptr.width;
-	int height = ldo_ptr.height;
-	
-	int dx[4]; int dy[4];
-	dx[0] = width; dx[2] = -width;
-	dx[1] = dx[3] = 0;
-	dy[1] = height; dy[3] = -height;
-	dy[0] = dy[2] = 0;
-
-	queue<Point> q;
-	Point pt;
-	pt.x = ref_x;
-	pt.y = ref_y;
-
-	Point pt_cur;
-	stringstream sstream;
-	string pt_name;
-	int return_flag = 0;;
-	// else start to search for node
-	q.push(pt);
-	int diff_x, diff_y;
-	double dist;
-	// if not, expand it to neighboring area
-	while(!q.empty()&& return_flag == false){
-		pt_cur = q.front();
-		// clog<<"pt_cur: "<<pt_cur<<endl;
-		Point pt_nbr = pt_cur;
-		//expand_pad_pos(q, pt_cur);	
-		for(size_t i=0;i<4;i++){
-			pt_nbr.x = pt_cur.x + dx[i];
-			pt_nbr.y = pt_cur.y + dy[i];
-			stringstream sstream;
-			string name;
-			sstream <<"n"<<nd->pt.z<<"_"<<
-				pt_nbr.x<<"_"<<
-				pt_nbr.y;
-			name = sstream.str();
-			nd_new = get_node(name);
-			if(nd_new == NULL) continue;
-			nd_new = nd_new->rep;
-			if(nd_new->isS()==Y) continue;
-			// clog<<"nd_new: "<<*nd_new<<" "<<nd_new->get_geo_flag()<<endl;
-			// get candidate location
-			if(nd_new->get_geo_flag()==SBLANK){
-				diff_x = nd_new->pt.x - ref_x;
-				diff_y = nd_new->pt.y - ref_y;
-				dist = sqrt(diff_x*diff_x + diff_y*diff_y);
-				if(dist < ref_dist){
-					//clog<<"dist, ref_dist: "<<dist<<" "<<ref_dist<<endl;
-					// clog<<"new name: "<<*nd_new<<" "<<endl;
-					return_flag = 1;
-					break;
-				}else{// already out of range, break
-					return_flag = 2;
-					break;
-				}
+	Node *nd;
+	double diff_x = 0;
+	double diff_y = 0;
+	double dist = 0;
+	double min_dist = 0;
+	Node *min_nd = NULL;
+	bool flag = false;
+	for(size_t i=0;i<replist.size();i++){
+		nd = replist[i];
+		if(nd->get_geo_flag() != SBLANK)
+			continue;
+		if(nd->isS()==Y || nd->isS() ==Z) 
+			continue;
+		diff_x = nd->pt.x - ref_x;
+		diff_y = nd->pt.y - ref_y;
+		dist = sqrt(diff_x*diff_x + diff_y*diff_y);
+		if(dist < ref_dist){
+			if(flag == false){
+				flag  = true;
+				min_dist = dist;
+				min_nd = nd;
+			}else if(dist < min_dist){
+				min_dist = dist;
+				min_nd = nd;
 			}
-			q.push(pt_nbr);
 		}
-		q.pop();
 	}
-	while(!q.empty()){
-		q.pop();
-	}
-	if(return_flag == 1){
-		return nd_new;
-	}
-	// no candidate, return original node
+	// if no candidates, return original node
+	if(min_nd == NULL)
+		return ldo_ptr.A;
+	clog<<"min_dist, min_nd: "<<min_dist<<" "<<*min_nd<<" "<<endl;
+	// else return candidate node
 	return nd;
 }
 
