@@ -357,8 +357,7 @@ void SubCircuit::stamp_current_tr_1(double *bp, double *b, double &time){
 
 // stamp the transient matrix
 void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
-   	A.clear();
-	
+   	A.clear();	
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -369,8 +368,6 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 			}
 			break;
 		case CURRENT:
-			//for(size_t i=0;i<ns.size();i++)
-				//stamp_current(b, ns[i]);
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
@@ -480,7 +477,7 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
    // cout<<"net: "<<*net<<endl;
    if( nk->isS()!=Y && !nk->is_ground()){
            A.push_back(k,k, G);
-      // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+      	// cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
       if(!nl->is_ground() && nl->isS()!=Y && l<k){
             A.push_back(k,l,-G);
             // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
@@ -583,10 +580,10 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		// -1 is to clear formal inserted 1 at (l,l)
 		A.push_back(l,l, Geq);
-		 cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
+		// cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground() && nk->isS()!=Y && l>k){
 			A.push_back(l,k,-Geq);
-			 cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
+			// cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
 }
@@ -630,7 +627,7 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 	double i_t = 0;
 	double temp = 0;
 	double Ieq = 0;
-	// clog<<"c net: "<<*net<<endl;
+	// cout<<"c net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
         // nk point to Z node
@@ -673,7 +670,7 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 		
 	Ieq  = (i_t + temp);
 	net->Ieq = Ieq;
-	//clog<< "Ieq is: "<<Ieq<<endl;
+	// cout<< "Ieq is: "<<Ieq<<endl;
 	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
 	/*if(!nk->is_ground()&& nk->isS()!=Y){
 		 rhs[k] += Ieq;	// for VDD SubCircuit
@@ -739,7 +736,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 // add Ieq into rhs
 // Ieq = i(t) + delta_t / (2*L) *v(t)
 void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
-	//  clog<<"l net: "<<*net<<endl;
+	// cout<<"l net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
 	// nk point to X node
@@ -781,7 +778,8 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
         //clog<<*b<<" "<<id_b<<endl;
 	Ieq  = i_t + temp;
 	net->Ieq = Ieq;
-	// cout<<"Ieq: "<<Ieq<<endl;
+	// clog<<"Ieq for induc: "<<Ieq<<" "<<*net<<endl;
+	// clog<<*nk<<" "<<nk->rid<<endl;
 	/*if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
@@ -848,7 +846,7 @@ void SubCircuit::modify_rhs_l_tr(Net *net, double *rhs, double *x){
         }
 #endif
 	Ieq  = i_t + temp;
-	//clog<<"Ieq: "<<Ieq<<endl;
+	// clog<<"Ieq for cap: "<<Ieq<<" "<<*net<<endl;
 	if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
 		//clog<<*nk<<" "<<rhs[k]<<endl;
@@ -860,25 +858,25 @@ void SubCircuit::modify_rhs_l_tr(Net *net, double *rhs, double *x){
 }
 // stamp a current source
 void SubCircuit::stamp_current(double * b, Net * net){
-	//cout<<"net: "<<*net<<endl;
+	// clog<<"cur net: "<<*net<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 
 	if( !nk->is_ground() && nk->isS()!=Y){// && 
 		size_t k = nk->rid;
 		b[k] += -net->value;
-		//cout<<"b: "<<k<<" "<<-net->value<<endl;
+		// clog<<"b: "<<k<<" "<<-net->value<<endl;
 	}
 	if( !nl->is_ground() && nl->isS() !=Y){// &&
 		size_t l = nl->rid;
 		b[l] +=  net->value;
-		//cout<<"b: "<<l<<" "<<-net->value<<endl;
+		// clog<<"b: "<<l<<" "<<-net->value<<endl;
 	}
 }
 
 void SubCircuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	current_tr(net, time);
-	// cout<<"net: "<<*net<<endl;
+	//clog<<"net: "<<*net<<" "<<time<<endl;
 	//clog<<"current: "<<current<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -886,13 +884,13 @@ void SubCircuit::stamp_current_tr_net(double * b, Net * net, double &time){
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -net->value;//current;
-		// cout<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
+		// clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=Y) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  net->value;// current;
-		// cout<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
+		// clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
 
@@ -939,7 +937,7 @@ void SubCircuit::stamp_VDD(Matrix & A, Net * net){
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
 	A.push_back(id, id, 1.0);
-	//cout<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;	
+	// cout<<"push id, id, 1: "<<id<<" "<<id<<" "<<1<<endl;	
 }
 
 // decide transient step current values
@@ -1061,8 +1059,8 @@ void SubCircuit::make_A_symmetric_local(double *b){
 		else continue;
 		size_t id = q->rep->rid;
 		double G = 1.0 / (*it)->value;
-		// clog<<"net: "<<*(*it)<<endl;
-		// clog<<"id, p_val, G, b: "<<id<<" "<<p->value<<" "<<G<<" "<<b[id]<<endl;
+		// cout<<"net: "<<*(*it)<<endl;
+		// cout<<"id, p_val, G, b: "<<id<<" "<<p->value<<" "<<G<<" "<<b[id]<<endl;
 		b[id] += p->value * G;
 	}	
 }
@@ -1358,28 +1356,29 @@ void SubCircuit::reconfigure_TR(){
 // stmap matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    stamp_by_set(A);
-   stamp_rhs_DC(local_flag);
+   // stamp_rhs_DC(local_flag);
    
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
-   A.clear();
+   /*A.merge();
+   cout<<"DC A: "<<A<<endl;
+   A.clear();*/
 }
 
 // stamp matrix and rhs, decomp matrix for DC
-void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){
-   
+void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){ 
    stamp_by_set_tr(A, tran);
-   stamp_rhs_tr(local_flag, time, tran); 
+   // stamp_rhs_tr(local_flag, time, tran); 
    Algebra::CK_decomp(A, L, cm);
-   // A.merge();
-   // clog<<A<<endl;
-   A.clear();
+   /*A.merge();
+   cout<<"transient A: "<<A<<endl;
+   A.clear();*/
 }
 
 // solve eq with decomped matrix
 double SubCircuit::solve_CK_with_decomp(){
-	// for(size_t i=0;i<replist.size();i++)
-		// cout<<"i, bp: "<<i<<" "<<bp[i]<<endl; 
+	//for(size_t i=0;i<replist.size();i++)
+		//cout<<"i, dc bp: "<<i<<" "<<bp[i]<<endl; 
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
@@ -1396,11 +1395,11 @@ double SubCircuit::solve_CK_with_decomp_tr(){
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
-	//clog<<"after solve tr. "<<endl;
-	//for(size_t i=0;i<replist.size();i++){
-		 // clog<<"i, bp: "<<i<<" "<<bnewp[i]<<endl;
-		// cout<<"i, bnewp, xp: "<<i<<" "<<bnewp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
-	 //}
+	/*cout<<"after solve tr. "<<endl;
+	for(size_t i=0;i<replist.size();i++){
+		cout<<"i, tr bp: "<<i<<" "<<bp[i]<<endl;
+		// cout<<"i, bp, xp: "<<i<<" "<<bp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	 }*/
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
    	double diff = get_voltages_from_LU_sol(xp);
@@ -1435,13 +1434,14 @@ void SubCircuit::update_ldo_current(){
 		// copy old current
 		//ldolist[i]->current_old = 
 			// ldolist[i]->current;
+		// clog<<"ldo old current: "<<ldolist[i]->current;
 		// assign new current
 		ldolist[i]->current = current;
 		// also update the current net in ckt_g
 		Net *net_g = ldolist[i]->nd_in->nbr[BOTTOM];
 		if(net_g->type == CURRENT)
 			net_g->value = current;
-		// clog<<"ldo old / new current: "<<ldolist[i]->current_old<<" "<<current<<endl;
+		// cout<<"ldo new current: "<<*net_g<<endl;
 	}
 }
 
@@ -1467,12 +1467,14 @@ void SubCircuit::modify_ldo_rhs(){
 
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
-	// Node *nd = replist[0];
+	Node *nd = replist[0];
 	for(size_t i=0;i<replist.size();i++){	
+		if(replist[i]->isS()==Z)
+			continue;
 		double IR_drop = VDD_G - replist[i]->value;		
 		if(IR_drop > max_IRdrop){
 			max_IRdrop = IR_drop;
-			// nd = replist[i];
+			nd = replist[i];
 		}
 	}
 	// clog<<"nd with max IR drop: "<<*nd<<endl;
@@ -2379,7 +2381,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
@@ -2550,6 +2552,7 @@ void SubCircuit::modify_rhs_Ieq(double *rhs){
 }
 
 void SubCircuit::modify_rhs_Ieq_c(Net *net, double *rhs){
+	// clog<<"c net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
         // nk point to Z node
@@ -2567,7 +2570,7 @@ void SubCircuit::modify_rhs_Ieq_c(Net *net, double *rhs){
 	}
 	if(!nl->is_ground()&& nl->isS()!=Y){
 		 rhs[l] += -net->Ieq; 
-		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
+		// clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
 	}
 }
 
@@ -2641,6 +2644,10 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		make_A_symmetric_tr(bp, tran);
 	else
 		make_A_symmetric_local(bp);
+
+	// for(size_t i=0;i<replist.size();i++)
+		// cout<<"i, bp: "<<i<<" "<<bp[i]<<" "<<*replist[i]<<endl;
+
 }
 
 // restamp bp with LDO
@@ -2687,18 +2694,21 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 
 // stamp ldo VDD net into bp
 void SubCircuit::stamp_rhs_VDD(double *bp, Net *net){
+	// clog<<"vol net: "<<net->type<<" "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
+
+	// clog<<"vol value: "<<X->value<<endl;
 	size_t id = X->rep->rid;
 	Net * south = X->rep->nbr[SOUTH];
 	if( south != NULL &&
 	    south->type == CURRENT ){
 		bp[id] = net->value;	    // modify it
-		// cout<<"b: ="<<id<<" "<<net->value<<endl;
+		// clog<<"b: ="<<id<<" "<<net->value<<endl;
 	}
 	else{
 		bp[id] += net->value;
-		// cout<<"b: +"<<id<<" "<<net->value<<endl;
+		// clog<<"b: +"<<id<<" "<<net->value<<endl;
 	}
 }
 

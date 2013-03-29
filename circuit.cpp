@@ -207,21 +207,19 @@ void Circuit::solve(Tran &tran){
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
 	clog<<"before solve DC LDO. "<<endl;
-//#if 0	
+#if 0	
 	// solving LDO location with DC
 	solve_DC_LDO();
 	// clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
 	ckt_l.clear_flags();
-	
-	// return;
-	
+		
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
 	bool flag = false;
 	// go along all time steps
-	for(double time =0; time < tran.tot_t && iter <=2; 
+	for(double time =0; time < tran.tot_t && iter <500; 
 			time += tran.step_t){
 		// solve one time step with LDO
 		flag = solve_TR_LDO(tran, time);
@@ -232,8 +230,8 @@ void Circuit::solve(Tran &tran){
 	}
 	return;
 	clog<<endl;
-	clog<<"==== entering verfy stage ==== "<<endl;
-//#endif
+	clog<<"==== entering verify stage ==== "<<endl;
+#endif
 	verify_solve(tran);
 
 	// release resouces
@@ -290,6 +288,9 @@ void Circuit::verify_solve(Tran &tran){
    ckt_g.reset_b();
    // first solve DC solution
    solve_DC();
+   // clog<<ckt_l.nodelist<<endl;
+   // clog<<ckt_g.nodelist<<endl;
+   // return;
    // link ckt nodes for local circuit
    ckt_l.link_ckt_nodes(tran);
    
@@ -301,8 +302,10 @@ void Circuit::verify_solve(Tran &tran){
    double min_IRdrop = 0;
    double min_step = 0;
    bool flag = false;
+   int iter =0;
    for(time = 0; time < tran.tot_t;
 		   time += tran.step_t){
+	   // cout<<endl<<"===== new step: "<<time <<" ====="<<endl;
    	verify_one_LDO_step(tran, time);
 	locate_maxIRdrop();
 	if(flag == false){
@@ -314,6 +317,7 @@ void Circuit::verify_solve(Tran &tran){
 			min_step = time;
 		}
 	}
+	iter ++;
 	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
    }
    clog<<"min_IRdrop, step: "<<min_IRdrop<<" "<<min_step<<endl;
@@ -2256,6 +2260,7 @@ void Circuit::solve_DC(){
 		// update global current net
 		ckt_l.update_ldo_current();
 
+		// break;
 		ckt_g.reset_b();
 		ckt_g.modify_global_nets();
 	
@@ -2267,7 +2272,7 @@ void Circuit::solve_DC(){
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		
-		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl<<endl;
 		iter++;
 	}
 	// locate_maxIRdrop();		
@@ -2278,26 +2283,31 @@ bool Circuit::solve_TR_LDO(Tran &tran, double time){
 	// clog<<ckt_l.nodelist<<endl;
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
+	// clog<<endl<<"new time step: "<<time<<endl;
 	solve_TR(tran, time);
-	cout<<ckt_l.nodelist<<endl;
-	cout<<ckt_g.nodelist<<endl;
-	return false;
+	// cout<<ckt_l.nodelist<<endl;
+	// cout<<ckt_g.nodelist<<endl;
 	locate_maxIRdrop();
+	// clog<<"max IR for time: "<<time<<" is: "<<max_IRdrop<<endl;
 	double THRES = VDD_G * 0.1;
-	if(max_IRdrop <= THRES)
+	if(max_IRdrop <= THRES){
+		cout<<"check max IR. "<<endl;
+		cout<<ckt_l.nodelist<<endl;
 		return false;
+	}
 	bool flag = false;
 	// clog<<"====== time: "<<time<<" ===="<<endl;
 	// clog<<endl<<"====== time: "<<time<<" ===="<<max_IRdrop<<endl;
 	// clog<<"Initial IR is: "<<max_IRdrop<<endl;
 
-	cout<<ckt_l.nodelist<<endl;
+	// cout<<ckt_l.nodelist<<endl;
 	int iter = 0;
-	while(max_IRdrop > THRES && iter <10){
+	while(max_IRdrop > THRES && iter <1){
 		flag = true;
 		// if(iter ==0)
 		clog<<"======= optimize LDO tr: "<<time<<" "<<max_IRdrop<<endl;
 		add_LDO_TR(tran, time);
+		cout<<ckt_l.nodelist<<endl;
 		locate_maxIRdrop();
 		clog<<"new max IR: "<<max_IRdrop<<endl;
 		iter ++;
@@ -2314,21 +2324,24 @@ void Circuit::solve_TR(Tran &tran, double time){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
-	// for(size_t i=0;i<ckt_l.ldolist.size();i++)
-		// cout<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<ckt_l.ldolist[i]->A->isS()<<endl;
-	//for(size_t i=0;i<ckt_l.nodelist.size()-1;i++)
-		//cout<<"i, Ynode?: "<<i<<" "<<*ckt_l.nodelist[i]<<" "<<ckt_l.nodelist[i]->isS()<<endl;
-	
+		
 	// only need to stamp matrix once per t step
 	ckt_l.stamp_decomp_matrix_TR(tran, time, true);
 	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
+	// for(size_t i=0;i<ckt_g.nodelist.size();i++)
+	// clog<<ckt_g.nodelist[i]->rid<<" "<<*ckt_g.nodelist[i]<<endl;
+
+   	/*ckt_g.A.merge();
+	for(size_t i=0;i<ckt_g.A.size();i++){
+		cout<<ckt_g.A.Ti[i]+1<<" "<<ckt_g.A.Tj[i]+1<<" "<<ckt_g.A.Tx[i]<<endl;
+	}*/
+   	// cout<<ckt_g.A<<endl;	
 
 	// stores the Ieq for both C and L nets 
 	ckt_l.modify_rhs_tr_0(tran);
 	ckt_g.modify_rhs_tr_0(tran);
 
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 4){
-		ckt_l.reset_b();
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_l.stamp_rhs_tr(true, time, tran);
@@ -2337,17 +2350,29 @@ void Circuit::solve_TR(Tran &tran, double time){
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
+//#if 0
 		ckt_g.reset_b();
 		ckt_g.modify_global_nets();
 		// restamp global rhs with ldo current
 		// ckt_g.modify_ldo_rhs();	
 		ckt_g.stamp_rhs_tr(false, time, tran);
 		diff_g = ckt_g.solve_CK_with_decomp_tr();
-		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		/*for(size_t i=0;i<ckt_l.replist.size();i++){
+			cout<<"i, bp: "<<i+1<<" "<<*ckt_l.replist[i]<<" "<<ckt_l.bp[i]<<endl;
+		// cout<<"i, bp, xp: "<<i<<" "<<bp[i]<<" "<<xp[i]<<" "<<*replist[i]<<endl;
+	 }*/
+		// cout<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
+		// clog<<"ldo size: "<<ckt_l.ldolist.size()<<endl;
+		/*for(size_t i=0;i<ckt_l.ldolist.size();i++)
+			clog<<"i, ldo, vout: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<ckt_l.ldolist[i]->voltage<<endl;
+		*/
+
+// #endif
 		iter++;
 	}
+	cout<<ckt_g.nodelist<<endl;
 	// locate_maxIRdrop();		
 	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
@@ -2420,7 +2445,12 @@ void Circuit::update_ldo_vout(){
 		// perform interpolation operation
 		double vout = inter_table_ldo(vin, iout, 
 			vin_1, vin_2, iout_1, iout_2);
-		ldolist[i]->voltage = vout;
+		ckt_l.ldolist[i]->voltage = vout;
+		ckt_l.ldolist[i]->A->value = vout;
+		Net *net = ckt_l.ldolist[i]->A->rep->nbr[TOP];
+		if(net->type == VOLTAGE)
+			net->value = vout;
+		// clog<<"new net: "<<net->type<<" "<<*net<<endl;
 		// clog<<"vout: "<<vout<<endl;
 	}
 }
@@ -2561,11 +2591,12 @@ void Circuit::solve_DC_LDO(){
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"final max_IR: "<<max_IRdrop<<endl;
 
-	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
+	// clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// need to add more LDOs
-	//if(max_IRdrop > THRES)
-		// add_LDO_DC();
-		// clog<<"after add_LDO_DC. "<<endl;
+	if(max_IRdrop > THRES){
+		add_LDO_DC();
+		clog<<"after add_LDO_DC. "<<endl;
+	}
 }
 
 void Circuit::relocate_LDOs(){
@@ -2591,6 +2622,7 @@ void Circuit::add_LDO_DC(){
 	ckt_l.create_current_LDO_graph();
 	// first find the node new LDOs should go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	// clog<<"LDO_pad_vec.size(): "<<LDO_pad_vec.size()<<endl;
 	if(LDO_pad_vec.size()==0)
 		return;
 	/*for(size_t i=0;i<LDO_pad_vec.size();i++)
@@ -2682,6 +2714,7 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		ckt_l.stamp_rhs_tr(true, time, tran);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp_tr();
+		// clog<<ckt_l.nodelist<<endl;
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
@@ -2690,7 +2723,9 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		// modify global bp
 		ckt_g.stamp_rhs_tr(false, time, tran);	
 		diff_g = ckt_g.solve_CK_with_decomp_tr();
-		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// cout<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
+		// cout<<ckt_l.nodelist<<endl;
+		// cout<<ckt_g.nodelist<<endl;
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		iter++;
