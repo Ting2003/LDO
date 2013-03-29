@@ -205,7 +205,7 @@ private:
 	void solve_init();
 	void solve_DC();
 	void solve_DC_LDO();
-	void solve_TR_LDO(Tran &tran, double time);
+	bool solve_TR_LDO(Tran &tran, double time);
 	void solve_TR(Tran &tran, double time);
 
 	void count_merge_nodes();

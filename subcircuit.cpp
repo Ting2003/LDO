@@ -1467,11 +1467,15 @@ void SubCircuit::modify_ldo_rhs(){
 
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
+	// Node *nd = replist[0];
 	for(size_t i=0;i<replist.size();i++){	
 		double IR_drop = VDD_G - replist[i]->value;		
-		if(IR_drop > max_IRdrop)
+		if(IR_drop > max_IRdrop){
 			max_IRdrop = IR_drop;
+			// nd = replist[i];
+		}
 	}
+	// clog<<"nd with max IR drop: "<<*nd<<endl;
 	return max_IRdrop;
 }
 
@@ -1679,13 +1683,19 @@ void SubCircuit::clear_pad_control_nodes(vector<Pad*> &pad_set){
 
 // tune 50% nodes with the small IR drops
 void SubCircuit::update_pad_control_nodes(vector<Pad*> pad_set){
+	// map<Node*, double>::iterator it;
 	for(size_t i=0;i<pad_set.size();i++){
 		if(pad_set[i]->control_nodes.size()==0)
 			continue;
+		// double sum_vol = 0;
 		//clog<<"before middle value. "<<endl;	
 		double middle_value = locate_ref(pad_set, i);
+		/*for(it = pad_set[i]->control_nodes.begin(); it != pad_set[i]->control_nodes.end(); it++){
+			sum_vol += it->first->value;
+		}*/
 		//clog<<"middle value: "<<middle_value<<endl;
 		pad_set[i]->ref_vol = middle_value;
+		// pad_set[i]->ref_vol = sum_vol;
 		//clog<<"after assign. "<<endl;
 		//cout<<"middle value: "<<middle_value<<endl;
 	}
@@ -2369,7 +2379,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && LDO_pad_vec.size() <5){
+		ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
@@ -2383,6 +2393,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		// 5. update the nbr flags for 
 		// candi in graph
 		update_single_pad_flag(pad_ptr);
+		iter++;
 	}
 }
 
@@ -2400,18 +2411,21 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 		if(pad_set[i]->node->isS()==Y)
 			 continue;
 		if(flag == false){
-			min_vol = pad_set[i]->ref_vol;
+			// min_vol = pad_set[i]->ref_vol;
+			min_vol = pad_set[i]->node->value;
 			pad_ptr = pad_set[i];
 			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 			flag = true;
 		}
-		else if(pad_set[i]->ref_vol < min_vol){
-			min_vol = pad_set[i]->ref_vol;
+		else if(pad_set[i]->node->value < min_vol){
+			// min_vol = pad_set[i]->ref_vol;
+
+			min_vol = pad_set[i]->node->value;
 			pad_ptr = pad_set[i];
 			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 		}
 	}
-	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
+	clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
 	return pad_ptr; 
 }
 
@@ -2425,11 +2439,11 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	//clog<<"pad node: "<<*nd<<endl;
 	nd->flag_visited = true;
 	// mark nbr pads with visited
-	for(size_t j=0;j<pad->nbrs.size();j++){
+	/*for(size_t j=0;j<pad->nbrs.size();j++){
 		nd_nbr = pad->nbrs[j]->node;
 		nd_nbr->flag_visited = true;
 		// clog<<"mark nbr: "<<*nd_nbr<<endl;
-	}
+	}*/
 }
 
 // create local current nets for new LDO

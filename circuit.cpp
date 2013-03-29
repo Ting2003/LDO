@@ -219,13 +219,16 @@ void Circuit::solve(Tran &tran){
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
+	bool flag = false;
 	// go along all time steps
-	for(double time =0; time < tran.tot_t && iter <=500; 
+	for(double time =0; time < tran.tot_t && iter <=2; 
 			time += tran.step_t){
 		// solve one time step with LDO
-		solve_TR_LDO(tran, time);
+		flag = solve_TR_LDO(tran, time);
 		ckt_l.clear_flags();
 		iter++;
+		if(flag == true)
+			break;
 	}
 	return;
 	clog<<endl;
@@ -2271,27 +2274,38 @@ void Circuit::solve_DC(){
 }
 
 // solve one transient step with different LDO numbers
-void Circuit::solve_TR_LDO(Tran &tran, double time){
+bool Circuit::solve_TR_LDO(Tran &tran, double time){
 	// clog<<ckt_l.nodelist<<endl;
 	// 1. first modify L and C nets
 	// 2. no need to build new nets, but modify
 	solve_TR(tran, time);
+	cout<<ckt_l.nodelist<<endl;
+	cout<<ckt_g.nodelist<<endl;
+	return false;
 	locate_maxIRdrop();
+	double THRES = VDD_G * 0.1;
+	if(max_IRdrop <= THRES)
+		return false;
+	bool flag = false;
 	// clog<<"====== time: "<<time<<" ===="<<endl;
 	// clog<<endl<<"====== time: "<<time<<" ===="<<max_IRdrop<<endl;
 	// clog<<"Initial IR is: "<<max_IRdrop<<endl;
-	double THRES = VDD_G * 0.1;
 
+	cout<<ckt_l.nodelist<<endl;
 	int iter = 0;
-	while(max_IRdrop > THRES && iter <1){
+	while(max_IRdrop > THRES && iter <10){
+		flag = true;
 		// if(iter ==0)
-		cout<<"======= optimize LDO tr: "<<time<<" "<<max_IRdrop<<endl;
+		clog<<"======= optimize LDO tr: "<<time<<" "<<max_IRdrop<<endl;
 		add_LDO_TR(tran, time);
 		locate_maxIRdrop();
-		cout<<"new max IR: "<<max_IRdrop<<endl;
+		clog<<"new max IR: "<<max_IRdrop<<endl;
 		iter ++;
 	}
 
+	cout<<endl;
+	cout<<ckt_l.nodelist<<endl;
+	return flag;
 	// clog<<"optimized IR is: "<<max_IRdrop<<endl;
 }
 
@@ -2300,12 +2314,11 @@ void Circuit::solve_TR(Tran &tran, double time){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
-	/*for(size_t i=0;i<ckt_l.ldolist.size();i++)
-		clog<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<ckt_l.ldolist[i]->A->isS()<<endl;
-	for(size_t i=0;i<ckt_l.nodelist.size()-1;i++)
-		clog<<"i, Ynode?: "<<i<<" "<<*ckt_l.nodelist[i]<<" "<<ckt_l.nodelist[i]->isS()<<endl;
-	*/
-
+	// for(size_t i=0;i<ckt_l.ldolist.size();i++)
+		// cout<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<ckt_l.ldolist[i]->A->isS()<<endl;
+	//for(size_t i=0;i<ckt_l.nodelist.size()-1;i++)
+		//cout<<"i, Ynode?: "<<i<<" "<<*ckt_l.nodelist[i]<<" "<<ckt_l.nodelist[i]->isS()<<endl;
+	
 	// only need to stamp matrix once per t step
 	ckt_l.stamp_decomp_matrix_TR(tran, time, true);
 	ckt_g.stamp_decomp_matrix_TR(tran, time, false);
@@ -2516,7 +2529,7 @@ void Circuit::solve_DC_LDO(){
 		relocate_LDOs();
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		clog<<"optimized max_IR: "<<max_IRdrop<<endl;
+		// clog<<"optimized max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
 		ldo_pair.first = nd;
 		ldo_pair.second = max_IRdrop;
@@ -2551,7 +2564,7 @@ void Circuit::solve_DC_LDO(){
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// need to add more LDOs
 	//if(max_IRdrop > THRES)
-		add_LDO_DC();
+		// add_LDO_DC();
 		// clog<<"after add_LDO_DC. "<<endl;
 }
 
@@ -2629,9 +2642,7 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	// if no room to add new LDO pad, return
 	if(LDO_pad_vec.size()==0)
 		return;
-	for(size_t i=0;i<LDO_pad_vec.size();i++){
-		cout<<"pad nbr: "<<*LDO_pad_vec[i]->node<<endl;
-	}
+	
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
@@ -2640,7 +2651,12 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 		// clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
+	// clog<<"orig ckt_l.pad_set.size(): "<<ckt_l.pad_set.size()<<endl;
 	ckt_l.build_pad_set();
+	// clog<<"new ckt_l.pad_set.size(): "<<ckt_l.pad_set.size()<<endl;
+	/*for(size_t i=0;i<ckt_l.pad_set.size();i++)
+		clog<<"i, ckt_l pad set: "<<i<<" "<<*ckt_l.pad_set[i]->node<<" "<<ckt_l.pad_set[i]->node->isS()<<endl;
+		*/
 	// clog<<"create new LDOs. "<<endl;
 	solve_TR(tran, time);
 	// clog<<"after solve_ITR. "<<endl;
