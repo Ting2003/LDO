@@ -736,7 +736,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 // add Ieq into rhs
 // Ieq = i(t) + delta_t / (2*L) *v(t)
 void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
-	// cout<<"l net: "<<*net<<endl;
+	clog<<"l net: "<<*net<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
 	// nk point to X node
@@ -756,7 +756,7 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 	//clog<<"Geq: "<<tran.step_t / (2*net->value)<<endl;
 	// temp = net->value *(x[l] - x[k]);	
 	
-	//clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
+	clog<<"delta_t/2L, nl-nk, temp: "<<tran.step_t / (2*net->value)<<" "<<(nl->value-nk->value)<<" "<<temp<<endl;
 	
 	Net *r = nk->nbr[BOTTOM];
 	Node *a = r->ab[0]->rep;
@@ -770,7 +770,7 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 	//size_t id_b = b->rid;
 	//i_t = (x[id_a] - x[id_b]) / r->value;
 	i_t = (a->value - b->value) / r->value;
-	// clog<<"a->value, b->value, r->value, it: "<<a->value<<" "<<b->value<<" "<<r->value<<" "<<i_t<<endl;
+	clog<<"a->value, b->value, r->value, it: "<<a->value<<" "<<b->value<<" "<<r->value<<" "<<i_t<<endl;
 	// clog<<"temp: "<<temp<<endl;
                 
 	// push inductance nodes into node_set_x
@@ -778,7 +778,8 @@ void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
         //clog<<*b<<" "<<id_b<<endl;
 	Ieq  = i_t + temp;
 	net->Ieq = Ieq;
-	// clog<<"Ieq for induc: "<<Ieq<<" "<<*net<<endl;
+	clog<<"net for Ieq: "<<*net<<endl;
+	clog<<"Ieq for induc: "<<Ieq<<" "<<*net<<endl;
 	// clog<<*nk<<" "<<nk->rid<<endl;
 	/*if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += Ieq; // VDD SubCircuit
@@ -1413,9 +1414,9 @@ void SubCircuit::update_ldo_current(){
 	Node *nd;
 	Net *net;
 	Node *nb;
-	double current=0;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->A;
+		double current=0;
 		for(DIRECTION d = WEST; d!= UNDEFINED; d = (DIRECTION)(d+1)){
 			net = nd->nbr[d];
 			if(net == NULL) continue;
@@ -1429,7 +1430,7 @@ void SubCircuit::update_ldo_current(){
 			else
 				nb = net->ab[0];
 			current += (nd->value - nb->value ) / net->value;
-			// clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<current<<endl;
+			// clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<" "<<current<<endl;
 		}
 		// copy old current
 		//ldolist[i]->current_old = 
@@ -1441,7 +1442,7 @@ void SubCircuit::update_ldo_current(){
 		Net *net_g = ldolist[i]->nd_in->nbr[BOTTOM];
 		if(net_g->type == CURRENT)
 			net_g->value = current;
-		// cout<<"ldo new current: "<<*net_g<<endl;
+		// clog<<"ldo new current: "<<*net_g<<endl;
 	}
 }
 
@@ -1465,6 +1466,23 @@ void SubCircuit::modify_ldo_rhs(){
 	}
 }
 
+double SubCircuit::locate_g_maxIRdrop(){
+	max_IRdrop = 0;
+	Node *nd = replist[0];
+	for(size_t i=0;i<replist.size();i++){	
+		if(replist[i]->isS()==Z)
+			continue;
+		double IR_drop = VDD - replist[i]->value;		
+		if(IR_drop > max_IRdrop){
+			max_IRdrop = IR_drop;
+			nd = replist[i];
+		}
+	}
+	// clog<<"nd with max IR drop: "<<*nd<<endl;
+	return max_IRdrop;
+}
+
+
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	Node *nd = replist[0];
@@ -1477,7 +1495,7 @@ double SubCircuit::locate_maxIRdrop(){
 			nd = replist[i];
 		}
 	}
-	// clog<<"nd with max IR drop: "<<*nd<<endl;
+	clog<<"nd with max IR drop: "<<*nd<<endl;
 	return max_IRdrop;
 }
 
@@ -2381,7 +2399,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
+		ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
@@ -2575,6 +2593,8 @@ void SubCircuit::modify_rhs_Ieq_c(Net *net, double *rhs){
 }
 
 void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
+	clog<<"induc net: "<<*net<<endl;
+	clog<<"net->Ieq: "<<net->Ieq<<endl;
 	Node *nk = net->ab[0]->rep;
 	Node *nl = net->ab[1]->rep;
 	// nk point to X node
@@ -2587,11 +2607,11 @@ void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
 
 	if(nk->isS() !=Y && !nk->is_ground()){
 		 rhs[k] += net->Ieq; // VDD SubCircuit
-		//clog<<*nk<<" "<<rhs[k]<<endl;
+		clog<<*nk<<" "<<rhs[k]<<endl;
 	}
 	if(nl->isS()!=Y && !nl->is_ground()){
 		 rhs[l] += -net->Ieq; // VDD SubCircuit
-		//clog<<*nl<<" "<<rhs[l]<<endl;
+		clog<<*nl<<" "<<rhs[l]<<endl;
 	}
 }
 
