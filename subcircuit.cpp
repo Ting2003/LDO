@@ -364,7 +364,7 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 		case RESISTOR:
 			for(size_t i=0;i<ns.size();i++){
 				assert( fzero(ns[i]->value) == false );
-				stamp_resistor_tr(A, ns[i]);
+				stamp_resistor(A, ns[i]);
 			}
 			break;
 		case CURRENT:
@@ -379,12 +379,12 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 			}
 			break;
 		case CAPACITANCE:
-			for(size_t i=0;i<ns.size();i++)
-				stamp_capacitance_tr(A, ns[i], tran);
+			//for(size_t i=0;i<ns.size();i++)
+				//stamp_capacitance_tr(A, ns[i], tran);
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_tr(A, ns[i], tran);	
+				stamp_inductance_dc(A, ns[i]);	
 			}
 			break;
 		default:
@@ -495,7 +495,7 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
 }
 
 void SubCircuit::stamp_induc_rhs_dc(double *b, Net * net){
-	//clog<<"net: "<<*net<<endl;
+	// clog<<"net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -513,6 +513,7 @@ void SubCircuit::stamp_induc_rhs_dc(double *b, Net * net){
 		// general stamping
 		b[l] = b[k];
 	}
+	// clog<<"nk, nl, bk,nl: "<<*nk<<" "<<*nl<<" "<<b[k]<<" "<<b[l]<<endl;
 }
 
 void SubCircuit::stamp_inductance_dc(Matrix & A, Net * net){
@@ -1472,7 +1473,7 @@ double SubCircuit::locate_g_maxIRdrop(){
 	for(size_t i=0;i<replist.size();i++){	
 		if(replist[i]->isS()==Z)
 			continue;
-		double IR_drop = VDD - replist[i]->value;		
+		double IR_drop = 2.2 - replist[i]->value;		
 		if(IR_drop > max_IRdrop){
 			max_IRdrop = IR_drop;
 			nd = replist[i];
@@ -1495,7 +1496,7 @@ double SubCircuit::locate_maxIRdrop(){
 			nd = replist[i];
 		}
 	}
-	clog<<"nd with max IR drop: "<<*nd<<endl;
+	// clog<<"nd with max IR drop: "<<*nd<<endl;
 	return max_IRdrop;
 }
 
@@ -2445,7 +2446,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 		}
 	}
-	clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
+	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
 	return pad_ptr; 
 }
 
@@ -2653,6 +2654,9 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		case RESISTOR:
 		case CAPACITANCE:
 		case INDUCTANCE:
+			for(size_t i=0;i<ns.size();i++){
+				stamp_induc_rhs_dc(bp, ns[i]);	
+			}
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -2661,7 +2665,7 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 	}
 	// make_A_symmetric
 	if(local_flag == false)
-		make_A_symmetric_tr(bp, tran);
+		make_A_symmetric(bp);
 	else
 		make_A_symmetric_local(bp);
 
