@@ -147,9 +147,12 @@ public:
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
 	void extract_add_LDO_dc_info(vector<Pad*> &LDO_pad_vec);
+	void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
 	void create_current_LDO_graph();
 	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
 	void create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec);
+
+	void create_global_pad_new_nets(vector<Pad*> LDO_pad_vec);
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
 	void build_pad_graph(vector<Pad*> &pad_set);
@@ -195,6 +198,7 @@ private:
 	void configure_init();
 	void reconfigure_TR();
 	void mark_geo_occupation();
+	void build_candi_pad_set();
 	void extract_node(char * str, Node & nd);
 
 	void count_merge_nodes();
@@ -298,6 +302,7 @@ private:
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;
 	int MAX_NUM_LDO;
+	int MAX_NUM_PAD;
 
 	// mapping from Net name to object pointer
 	// unordered_map<string, Net*> map_net;

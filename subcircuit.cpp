@@ -319,9 +319,9 @@ void SubCircuit::stamp_by_set(Matrix & A){
 				//stamp_capacitance_dc(A, ns[i]);
 			break;
 		case INDUCTANCE:
-			for(size_t i=0;i<ns.size();i++){
+			/*for(size_t i=0;i<ns.size();i++){
 				stamp_inductance_dc(A, ns[i]);	
-			}
+			}*/
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -1370,7 +1370,7 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
 // stamp matrix and rhs, decomp matrix for DC
 void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){ 
    stamp_by_set_tr(A, tran);
-   // stamp_rhs_tr(local_flag, time, tran); 
+   // stamp_rhs_tr(local_flag, time, tran);
    Algebra::CK_decomp(A, L, cm);
    /*A.merge();
    cout<<"transient A: "<<A<<endl;
@@ -2127,6 +2127,27 @@ void SubCircuit::mark_geo_occupation(){
 	}*/
 }
 
+void SubCircuit::build_candi_pad_set(){
+	Node *nd = NULL;
+	int gap = 5;
+	for(size_t i=0;i<nodelist.size();i++){
+		nd = nodelist[i];
+		if(nd->is_ground())
+			continue;
+		if(nd->isS()==X || nd->isS() ==Y ||
+				nd->isS() == Z)
+			continue;
+		if(nd->pt.x % gap ==0 && 
+			nd->pt.y % gap ==0){
+			nd->assign_geo_flag(SPAD);
+			Pad *pad_ptr = new Pad();
+			pad_ptr->node = nd;
+			candi_pad_set.push_back(pad_ptr);
+		}
+	}
+	MAX_NUM_PAD = candi_pad_set.size();
+}
+
 bool SubCircuit::node_in_ldo_or_block(double x, double y){
 	int width = ldolist[0]->width;
 	int height = ldolist[0]->height;
@@ -2392,6 +2413,29 @@ void SubCircuit::create_current_LDO_graph(){
 	update_pad_control_nodes(candi_pad_set);
 }
 
+void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag){	
+	int iter = 0;
+	double THRES = 2.2 * 0.1;
+	// clog<<"local bad flag: "<<local_bad_flag<<endl;
+	// for(size_t i=0;i<ldolist.size();i++)
+		//clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
+	// while not satisfied and still have room,
+	// perform optimization
+	while((local_bad_flag == true || max_IRdrop > THRES && 
+		pad_set.size() < MAX_NUM_PAD) && iter <1){//LDO_pad_vec.size() <1){
+		// 4. LDO should go to candi with 
+		// maximum IR
+		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
+		// clog<<"pad_ptr: "<<*pad_ptr->node<<endl;
+		
+		LDO_pad_vec.push_back(pad_ptr);
+		// 5. update the nbr flags for 
+		// candi in graph
+		// update_single_pad_flag(pad_ptr);
+		iter++;
+	}
+}
+
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
 	int iter = 0;
 	double THRES = VDD_G * 0.1;
@@ -2483,6 +2527,28 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 		nd->enableLDO();
 		nd->value = VDD_G;
 		Net *net = new Net(VOLTAGE, VDD_G, nd, gnd);
+		add_net(net);
+		// update top nbr net
+		nd->rep->nbr[TOP] = net;
+	}
+}
+
+// create local current nets for new LDO
+void SubCircuit::create_global_pad_new_nets(vector<Pad*> LDO_pad_vec){
+	Node *nd;
+	Node *gnd =NULL;
+	for(size_t i=0;i<nodelist.size();i++)
+		if(nodelist[i]->is_ground()){
+			gnd = nodelist[i];
+			break;
+		}
+
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		nd = LDO_pad_vec[i]->node;
+		nd->enableY();
+		nd->enableLDO();
+		nd->value = 2.2;
+		Net *net = new Net(VOLTAGE, 2.2, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
@@ -2654,9 +2720,9 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		case RESISTOR:
 		case CAPACITANCE:
 		case INDUCTANCE:
-			for(size_t i=0;i<ns.size();i++){
+			/*for(size_t i=0;i<ns.size();i++){
 				stamp_induc_rhs_dc(bp, ns[i]);	
-			}
+			}*/
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -2664,9 +2730,9 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		}
 	}
 	// make_A_symmetric
-	if(local_flag == false)
-		make_A_symmetric(bp);
-	else
+	//if(local_flag == false)
+		// make_A_symmetric(bp);
+	// else
 		make_A_symmetric_local(bp);
 
 	// for(size_t i=0;i<replist.size();i++)
@@ -2700,9 +2766,9 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 		case CAPACITANCE:
 			break;
 		case INDUCTANCE:
-			for(size_t i=0;i<ns.size();i++){
+			/*for(size_t i=0;i<ns.size();i++){
 				stamp_induc_rhs_dc(bp, ns[i]);	
-			}
+			}*/
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -2710,10 +2776,10 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 		}
 	}
 	// only make A symmetric for local
-	if(local_flag == true)
+	// if(local_flag == true)
 		make_A_symmetric_local(bp);	
-	else
-		make_A_symmetric(bp);
+	// else
+		// make_A_symmetric(bp);
 }
 
 // stamp ldo VDD net into bp
