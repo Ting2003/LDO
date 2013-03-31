@@ -2265,14 +2265,34 @@ void Circuit::solve_DC(){
 	// first atamp matrix: already symmetric
 	ckt_l.stamp_decomp_matrix_DC(true);
 	ckt_g.stamp_decomp_matrix_DC(false);
+
+	int local_bad_flag = 0;
+	double THRES_l = VDD_G*0.1;
+	double THRES_g = 2.2*0.1;
+	bool max_flag = false;
+	double diff_old_l = 1;
+	double diff_old_g = 1;
+	double delta_diff_l = 1;
+	double delta_diff_g = 0;
+
 	// solve DC with fixed number of LDOs
-	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
+	while((diff_l > 1e-3 || diff_g > 1e-3) && iter <4){
 		ckt_l.reset_b();
 		// then update netlist
 		ckt_l.modify_local_nets();
 		ckt_l.stamp_rhs_DC(true);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
+		delta_diff_l = fabs(diff_l - diff_old_l);
+		ckt_l.locate_maxIRdrop();
+
+		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
+		if(ckt_l.max_IRdrop > THRES_l){
+			local_bad_flag = 1;
+			max_flag = optimize_local_LDO_DC(local_bad_flag, THRES_l);
+			
+			clog<<"optimized new local max_IR: "<<ckt_l.max_IRdrop<<" "<<ckt_l.ldolist.size()<<endl;
+		}
 		// calculate ldo current from ckt_l
 		// update global current net
 		ckt_l.update_ldo_current();
@@ -2285,7 +2305,10 @@ void Circuit::solve_DC(){
 		ckt_g.stamp_rhs_DC(false);
 		// ckt_g.modify_ldo_rhs();
 		
+		diff_old_g = diff_g;
 		diff_g = ckt_g.solve_CK_with_decomp();
+		delta_diff_g = fabs(diff_g - diff_old_g);
+		ckt_g.locate_g_maxIRdrop();
 		// then throw into ldo lookup table
 		update_ldo_vout();
 		
@@ -2777,6 +2800,31 @@ void Circuit::solve_global(Tran &tran, double time){
 	// clog<<"new global max IR is: "<<ckt_g.locate_g_maxIRdrop()<<endl;
 }
 
+// working on add LDOs to TR step
+void Circuit::add_LDO_DC_local(){
+	// temporary storing newly added LDOs
+	vector<Pad*> LDO_pad_vec;
+	// find the node where new LDOs shoudl go to
+	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	// if no room to add new LDO pad, return
+	if(LDO_pad_vec.size()==0){
+		// clog<<"no add new ldo. "<<endl;
+		return;
+	}
+	// clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
+	// rebuild local and global net
+	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
+	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+
+	// create new LDOs in circuit
+	create_new_LDOs(LDO_pad_vec);
+	ckt_l.build_pad_set();
+	solve_local_DC();
+	max_IRdrop = locate_maxIRdrop();
+	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
+	LDO_pad_vec.clear();
+}
+
 
 // working on add LDOs to TR step
 void Circuit::add_LDO_TR_local(Tran &tran, double time){
@@ -2802,6 +2850,20 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }
+
+// solve local
+void Circuit::solve_local_DC(){
+	ckt_l.reset_b();
+	ckt_l.stamp_decomp_matrix_DC(true);
+	// Ieq already there
+	ckt_l.modify_local_nets();
+	ckt_l.stamp_rhs_DC(true);
+	// solve eq with decomped matrix
+	double diff_l = ckt_l.solve_CK_with_decomp();
+	ckt_l.locate_maxIRdrop();
+	// cout<<"new diff_l, local max IR is: "<<diff_l<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+}
+
 
 // solve local
 void Circuit::solve_local(Tran &tran, double time){
@@ -2886,6 +2948,33 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 	// locate_maxIRdrop();		
 	// clog<<"max IR after solve_TR is: "<<max_IRdrop<<endl;
 }
+
+bool Circuit::optimize_local_LDO_DC(int flag, double THRES_l){
+	if(flag != 1)
+		return false;
+	bool max_flag = false;
+	// add LDO to lcoal grid
+	int iter_i = 0;
+	while(flag ==1){// && iter_i <15){
+		if(ckt_l.ldolist.size() >= ckt_l.MAX_NUM_LDO){
+			max_flag = true;
+			return max_flag;
+			break;
+		}
+		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+		add_LDO_DC_local();
+		// clog<<"opti IR: "<<ckt_l.max_IRdrop<<endl;
+		if(ckt_l.locate_maxIRdrop() <= THRES_l){
+			flag = 0;
+			break;
+		}
+		iter_i++;
+	}
+	ckt_l.update_ldo_current();
+	return false;
+}
+
+
 
 bool Circuit::optimize_local_LDO(int flag, double THRES_l, Tran &tran, double time){
 	if(flag != 1)
