@@ -51,7 +51,7 @@ public:
 
 	size_t rid;		// id in rep_list
 	size_t id;		// id in nodelist
-	bool flag_visited; // fix node
+	int flag_visited; // fix node
 	// bool flag_qualified;// this node can be moved
 	bool flag_LDO; 	// whether this node is LDO node
 	int flag_geo; // utilized to record the geo

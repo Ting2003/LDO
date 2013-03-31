@@ -2377,17 +2377,10 @@ bool Circuit::solve_TR(Tran &tran, double time){
 
 		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
 		if(ckt_l.max_IRdrop > THRES_l){
-			clog<<"optimize: "<<endl;
 			local_bad_flag = 1;
 			max_flag = optimize_local_LDO(local_bad_flag, THRES_l, tran, time);
-			/*if(max_flag == true){
-				clog<<"reach maximum LDO size. "<<MAX_NUM_LDO<<endl;
-				break;
-				return max_flag;
-				*/
-			// }
+			
 			clog<<"optimized new local max_IR: "<<ckt_l.max_IRdrop<<" "<<ckt_l.ldolist.size()<<endl;
-			// break;
 		}
 		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
 		// calculate ldo current from ckt_l
@@ -2906,7 +2899,7 @@ bool Circuit::optimize_local_LDO(int flag, double THRES_l, Tran &tran, double ti
 			return max_flag;
 			break;
 		}
-		clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
 		add_LDO_TR_local(tran, time);
 		// clog<<"opti IR: "<<ckt_l.max_IRdrop<<endl;
 		if(ckt_l.locate_maxIRdrop() <= THRES_l){

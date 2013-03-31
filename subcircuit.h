@@ -219,6 +219,9 @@ private:
 	void stamp_rhs_tr(bool local_flag, double time, Tran &tran);
 	void stamp_resistor_tr(Matrix & A, Net * net);
 	double current_tr(Net *net, double &time);
+	void update_partial_grid(Node *nd);
+	double update_node_value(Node *&nd, Node *add_node);
+	void update_queue(queue<Node*> &q, Node *nd, size_t iter);
 	
 	void stamp_current_tr_1(double *bp, double *b, double &time);
 	void stamp_current_tr_net_1(double *bp, double *b, Net *net, double &time);

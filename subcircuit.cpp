@@ -2048,7 +2048,7 @@ void SubCircuit::clear_flags(){
 	Node *nd;
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		nd = candi_pad_set[i]->node;
-		nd->flag_visited = false;
+		nd->flag_visited = -1;
 	}
 }
 
@@ -2408,7 +2408,7 @@ void SubCircuit::create_current_LDO_graph(){
 	// 1. build candidate pad graph
 	build_pad_graph(candi_pad_set);
 	// update the flag for the single LDO
-	update_single_pad_flag(pad_set[0]);
+	// update_single_pad_flag(pad_set[0]);
 	// 2. search for control nodes for all candi
 	extract_pads(candi_pad_set);
 	// 3. get ref_value as IR drop for each candi
@@ -2418,19 +2418,19 @@ void SubCircuit::create_current_LDO_graph(){
 void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag){	
 	int iter = 0;
 	double THRES = 2.2 * 0.1;
-	// clog<<"local bad flag: "<<local_bad_flag<<endl;
-	// for(size_t i=0;i<ldolist.size();i++)
-		//clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
 	while((local_bad_flag == true || max_IRdrop > THRES && 
-		pad_set.size() < MAX_NUM_PAD) && iter <1){//LDO_pad_vec.size() <1){
+		pad_set.size() < MAX_NUM_PAD) && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
-		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
-		// clog<<"pad_ptr: "<<*pad_ptr->node<<endl;
-		
+		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
 		LDO_pad_vec.push_back(pad_ptr);
+		// update partial grid for several iter
+		// update_partial_grid(pad_ptr->node);
+		// locate_maxIRdrop();
+		clog<<"pad_ptr: "<<*pad_ptr->node<<endl;
+		
 		// 5. update the nbr flags for 
 		// candi in graph
 		// update_single_pad_flag(pad_ptr);
@@ -2441,30 +2441,25 @@ void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
 	int iter = 0;
 	double THRES = VDD_G * 0.1;
-	// for(size_t i=0;i<ldolist.size();i++)
-		//clog<<"current ldo: "<<i<<" "<<*ldolist[i]->A<<endl;
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		ldolist.size() < MAX_NUM_LDO && iter <3){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
-		clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
-		/*for(size_t i=0;i<pad_ptr->nbrs.size();i++){
-
-		clog<<"pad nbr: "<<*pad_ptr->nbrs[i]->node<<endl;
-		}
-		*/
+		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
-		// 5. update the nbr flags for 
-		// candi in graph
-		update_single_pad_flag(pad_ptr);
+		// update partial grid for several iter
+		update_partial_grid(pad_ptr->node);
+		locate_maxIRdrop();
 		iter++;
 	}
 }
 
 // return pad candi with max IR (still available candi)
+// this pad also need to be in the farest distance with
+// current ldo nodes
 Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
@@ -2472,8 +2467,8 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	// for(size_t i=0;i<pad_set.size();i++)
 		// clog<<"i, pad_set_flag: "<<i<<" "<<*pad_set[i]->node<<" "<<pad_set[i]->node->flag_visited<<endl;
 	for(size_t i=0;i<pad_set.size();i++){
-		if(pad_set[i]->node->flag_visited == true)
-			continue;
+		// if(pad_set[i]->node->flag_visited == true)
+			// continue;
 		// skip the one that already has pad
 		if(pad_set[i]->node->isS()==Y)
 			 continue;
@@ -2504,7 +2499,7 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 
 	nd = pad->node;
 	//clog<<"pad node: "<<*nd<<endl;
-	nd->flag_visited = true;
+	nd->flag_visited = 0;
 	// mark nbr pads with visited
 	/*for(size_t j=0;j<pad->nbrs.size();j++){
 		nd_nbr = pad->nbrs[j]->node;
@@ -2809,4 +2804,101 @@ void SubCircuit::release_resources(){
 	cholmod_free_factor(&L, cm);
 	cholmod_free_dense(&x, cm);
 	cholmod_finish(&c);
+}
+
+// update partial grid around the new added pad
+void SubCircuit::update_partial_grid(Node *nd){
+	queue<Node *> q;
+	Node *nd_cur;
+	Node *nbr;
+	double sum = 0;
+	double epi = 1e-4;
+	double diff = 0;
+	int iter = 0;
+	
+	while(iter <5){
+		q.push(nd);
+		nd->flag_visited = iter;
+		nd->value = VDD_G;
+		int count = 0;
+		while(!q.empty()){
+			nd_cur = q.front();
+			// cout<<"nd_cur: "<<*nd_cur<<endl;
+			// update this node
+			diff = update_node_value(nd_cur, nd);
+			// cout<<"diff: "<<diff<<endl;
+			// push nbr node into queue
+			if(diff > epi){
+				update_queue(q, nd_cur, iter);
+			}
+			q.pop();
+			count ++;
+		}
+		// clog<<"total num in queue is: "<<count<<endl;
+		iter ++;
+	}
+}
+
+// rhs is the current vector
+double SubCircuit::update_node_value(Node *&nd, Node *add_node){
+	if(nd->isS()==Y || nd->name == add_node->name) {
+		return 1;
+	}
+	double V_old=0;
+	double V_temp = 0;
+	double G = 0;
+	Net *net;
+	Node *nbr, *na, *nb;
+	double sum = 0;
+	double current = 0;
+	net = NULL;
+	nbr = NULL; na = NULL; nb = NULL;
+
+	V_old = nd->value;
+	
+	// update nd->value
+	for(int i=0;i<7;i++){
+		net = nd->nbr[i];
+		if(net ==NULL) continue;
+		G = 1.0/net->value;
+		na = net->ab[0]; nb = net->ab[1];
+		if(nd->name == na->name) nbr = nb;
+		else	nbr = na;
+		if(!nbr->is_ground()){
+			sum += G;
+			V_temp += G*nbr->value;
+		}
+	}
+	if(nd->nbr[BOTTOM]== NULL) current = 0;
+	else	current = -nd->nbr[BOTTOM]->value;
+	V_temp += current;
+	V_temp /=sum;
+	nd->value  = V_temp;
+ 	
+	double V_improve = fabs(nd->value - V_old);
+
+	return V_improve;
+}
+
+void SubCircuit::update_queue(queue<Node*> &q, Node *nd, size_t iter){
+	Net * net; Node *nbr;
+	Node *na, *nb;
+	//cout<<"update queue:head "<<q.queueHead_<<endl;
+	//cout<<"center nd: "<<*nd<<endl;
+	for(int i=0;i<7;i++){
+		net = nd->nbr[i];
+		if(net==NULL) continue;
+		// find the other node, which is nbr
+		na = net->ab[0];
+		nb = net->ab[1];
+		if(nd->name == na->name)
+			nbr = nb;
+		else	nbr = na;
+		// cout<<"nbr: "<<*nbr<<" "<<nbr->flag_visited<<endl;
+		if(!nbr->is_ground()&& nbr->flag_visited != iter){
+			q.push(nbr);
+			// cout<<"push: "<<*nbr<<endl;
+			nbr->flag_visited = iter;
+		}
+	}
 }
