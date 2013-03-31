@@ -1357,7 +1357,7 @@ void SubCircuit::reconfigure_TR(){
 }
 
 // stmap matrix and rhs, decomp matrix for DC
-void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
+void SubCircuit::stamp_decomp_matrix_DC(){
    stamp_by_set(A);
    // stamp_rhs_DC(local_flag);
    
@@ -1369,7 +1369,7 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
 }
 
 // stamp matrix and rhs, decomp matrix for DC
-void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag){ 
+void SubCircuit::stamp_decomp_matrix_TR(Tran &tran){ 
    stamp_by_set_tr(A, tran);
    // stamp_rhs_tr(local_flag, time, tran);
    Algebra::CK_decomp(A, L, cm);
@@ -2417,14 +2417,14 @@ void SubCircuit::create_current_LDO_graph(){
 	// 3. get ref_value as IR drop for each candi
 	update_pad_control_nodes(candi_pad_set);
 }
-
+#if 0
 void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag){	
 	int iter = 0;
 	double THRES = 2.2 * 0.1;
 	// while not satisfied and still have room,
 	// perform optimization
-	while((local_bad_flag == true || max_IRdrop > THRES && 
-		pad_set.size() < MAX_NUM_PAD) && iter <2){//LDO_pad_vec.size() <1){
+	while((local_bad_flag == true || (max_IRdrop > THRES) && 
+		(int)pad_set.size() < MAX_NUM_PAD) && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);
@@ -2440,6 +2440,7 @@ void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_
 		iter++;
 	}
 }
+#endif
 
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
 	int iter = 0;
@@ -2447,7 +2448,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		ldolist.size() < MAX_NUM_LDO && iter <3){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <3){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
@@ -2498,7 +2499,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 void SubCircuit::update_single_pad_flag(Pad* pad){
 	//Pad *pad_nbr = NULL;
 	Node *nd;
-	Node *nd_nbr;
+	// Node *nd_nbr;
 
 	nd = pad->node;
 	//clog<<"pad node: "<<*nd<<endl;
@@ -2813,8 +2814,8 @@ void SubCircuit::release_resources(){
 void SubCircuit::update_partial_grid(Node *nd){
 	queue<Node *> q;
 	Node *nd_cur;
-	Node *nbr;
-	double sum = 0;
+	// Node *nbr;
+	// double sum = 0;
 	double epi = 1e-4;
 	double diff = 0;
 	int iter = 0;
@@ -2883,7 +2884,7 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node){
 	return V_improve;
 }
 
-void SubCircuit::update_queue(queue<Node*> &q, Node *nd, size_t iter){
+void SubCircuit::update_queue(queue<Node*> &q, Node *nd, int iter){
 	Net * net; Node *nbr;
 	Node *na, *nb;
 	//cout<<"update queue:head "<<q.queueHead_<<endl;

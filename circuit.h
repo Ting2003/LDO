@@ -142,14 +142,14 @@ public:
 	void add_LDO_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
 	void add_LDO_DC_local();
-	void add_LDO_TR_global(Tran &tran, double time, bool local_bad_flag);
+	// void add_LDO_TR_global(Tran &tran, double time, bool local_bad_flag);
 	void solve_local(Tran &tran, double time);
 	void solve_local_DC();
 	void solve_global(Tran &tran, double time);
 	bool optimize_local_LDO(int flag, double THRES_l, Tran &tran, double time);
 	bool optimize_local_LDO_DC(int flag, double THRES_l);
-	void optimize_global_LDO(int flag, double THRES_g, Tran &tran, double time, double THRES_l);
-	void add_LDO_all_global(Tran &tran, double time);
+	// void optimize_global_LDO(int flag, double THRES_g, Tran &tran, double time, double THRES_l);
+	// void add_LDO_all_global(Tran &tran, double time);
 	void create_new_LDOs(vector<Pad*> LDO_pad_vec);
 	void recover_best_ldo(Node *nd_min);
 	void relocate_pads_graph_global(Tran &tran, vector<LDO*> &ldo_vec, vector<MODULE*> &wspace_vec);

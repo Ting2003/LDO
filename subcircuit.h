@@ -147,7 +147,7 @@ public:
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
 	void extract_add_LDO_dc_info(vector<Pad*> &LDO_pad_vec);
-	void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
+	// void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
 	void create_current_LDO_graph();
 	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
 	void create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec);
@@ -181,8 +181,8 @@ private:
 	// void solve_LU_core(Tran &tran, bool flag);
 	void build_local_nets();
 	void build_global_nets();
-	void stamp_decomp_matrix_DC(bool local_flag);
-	void stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag);
+	void stamp_decomp_matrix_DC();
+	void stamp_decomp_matrix_TR(Tran &tran);
 
 	double solve_CK_with_decomp();
 	double solve_CK_with_decomp_tr();
@@ -221,7 +221,7 @@ private:
 	double current_tr(Net *net, double &time);
 	void update_partial_grid(Node *nd);
 	double update_node_value(Node *&nd, Node *add_node);
-	void update_queue(queue<Node*> &q, Node *nd, size_t iter);
+	void update_queue(queue<Node*> &q, Node *nd, int iter);
 	
 	void stamp_current_tr_1(double *bp, double *b, double &time);
 	void stamp_current_tr_net_1(double *bp, double *b, Net *net, double &time);
