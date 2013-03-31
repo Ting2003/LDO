@@ -319,9 +319,9 @@ void SubCircuit::stamp_by_set(Matrix & A){
 				//stamp_capacitance_dc(A, ns[i]);
 			break;
 		case INDUCTANCE:
-			/*for(size_t i=0;i<ns.size();i++){
+			for(size_t i=0;i<ns.size();i++){
 				stamp_inductance_dc(A, ns[i]);	
-			}*/
+			}
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -364,7 +364,7 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 		case RESISTOR:
 			for(size_t i=0;i<ns.size();i++){
 				assert( fzero(ns[i]->value) == false );
-				stamp_resistor(A, ns[i]);
+				stamp_resistor_tr(A, ns[i]);
 			}
 			break;
 		case CURRENT:
@@ -379,12 +379,12 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 			}
 			break;
 		case CAPACITANCE:
-			//for(size_t i=0;i<ns.size();i++)
-				//stamp_capacitance_tr(A, ns[i], tran);
+			for(size_t i=0;i<ns.size();i++)
+				stamp_capacitance_tr(A, ns[i], tran);
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_dc(A, ns[i]);	
+				stamp_inductance_tr(A, ns[i], tran);	
 			}
 			break;
 		default:
@@ -1433,19 +1433,19 @@ void SubCircuit::update_ldo_current(){
 			else
 				nb = net->ab[0];
 			current += (nd->value - nb->value ) / net->value;
-			// clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<" "<<current<<endl;
+			clog<<"net, nd, nb, current: "<<*net<<" "<<*nd<<" "<<*nb<<" "<<current<<endl;
 		}
 		// copy old current
 		//ldolist[i]->current_old = 
 			// ldolist[i]->current;
-		// clog<<"ldo old current: "<<ldolist[i]->current;
+		clog<<"ldo old current: "<<ldolist[i]->current;
 		// assign new current
 		ldolist[i]->current = current;
 		// also update the current net in ckt_g
 		Net *net_g = ldolist[i]->nd_in->nbr[BOTTOM];
 		if(net_g->type == CURRENT)
 			net_g->value = current;
-		// clog<<"ldo new current: "<<*net_g<<endl;
+		clog<<"ldo new current: "<<*net_g<<endl;
 	}
 }
 
@@ -2727,9 +2727,9 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		}
 	}
 	// make_A_symmetric
-	//if(local_flag == false)
-		// make_A_symmetric(bp);
-	// else
+	if(local_flag == false)
+		make_A_symmetric_tr(bp, tran);
+	else
 		make_A_symmetric_local(bp);
 
 	// for(size_t i=0;i<replist.size();i++)
