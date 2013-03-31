@@ -877,7 +877,7 @@ void SubCircuit::stamp_current(double * b, Net * net){
 }
 
 void SubCircuit::stamp_current_tr_net(double * b, Net * net, double &time){
-	current_tr(net, time);
+	double current = current_tr(net, time);
 	//clog<<"net: "<<*net<<" "<<time<<endl;
 	//clog<<"current: "<<current<<endl;
 	Node * nk = net->ab[0]->rep;
@@ -885,13 +885,13 @@ void SubCircuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	if( !nk->is_ground()&& nk->isS()!=Y) { 
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
-		b[k] += -net->value;//current;
+		b[k] += -current;
 		// clog<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
 	if( !nl->is_ground() && nl->isS()!=Y) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
-		b[l] +=  net->value;// current;
+		b[l] +=  current;
 		// clog<<"time, l, b: "<<time<<" "<<l<<" "<<b[l]<<endl;
 	}
 }
@@ -943,29 +943,30 @@ void SubCircuit::stamp_VDD(Matrix & A, Net * net){
 }
 
 // decide transient step current values
-void SubCircuit::current_tr(Net *net, double &time){
+double SubCircuit::current_tr(Net *net, double &time){
 	double slope = 0;
 	double Tr = net->Tr;
 	double PW = Tr + net->PW;
 	double Tf = PW + net->Tf;
 	double t_temp = time - net->TD;
 	double t = fmod(t_temp, net->Period);
+	double current = 0;
 	if(time <= net->TD)
-		net->value = net->V1;
+		current = net->V1;
 	else if(t > 0 && t<= Tr){
 		slope = (net->V2 - net->V1) / 
 			(net->Tr);
-		net->value = net->V1 + t*slope;
+		current = net->V1 + t*slope;
 	}
 	else if(t > Tr && t<= PW)
-		net->value = net->V2;
+		current = net->V2;
 	else if(t>PW && t<=Tf){
 		slope = (net->V1-net->V2)/(net->Tf);
-		net->value = net->V2 + slope*(t-PW);
+		current = net->V2 + slope*(t-PW);
 	}
 	else
-		net->value = net->V1;
-	//return current;
+		current = net->V1;
+	return current;
 }
 
 // assign value back to transient nodes
@@ -1363,8 +1364,8 @@ void SubCircuit::stamp_decomp_matrix_DC(bool local_flag){
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
    /*A.merge();
-   cout<<"DC A: "<<A<<endl;
-   A.clear();*/
+   cout<<"DC A: "<<A<<endl;*/
+   A.clear();
 }
 
 // stamp matrix and rhs, decomp matrix for DC
@@ -1374,7 +1375,8 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran, double time, bool local_flag
    Algebra::CK_decomp(A, L, cm);
    /*A.merge();
    cout<<"transient A: "<<A<<endl;
-   A.clear();*/
+   */
+   A.clear();
 }
 
 // solve eq with decomped matrix
@@ -2448,8 +2450,8 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
-		/*clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
-		for(size_t i=0;i<pad_ptr->nbrs.size();i++){
+		clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		/*for(size_t i=0;i<pad_ptr->nbrs.size();i++){
 
 		clog<<"pad nbr: "<<*pad_ptr->nbrs[i]->node<<endl;
 		}

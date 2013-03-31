@@ -218,7 +218,7 @@ private:
 	void stamp_by_set_tr(Matrix & A, Tran &tran);
 	void stamp_rhs_tr(bool local_flag, double time, Tran &tran);
 	void stamp_resistor_tr(Matrix & A, Net * net);
-	void current_tr(Net *net, double &time);
+	double current_tr(Net *net, double &time);
 	
 	void stamp_current_tr_1(double *bp, double *b, double &time);
 	void stamp_current_tr_net_1(double *bp, double *b, Net *net, double &time);
