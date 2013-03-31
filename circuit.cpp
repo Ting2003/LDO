@@ -230,7 +230,7 @@ void Circuit::solve(Tran &tran){
 
 		flag = solve_TR(tran, time);
 		// flag = solve_TR_LDO(tran, time);
-		// clog<<"maxIR_l / g: "<<ckt_l.max_IRdrop<<" "<<ckt_g.max_IRdrop<<endl;
+		// clog<<"maxIR_l / g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
 		ckt_l.clear_flags();
 		iter++;
 		if(flag == true){
@@ -239,7 +239,7 @@ void Circuit::solve(Tran &tran){
 		}
 	}
 	clog<<"final ldo size: "<<ckt_l.ldolist.size()<<" "<<ckt_l.MAX_NUM_LDO<<endl;
-	return;
+	// return;
 	// clog<<endl;
 	clog<<"==== entering verify stage ==== "<<endl;
 // #endif
@@ -303,7 +303,7 @@ void Circuit::verify_solve(Tran &tran){
    // first solve DC solution
    solve_DC();
    clog<<"after verify DC. "<<endl;
-   //clog<<"max_IR for l and g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
+   clog<<"max_IR for l and g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
    // clog<<ckt_l.nodelist<<endl;
    // clog<<ckt_g.nodelist<<endl;
    // return;
@@ -2262,14 +2262,14 @@ void Circuit::solve_DC(){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
-	int local_bad_flag = 0;
-	double THRES_l = VDD_G*0.1;
-	double THRES_g = 2.2*0.1;
+	// int local_bad_flag = 0;
+	// double THRES_l = VDD_G*0.1;
+	// double THRES_g = 2.2*0.1;
 	bool max_flag = false;
-	double diff_old_l = 1;
-	double diff_old_g = 1;
-	double delta_diff_l = 1;
-	double delta_diff_g = 0;
+	// double diff_old_l = 1;
+	// double diff_old_g = 1;
+	// double delta_diff_l = 1;
+	// double delta_diff_g = 0;
 
 	// first atamp matrix: already symmetric
 	ckt_l.stamp_decomp_matrix_DC(true);
@@ -2403,7 +2403,7 @@ bool Circuit::solve_TR(Tran &tran, double time){
 		ckt_l.update_ldo_current();
 
 //#if 0
-		ckt_g.reset_b();
+		// ckt_g.reset_b();
 		// ckt_g.modify_global_nets();
 		// restamp global rhs with ldo current
 		// ckt_g.modify_ldo_rhs();	
@@ -2895,26 +2895,36 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
+	// stores the Ieq for both C and L nets 
+	ckt_l.modify_rhs_tr_0(tran);
+	ckt_g.modify_rhs_tr_0(tran);
+	double diff_old_l = 1;
+	double diff_old_g = 1;
+	double delta_diff_l = 1;
+	double delta_diff_g = 0;
 
-	while((diff_l > 1e-4 || diff_g > 1e-4) && iter < 100){
+	while((delta_diff_l > 1e-4 || delta_diff_g > 1e-4)){
 		// clog<<endl<<"time: "<<time<<" iter: "<<iter<<endl;
-		// clear bp
-		ckt_l.reset_b();
 		// update ldo vol net values  
 		ckt_l.modify_local_nets();
 		// restamp bp
 		ckt_l.stamp_rhs_tr(true, time, tran);
+		diff_old_l  = diff_l;
 		// solve eq with decomped matrix
-		diff_l = ckt_l.solve_CK_with_decomp();
+		diff_l = ckt_l.solve_CK_with_decomp_tr();
+		delta_diff_l = fabs(diff_l - diff_old_l);
+		ckt_l.locate_maxIRdrop();
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 		// clog<<"ckt_l IR: "<<ckt_l.locate_maxIRdrop()<<endl;
 
-		ckt_g.reset_b();
-		ckt_g.modify_global_nets();
+		// ckt_g.modify_global_nets();
 		// modify global bp
-		ckt_g.stamp_rhs_tr(false, time, tran);	
-		diff_g = ckt_g.solve_CK_with_decomp();
+		ckt_g.stamp_rhs_tr(false, time, tran);
+		diff_old_g = diff_g;
+		diff_g = ckt_g.solve_CK_with_decomp_tr();
+		delta_diff_g = fabs(diff_g - diff_old_g);
+		ckt_g.locate_g_maxIRdrop();
 
 		// clog<<"ckt_g IR: "<<ckt_g.locate_maxIRdrop()<<endl;
 		// clog<<"iter, diff_l, g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl;
