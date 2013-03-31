@@ -2448,7 +2448,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <3){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
@@ -2512,7 +2512,7 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	}*/
 }
 
-// create local current nets for new LDO
+// create local current nets for2new LDO
 void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
 	Node *gnd =NULL;

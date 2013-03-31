@@ -2341,8 +2341,11 @@ bool Circuit::solve_TR(Tran &tran, double time){
 	double diff_old_g = 1;
 	double delta_diff_l = 1;
 	double delta_diff_g = 0;
+	bool flag = true;
 
-	while((delta_diff_l > 1e-3 || delta_diff_g > 1e-3)){//&& iter < 5){
+	while((delta_diff_l > 1e-3 || delta_diff_g > 1e-3)&& flag == true&& iter < 20){
+		if(delta_diff_l <=1e-3 && delta_diff_g <= 1e-3 && ckt_l.max_IRdrop <= THRES_l)
+			flag = false;
 		// clog<<endl<<"time - iter: "<<time<<" "<<iter<<endl;
 		// then update netlist
 		ckt_l.modify_local_nets();
@@ -2353,20 +2356,18 @@ bool Circuit::solve_TR(Tran &tran, double time){
 		delta_diff_l = fabs(diff_l - diff_old_l);
 		ckt_l.locate_maxIRdrop();
 
-		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
 		if(ckt_l.max_IRdrop > THRES_l){
+			clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
 			local_bad_flag = 1;
 			max_flag = optimize_local_LDO(local_bad_flag, THRES_l, tran, time);
 			
 			clog<<"optimized new local max_IR: "<<ckt_l.max_IRdrop<<" "<<ckt_l.ldolist.size()<<endl;
 		}
-		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
+		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<" ";
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
 
 //#if 0
-		// ckt_g.reset_b();
-		// ckt_g.modify_global_nets();
 		// restamp global rhs with ldo current
 		// ckt_g.modify_ldo_rhs();	
 		ckt_g.stamp_rhs_tr(false, time, tran);
@@ -2792,7 +2793,8 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 		// clog<<"no add new ldo. "<<endl;
 		return;
 	}
-	// clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
+	//for(size_t i=0;i<LDO_pad_vec.size();i++)
+	// clog<<"new LDO: "<<*LDO_pad_vec[i]->node<<endl;	
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
@@ -2812,7 +2814,6 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 
 // solve local
 void Circuit::solve_local(Tran &tran, double time){
-	ckt_l.reset_b();
 	ckt_l.stamp_decomp_matrix_TR(tran);
 	// Ieq already there
 	ckt_l.modify_local_nets();
@@ -2882,7 +2883,6 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		ckt_l.update_ldo_current();
 		// clog<<"ckt_l IR: "<<ckt_l.locate_maxIRdrop()<<endl;
 
-		// ckt_g.modify_global_nets();
 		// modify global bp
 		ckt_g.stamp_rhs_tr(false, time, tran);
 		diff_old_g = diff_g;
