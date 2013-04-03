@@ -2449,7 +2449,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	

@@ -241,9 +241,9 @@ void Circuit::solve(Tran &tran){
 		}
 	}
 	clog<<"final ldo size: "<<ckt_l.ldolist.size()<<" "<<ckt_l.MAX_NUM_LDO<<endl;
-	for(size_t i=0;i<ckt_l.ldolist.size();i++)
-		cout<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<endl;
-	return;
+	// for(size_t i=0;i<ckt_l.ldolist.size();i++)
+		// cout<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<endl;
+	// return;
 	// clog<<endl;
 	clog<<"==== entering verify stage ==== "<<endl;
 // #endif
@@ -2353,7 +2353,7 @@ bool Circuit::solve_TR(Tran &tran, double time){
 	bool flag = true;
 	
 	ckt_l.calculate_tr_current(time);
-	while((delta_diff_l > 1e-3 || delta_diff_g > 1e-3)&& flag == true&& iter < 20){
+	while((delta_diff_l > 1e-3 || delta_diff_g > 1e-3)&& flag == true){//&& iter < 20){
 		if(delta_diff_l <=1e-3 && delta_diff_g <= 1e-3 && ckt_l.max_IRdrop <= THRES_l)
 			flag = false;
 		// clog<<endl<<"time - iter: "<<time<<" "<<iter<<endl;
@@ -2366,9 +2366,9 @@ bool Circuit::solve_TR(Tran &tran, double time){
 		delta_diff_l = fabs(diff_l - diff_old_l);
 		ckt_l.locate_maxIRdrop();
 
-		clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<" "<<THRES_l<<endl;
+		// clog<<"ckt_l max_IR: "<<ckt_l.max_IRdrop<<" "<<THRES_l<<endl;
 		if(ckt_l.max_IRdrop > THRES_l){
-			clog<<"start to optimize ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
+			// clog<<"start to optimize ckt_l max_IR: "<<ckt_l.max_IRdrop<<endl;
 			local_bad_flag = 1;
 			max_flag = optimize_local_LDO(local_bad_flag, THRES_l, tran, time);
 			
@@ -2387,9 +2387,9 @@ bool Circuit::solve_TR(Tran &tran, double time){
 		diff_old_g = diff_g;
 		diff_g = ckt_g.solve_CK_with_decomp_tr();
 		delta_diff_g = fabs(diff_g - diff_old_g);
-		clog<<"delta_diff_l / g; "<<delta_diff_l<<" "<<delta_diff_g<<endl;
+		// clog<<"delta_diff_l / g; "<<delta_diff_l<<" "<<delta_diff_g<<endl;
 		ckt_g.locate_g_maxIRdrop();
-		clog<<"global max_IR: "<<ckt_g.max_IRdrop<<endl;
+		// clog<<"global max_IR: "<<ckt_g.max_IRdrop<<endl;
 		//clog<<ckt_g.nodelist<<endl;
 		update_ldo_vout();
 				
@@ -2864,8 +2864,8 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
 	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 
-	for(size_t i=0;i<LDO_pad_vec.size();i++)
-		clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
+	// for(size_t i=0;i<LDO_pad_vec.size();i++)
+		// clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
 	// clog<<"orig ckt_l.pad_set.size(): "<<ckt_l.pad_set.size()<<endl;
