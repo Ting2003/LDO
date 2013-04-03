@@ -1861,15 +1861,15 @@ Node * SubCircuit::pad_projection(
 	// if this node is not occupied by pad
 	// need to adjust the local pads
 	Node *nb = project_local_pad(nd, nd_new, ldo);
-	if(nb->name == nd->name)
+	/*if(nb->name == nd->name)
 		return nd;
-	else
+	else*/
 		return nb;
 }
 
 // project local pad, setting ldo into new white spaces near current/device blocks
 Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
-	Node *nd_new_ldo;
+	/*Node *nd_new_ldo;
 	int ref_x = nd_new->pt.x;
 	int ref_y = nd_new->pt.y;
 	int ref_dx, ref_dy;
@@ -1880,7 +1880,33 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	ref_dx = fabs(ref_x - nd->pt.x);
 	ref_dy = fabs(ref_y - nd->pt.y);
 	ref_dist = sqrt(ref_dx * ref_dx + ref_dy * ref_dy);
+	*/
 
+	Node *nd_ldo  = NULL;
+	double diff_x;
+	double diff_y;
+	double dist;
+	bool flag = false;
+	double min_dist;
+	Node *min_nd;
+	// clog<<"candi_pad set: "<<candi_pad_set.size()<<endl;
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		nd_ldo = candi_pad_set[i]->node;
+		diff_x = nd_ldo->pt.x - nd_new->pt.x;
+		diff_y = nd_ldo->pt.y - nd_new->pt.y;
+		dist = sqrt(diff_x*diff_x + diff_y * diff_y);
+		if(flag == false){
+			min_dist = dist;
+			min_nd = nd_ldo;
+			flag = true;
+		}else if(dist < min_dist){
+			min_dist = dist;
+			min_nd = nd_ldo;
+		}
+	}
+	// clog<<"nd_new, min_nd: "<<*nd_new<<" "<<*min_nd<<endl;
+	return min_nd;
+#if 0
 	// ldo_ptr points to current LDO
 	for(size_t i=0;i<ldolist.size();i++){
 		Node *A = ldolist[i]->A;
@@ -1900,6 +1926,7 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	ldo->A = nd_new_ldo;
 	// also need to change nd_in of LDO in ckt_g
 	return nd_new_ldo; 
+#endif
 }
 
 double SubCircuit::update_pad_pos_all(vector<Pad*> pad_set){
@@ -2112,7 +2139,7 @@ void SubCircuit::mark_geo_occupation(){
 		Pad *pad_ptr = new Pad();
 		pad_ptr->node = nd;
 		if(nd->get_geo_flag() != SBLOCK){
-			cout<<"candi pad is: "<<*pad_ptr->node<<endl;
+			// cout<<"candi pad is: "<<*pad_ptr->node<<endl;
 			candi_pad_set.push_back(pad_ptr);
 		}
 
@@ -2956,7 +2983,7 @@ double SubCircuit::calculate_local_current(){
 			continue;
 		sum_cur += ns[i]->value;
 	}
-	clog<<endl<<"total local current is: "<<sum_cur<<endl;
+	// clog<<endl<<"total local current is: "<<sum_cur<<endl;
 	return sum_cur;
 }
 
@@ -2988,4 +3015,47 @@ double SubCircuit::calculate_tr_current(double time){
 	clog<<endl<<"total local current is: "<<sum_cur<<endl;
 #endif
 	return sum_cur;
+}
+
+// print the locations of regions and LDOs
+double SubCircuit::print_matlab_LDO(){
+	// print LDO
+	FILE *f;
+	f = fopen("LDO_out.txt", "w");
+	for(size_t i=0;i<ldolist.size();i++){
+		Node *nd = ldolist[i]->A;
+		int xr = nd->pt.x + ldolist[i]->width;
+		int yr = nd->pt.y + ldolist[i]->height;
+		fprintf(f, "%ld %ld %d %d\n", nd->pt.x, nd->pt.y, ldolist[i]->width, ldolist[i]->height);
+	}
+	fclose(f);
+	
+	// print blocks
+	f = fopen("BLOCK_out.txt", "w");
+	vector<Point*> modulelist;
+	for(size_t i=0;i<wspacelist.size();i++){
+		modulelist = wspacelist[i]->node;
+		size_t j=0;
+		fprintf(f, "%ld %ld ", modulelist[j]->x, modulelist[j]->y);		
+		int xr = wspacelist[i]->width;
+		int yr = wspacelist[i]->height;
+		fprintf(f, "%d %d\n", xr, yr);
+	}
+	fclose(f);
+
+}
+
+// print the IRd-drop distribution map
+double SubCircuit::print_matlab_node(){
+	// uncomment this if want to output to a file
+	//freopen("output.txt","w",stdout);
+	FILE *f;
+	f = fopen("node_out.txt", "w");	
+
+	// don't output ground node
+	for(size_t i=0;i<replist.size();i++){
+		if(replist[i]->isS()==Z) continue;
+		fprintf(f, "%ld %ld  %.5e\n", replist[i]->pt.y+1, replist[i]->pt.x+1, VDD_G-nodelist[i]->value);
+	}
+	fclose(f);
 }

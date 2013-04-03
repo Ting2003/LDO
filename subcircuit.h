@@ -194,6 +194,8 @@ private:
 	void modify_ldo_rhs();
 	void modify_ldo_rhs_TR();
 		
+	double print_matlab_LDO();
+	double print_matlab_node();
 	// add solve with ADI method
 	//void solve_partial_ADI();
 	//double solve_ADI_DC();

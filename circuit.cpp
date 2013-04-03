@@ -207,13 +207,14 @@ void Circuit::solve(Tran &tran){
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
 	// find out total local current in DC
-	ckt_l.calculate_local_current();
+	// ckt_l.calculate_local_current();
 // #if 0	
 	// solving LDO location with DC
 	solve_DC_LDO();
 	clog<<"initial max IR for l /g: "<<
 		ckt_l.locate_maxIRdrop()<<" "<<
 		ckt_g.locate_g_maxIRdrop()<<endl;
+	return;
 	// clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
 	ckt_l.clear_flags();
@@ -251,7 +252,8 @@ void Circuit::solve(Tran &tran){
 
 	// release resouces
 	ckt_l.release_resources();
-	ckt_g.release_resources();	
+	ckt_g.release_resources();
+
 }
 //endif
 
@@ -2568,9 +2570,12 @@ void Circuit::solve_DC_LDO(){
 
 	// first get IR drop values
 	solve_DC();
+
+	// ckt_l.print_matlab_LDO();
+	// ckt_l.print_matlab_node();
 	double max_IRdrop = locate_maxIRdrop();
 	clog<<"local initial max_IRdrop: "<<ckt_l.max_IRdrop<<endl;
-	clog<<"global max_IRdrop: "<<ckt_g.max_IRdrop<<endl;
+	// clog<<"global max_IRdrop: "<<ckt_g.max_IRdrop<<endl;
 	// cout<<ckt_l.nodelist<<endl;
 	// cout<<ckt_g.nodelist<<endl;
 	Node *nd = ldolist[0]->A;
@@ -2590,8 +2595,9 @@ void Circuit::solve_DC_LDO(){
 		relocate_LDOs();
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		// clog<<"optimized max_IR: "<<max_IRdrop<<endl;
 		Node *nd = ldolist[0]->A;
+
+		clog<<"optimized max_IR: "<<max_IRdrop<<" "<<*nd<<endl;
 		ldo_pair.first = nd;
 		ldo_pair.second = max_IRdrop;
 		ldo_best.insert(ldo_pair);
@@ -2619,9 +2625,12 @@ void Circuit::solve_DC_LDO(){
 	// cout<<ckt_l.nodelist<<endl;
 	// cout<<endl;
 	// cout<<ckt_g.nodelist<<endl;
-	max_IRdrop = locate_maxIRdrop();
+	// max_IRdrop = locate_maxIRdrop();
 	clog<<"final max_IR with single LDO relocation: "<<max_IRdrop<<endl;
 	clog<<"final g max: "<<ckt_g.locate_g_maxIRdrop()<<endl;
+
+	// ckt_l.print_matlab_LDO();
+	// ckt_l.print_matlab_node();
 	// clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// need to add more LDOs
 	while(max_IRdrop > THRES){
