@@ -94,6 +94,9 @@ public:
 	double locate_maxIRdrop();
 	Node* extract_maxIR_node();
 	double locate_g_maxIRdrop();
+
+	double calculate_local_current();
+	double calculate_tr_current(double time);
 	double locate_maxIRdrop(double *x, size_t n);
 	double locate_maxIRdrop_tr(Tran &tran);
 	double locate_special_maxIRdrop();
