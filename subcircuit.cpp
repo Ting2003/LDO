@@ -671,7 +671,7 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 		
 	Ieq  = (i_t + temp);
 	net->Ieq = Ieq;
-	// cout<< "Ieq is: "<<Ieq<<endl;
+	// clog<< "Ieq is: "<<Ieq<<endl;
 	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
 	/*if(!nk->is_ground()&& nk->isS()!=Y){
 		 rhs[k] += Ieq;	// for VDD SubCircuit
@@ -1435,12 +1435,12 @@ void SubCircuit::update_ldo_current(){
 			if(nb->isS()==Y)
 				continue;
 			current += (nd->value - nb->value ) / net->value;
-			// clog<<"nd, nb, current: "<<*nd<<" "<<*nb<<" "<<current<<endl;
+			// clog<<"nd, nb, current: "<<*nd<<" "<<*nb<<" "<<net->value<<" "<<current<<endl;
 		}
 		// copy old current
 		//ldolist[i]->current_old = 
 			// ldolist[i]->current;
-		// clog<<"ldo old current: "<<ldolist[i]->current;
+		cout<<"ldo old current: "<<ldolist[i]->current;
 		// assign new current
 		if(current <0) current = 0.0;
 		ldolist[i]->current = current;
@@ -1448,7 +1448,7 @@ void SubCircuit::update_ldo_current(){
 		Net *net_g = ldolist[i]->nd_in->nbr[BOTTOM];
 		if(net_g->type == CURRENT)
 			net_g->value = current;
-		// clog<<" ldo new current: "<<*net_g<<endl;
+		cout<<" ldo new current: "<<*net_g<<endl;
 	}
 }
 
@@ -1488,8 +1488,7 @@ double SubCircuit::locate_g_maxIRdrop(){
 	return max_IRdrop;
 }
 
-
-double SubCircuit::locate_maxIRdrop(){
+Node* SubCircuit::extract_maxIR_node(){
 	max_IRdrop = 0;
 	Node *nd = replist[0];
 	for(size_t i=0;i<replist.size();i++){	
@@ -1502,6 +1501,19 @@ double SubCircuit::locate_maxIRdrop(){
 		}
 	}
 	// clog<<"nd with max IR drop: "<<*nd<<endl;
+	return nd;
+}
+
+double SubCircuit::locate_maxIRdrop(){
+	max_IRdrop = 0;
+	for(size_t i=0;i<replist.size();i++){	
+		if(replist[i]->isS()==Z)
+			continue;
+		double IR_drop = VDD_G - replist[i]->value;		
+		if(IR_drop > max_IRdrop){
+			max_IRdrop = IR_drop;
+		}
+	}
 	return max_IRdrop;
 }
 
@@ -2065,6 +2077,7 @@ void SubCircuit::mark_geo_occupation(){
 		height = ldolist[0]->height;
 	}
 
+	// clog<<"width and height: "<<wspacelist[0]->width<<" "<<wspacelist[0]->height<<endl;
 	Node *nd;
 	for(size_t i=0;i<nodelist.size()-1;i++){
 		nd = nodelist[i];
@@ -2093,6 +2106,13 @@ void SubCircuit::mark_geo_occupation(){
 		}
 		if(flag_module == true)
 			continue;
+		Pad *pad_ptr = new Pad();
+		pad_ptr->node = nd;
+		if(nd->get_geo_flag() != SBLOCK){
+			// cout<<"candi pad is: "<<*pad_ptr->node<<endl;
+			candi_pad_set.push_back(pad_ptr);
+		}
+
 		// check if it is LDO
 		bool flag_ldo = false;
 		for(size_t j=0;j<ldolist.size();j++){
@@ -2112,17 +2132,16 @@ void SubCircuit::mark_geo_occupation(){
 				break;
 			}
 		}
+		
 		if(flag_ldo == true)
 			continue;
 		// else assign blank
 		// clog<<"mark blank. "<<endl<<endl;
 		nd->assign_geo_flag(SBLANK);
-		Pad *pad_ptr = new Pad();
-		pad_ptr->node = nd;
-		candi_pad_set.push_back(pad_ptr);
 	}
 	// count is the maximum candidate number for LDO
 	MAX_NUM_LDO = candi_pad_set.size();
+	clog<<"candi pad set size: "<<MAX_NUM_LDO<<endl;
 	/* cout<<"start to output candi_pad set. "<<endl<<endl<<endl;
 	for(size_t i=0;i<MAX_NUM_LDO;i++){
 		Pad *pad = candi_pad_set[i];
@@ -2130,27 +2149,6 @@ void SubCircuit::mark_geo_occupation(){
 		if(nd != NULL)
 			cout<<"nd: "<<*nd<<endl;
 	}*/
-}
-
-void SubCircuit::build_candi_pad_set(){
-	Node *nd = NULL;
-	int gap = 5;
-	for(size_t i=0;i<nodelist.size();i++){
-		nd = nodelist[i];
-		if(nd->is_ground())
-			continue;
-		if(nd->isS()==X || nd->isS() ==Y ||
-				nd->isS() == Z)
-			continue;
-		if(nd->pt.x % gap ==0 && 
-			nd->pt.y % gap ==0){
-			nd->assign_geo_flag(SPAD);
-			Pad *pad_ptr = new Pad();
-			pad_ptr->node = nd;
-			candi_pad_set.push_back(pad_ptr);
-		}
-	}
-	MAX_NUM_PAD = candi_pad_set.size();
 }
 
 bool SubCircuit::node_in_ldo_or_block(double x, double y){
@@ -2468,6 +2466,38 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
+	Node *nd = extract_maxIR_node();
+	int ref_x = nd->pt.x;
+	int ref_y = nd->pt.y;
+	double min_dist = 0;
+	double diff_x = 0;
+	double diff_y = 0;
+	double dist;
+	Node *na;
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		// skip the one that already has pad
+		if(candi_pad_set[i]->node->isS()==Y)
+			 continue;
+		na = candi_pad_set[i]->node;
+
+		diff_x = na->pt.x - ref_x;
+		diff_y = na->pt.y - ref_y;
+		dist = sqrt(diff_x*diff_x + diff_y*diff_y);
+
+		// cout<<"na, dist: "<<*na<<" "<<dist<<endl;
+		if(flag == false){
+			min_dist = dist;
+			pad_ptr = candi_pad_set[i];
+			flag = true;
+		}else if(min_dist > dist){
+			min_dist = dist;
+			pad_ptr = candi_pad_set[i];
+		}
+	}
+
+	// clog<<"min_dist, pad: "<<min_dist<<" "<<*pad_ptr->node<<endl;
+
+#if 0
 	// for(size_t i=0;i<pad_set.size();i++)
 		// clog<<"i, pad_set_flag: "<<i<<" "<<*pad_set[i]->node<<" "<<pad_set[i]->node->flag_visited<<endl;
 	for(size_t i=0;i<pad_set.size();i++){
@@ -2491,7 +2521,8 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 		}
 	}
-	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
+	clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
+#endif
 	return pad_ptr; 
 }
 
