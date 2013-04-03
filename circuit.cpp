@@ -223,7 +223,7 @@ void Circuit::solve(Tran &tran){
 	// double time = 0;
 	// add_LDO_all_global(tran, time);
 	// go along all time steps
-	for(double time =0; time < tran.tot_t && iter <2; 
+	for(double time =0; time < tran.tot_t && iter <4; 
 			time += tran.step_t){
 		clog<<"===== "<<time<<" ===="<<endl;
 		// solve one time step with LDO
@@ -2816,7 +2816,7 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 	ckt_l.build_pad_set();
 	solve_local(tran, time);
 	max_IRdrop = locate_maxIRdrop();
-	clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
+	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }
 
