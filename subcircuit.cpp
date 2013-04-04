@@ -1507,6 +1507,17 @@ Node* SubCircuit::extract_maxIR_node(){
 	return nd;
 }
 
+double SubCircuit::locate_avgIRdrop(){
+	double sum_IRdrop = 0;
+	for(size_t i=0;i<replist.size();i++){	
+		double IR_drop = VDD_G - replist[i]->value;		
+		sum_IRdrop += IR_drop;
+	}
+	avg_IRdrop = sum_IRdrop / replist.size();
+	return avg_IRdrop;
+}
+
+
 double SubCircuit::locate_maxIRdrop(){
 	max_IRdrop = 0;
 	for(size_t i=0;i<replist.size();i++){	
@@ -2117,6 +2128,8 @@ void SubCircuit::mark_geo_occupation(){
 		// mark node with geo occupation
 		if(!(x % width ==0 && y % height ==0))
 			continue;
+		int xr = x + width;
+		int yr = y + width;
 		// clog<<"start mark node: "<<*nd<<endl;
 		bool flag_module = false;
 		// check if it is module
@@ -2126,7 +2139,10 @@ void SubCircuit::mark_geo_occupation(){
 			int module_yl = wspacelist[j]->node[0]->y;
 			int module_yr = wspacelist[j]->node[0]->y + wspacelist[j]->height;
 			// clog<<"bxl, bxr, byl, byr: "<<module_xl<<" "<<module_xr<<" "<<module_yl<<" "<<module_yr<<endl;
-			if(x>=module_xl && x <= module_xr && y>=module_yl && y <= module_yr){
+			// 4 node:
+			// (x, y), (xr, yr), (x, yr)
+			if((x>=module_xl && x <= module_xr &&((y>=module_yl && y <= module_yr) || (yr>=module_yl && yr <= module_yr))) 
+						||(xr>=module_xl && xr <= module_xr && ((y>=module_yl && y <= module_yr) ||(yr>=module_yl && yr <= module_yr)))){
 				// clog<<"mark block. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SBLOCK);
@@ -2138,7 +2154,7 @@ void SubCircuit::mark_geo_occupation(){
 			continue;
 		Pad *pad_ptr = new Pad();
 		pad_ptr->node = nd;
-		if(nd->get_geo_flag() != SBLOCK){
+		if(nd->get_geo_flag() != SBLOCK && (xr <= gx && yr <=gy)){
 			// cout<<"candi pad is: "<<*pad_ptr->node<<endl;
 			candi_pad_set.push_back(pad_ptr);
 		}
@@ -2151,7 +2167,7 @@ void SubCircuit::mark_geo_occupation(){
 			int ldo_yl = ldolist[j]->A->pt.y;
 			int ldo_yr = ldolist[j]->A->pt.y + height;
 			// clog<<"lxl, lxr, lyl, lyr: "<<ldo_xl<<" "<<ldo_xr<<" "<<ldo_yl<<" "<<ldo_yr<<endl;
-			if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr){
+			if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr ){
 				// clog<<"mark ldo. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SLDO);
@@ -2167,7 +2183,8 @@ void SubCircuit::mark_geo_occupation(){
 			continue;
 		// else assign blank
 		// clog<<"mark blank. "<<endl<<endl;
-		nd->assign_geo_flag(SBLANK);
+		if(xr <= gx && yr <= gy)
+			nd->assign_geo_flag(SBLANK);
 	}
 	// count is the maximum candidate number for LDO
 	MAX_NUM_LDO = candi_pad_set.size();
@@ -2476,11 +2493,13 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with 
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
 		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		if(pad_ptr->node->isS()==Y)
+			clog<<"already LDO, should not push. "<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node);
@@ -2505,6 +2524,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	double diff_y = 0;
 	double dist;
 	Node *na;
+//#if 0
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		// skip the one that already has pad
 		if(candi_pad_set[i]->node->isS()==Y)
@@ -2527,7 +2547,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 	}
 
 	// clog<<"min_dist, pad: "<<min_dist<<" "<<*pad_ptr->node<<endl;
-
+//#endif
 #if 0
 	// for(size_t i=0;i<pad_set.size();i++)
 		// clog<<"i, pad_set_flag: "<<i<<" "<<*pad_set[i]->node<<" "<<pad_set[i]->node->flag_visited<<endl;
@@ -2552,7 +2572,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 			// clog<<"min, pad: "<<min_vol<<" "<<pad_set[i]->ref_vol<<" "<<*pad_ptr->node<<endl;
 		}
 	}
-	clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
+	// clog<<"min_vol, pad: "<<min_vol<<" "<<*pad_ptr->node<<endl;
 #endif
 	return pad_ptr; 
 }

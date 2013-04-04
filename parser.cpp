@@ -508,6 +508,7 @@ void Parser::parse_ldo_line(char *line){
 	if(nd_ptr==NULL)
 		report_exit("LDO node error!");	
 	ldo_ptr->A = nd_ptr;
+	ldo_ptr->nd_out = nd_ptr;
 	nd_ptr->enableY(); // make this node VDD source
 	nd_ptr->enableLDO();
 	// initiallize voltage

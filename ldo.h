@@ -7,7 +7,8 @@ private:
 public:
 	LDO();
 	string name;	
-	Node * A; // output node
+	Node * A; // vol output node
+	Node *nd_out;// geo output node
 	Node * nd_in; // input node
 	// 4 corners
 	// first node is the pin for VDD

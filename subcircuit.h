@@ -92,6 +92,7 @@ public:
 
 	///// new functions for pad /////
 	double locate_maxIRdrop();
+	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
 	double locate_g_maxIRdrop();
 
@@ -110,6 +111,7 @@ public:
 	////// new member for pad //////
 	
 	double max_IRdrop;
+	double avg_IRdrop;
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
 	vector<Pad*> candi_pad_set;
