@@ -18,6 +18,8 @@ public:
 	~Pad();
 	
 	Node * node;
+	// stores the node for LDO geo output node
+	Node * nd_out_LDO;
 	// record the controlled nodes and weighting
 	map<Node*, double> control_nodes;
 	// stores the neighboring pads for a pad

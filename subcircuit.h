@@ -120,7 +120,7 @@ public:
 	void print_pad_map(vector<Pad*> &pad_set);
 	void release_resource();
 	void clear_flags();
-	double update_pad_pos(double ref_drop_value, size_t i);
+	void update_pad_pos();
 	double update_pad_pos_all(vector<Pad*> pad_set);
 	void round_data(double &data);
 	Node * pad_projection(Pad *pad, Node *nd);
@@ -148,7 +148,7 @@ public:
 	void verify_ldo(Tran &tran, char *filename);
 	void print_pad_set(vector<Pad*> &pad_set);
 	void extract_pads(vector<Pad*> pad_set);
-	Pad* locate_candi_pad_maxIR(vector<Pad*> pad_set);
+	Pad* locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd);
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
@@ -256,7 +256,7 @@ private:
 
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
-	Node * project_local_pad(Node *nd, Node *nd_new, LDO *ldo);
+	Node * project_local_pad(Node *nd_new);
 	void project_ldo_node(int &ref_x, int &ref_y, LDO &ldo);
 	bool node_in_ldo_or_block(double ref_x, double ref_y);
 	Node * expand_ldo_location(double ref_dist, int ref_x, int ref_y, LDO &ldo_ptr);

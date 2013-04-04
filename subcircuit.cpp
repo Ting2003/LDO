@@ -1543,24 +1543,25 @@ void SubCircuit::relocate_pads(){
 	// clog<<"min_IR initial is: "<<min_IR<<endl;
 	// for local pad movement
 	// find control nodes for each pad
-	extract_pads(pad_set);
+	// extract_pads(pad_set);
 	// find the tune spot for control nodes	
-	update_pad_control_nodes(pad_set);	
+	// update_pad_control_nodes(pad_set);	
 
 	// find new point for all pads	
-	update_pad_pos_all(pad_set);
+	// update_pad_pos_all(pad_set);
+
+	update_pad_pos();
 
 	// move pads according to graph contraints
 	graph_move_pads();
 
 	//clog<<"after graph move. "<<endl;
-	clear_flags();
+	// clear_flags();
 
 	Node *rm_node = origin_pad_set[0]->rep;
 	Node *add_node = pad_set[0]->node->rep;
-	rebuild_local_nets(rm_node, add_node);
-		
-	ref_drop_vec.clear();
+	// clog<<"rm / add node: "<<*rm_node<<" "<<*add_node<<endl;
+	rebuild_local_nets(rm_node, add_node);		
 }
 
 // update the old pad set value
@@ -1869,17 +1870,23 @@ Node * SubCircuit::pad_projection(
 		return nd;
 	}
 	nd_new = nd_new->rep;
+	// clog<<"nd_new: "<<*nd_new<<endl;
 	// if this node is not occupied by pad
 	// need to adjust the local pads
-	Node *nb = project_local_pad(nd, nd_new, ldo);
+	Node *nb = project_local_pad(nd_new);
+	// clog<<"ldo old out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
+	ldo->nd_out = nb;
+	ldo->A = nd_new;
+	// clog<<"ldo new out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
 	/*if(nb->name == nd->name)
 		return nd;
 	else*/
-		return nb;
+	return nd_new;
+	// return nb;
 }
 
 // project local pad, setting ldo into new white spaces near current/device blocks
-Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
+Node * SubCircuit::project_local_pad(Node *nd_new){
 	/*Node *nd_new_ldo;
 	int ref_x = nd_new->pt.x;
 	int ref_y = nd_new->pt.y;
@@ -1902,7 +1909,8 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	Node *min_nd;
 	// clog<<"candi_pad set: "<<candi_pad_set.size()<<endl;
 	for(size_t i=0;i<candi_pad_set.size();i++){
-		nd_ldo = candi_pad_set[i]->node;
+		nd_ldo = candi_pad_set[i]->nd_out_LDO;
+		// clog<<"candi_pad_set node: "<<*nd_ldo<<endl;
 		diff_x = nd_ldo->pt.x - nd_new->pt.x;
 		diff_y = nd_ldo->pt.y - nd_new->pt.y;
 		dist = sqrt(diff_x*diff_x + diff_y * diff_y);
@@ -1939,7 +1947,7 @@ Node * SubCircuit::project_local_pad(Node *nd, Node *nd_new, LDO *ldo){
 	return nd_new_ldo; 
 #endif
 }
-
+/*
 double SubCircuit::update_pad_pos_all(vector<Pad*> pad_set){
 	double total_dist = 0;
 	double dist = 0;
@@ -1954,31 +1962,32 @@ double SubCircuit::update_pad_pos_all(vector<Pad*> pad_set){
 	}
 	return total_dist;
 }
-
+*/
 // decide pad's new pos with the weights
 // need to be tuned
-double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
+void SubCircuit::update_pad_pos(){
 	Node *pad;
 	Pad *pad_ptr;
 	Node *nd;
 	double weight = 0;
 	double pad_newx;
 	double pad_newy;
-	map<Node *, double>::iterator it;
+	// map<Node *, double>::iterator it;
 
 	double sum_weight = 0;
 	double weighted_x =0;
 	double weighted_y =0;
-	pad_ptr = pad_set[i];
+	pad_ptr = pad_set[0];
 	pad = pad_ptr->node;
-	for(it = pad_ptr->control_nodes.begin();
+	for(size_t i=0;i<replist.size();i++){
+	/*for(it = pad_ptr->control_nodes.begin();
 			it != pad_ptr->control_nodes.end();
 			it++){
 		if(it->second > ref_drop_value)
-			continue;
+			continue;*/
 
-		nd = it->first;
-		weight = 1.0/it->second;
+		nd = replist[i];
+		weight = 1.0/replist[i]->value;
 		weighted_x += weight * nd->pt.x;
 		weighted_y += weight * nd->pt.y;
 		sum_weight += weight; 	
@@ -1998,9 +2007,8 @@ double SubCircuit::update_pad_pos(double ref_drop_value, size_t i){
 		pad_ptr->newy = pad->pt.y;
 	}
 
-	double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
+	// double dist = sqrt(weighted_x*weighted_x 			 + weighted_y*weighted_y);
 
-	return dist;
 }
 
 // round double, depends on whether the frac >=0.5
@@ -2057,6 +2065,8 @@ void SubCircuit::graph_move_pads(){
 		Pad *pad_ptr = pad_set[id];
 		Pad *pad_nbr = NULL;
 		Node *pad = pad_ptr->node;
+		// clog<<"pad: "<<*pad<<endl;
+		// new nd_out
 		new_pad = pad_projection(pad_ptr, pad);
 		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
@@ -2153,9 +2163,10 @@ void SubCircuit::mark_geo_occupation(){
 		if(flag_module == true)
 			continue;
 		Pad *pad_ptr = new Pad();
-		pad_ptr->node = nd;
+		// stores the LDO geo out node
+		pad_ptr->nd_out_LDO = nd;
 		if(nd->get_geo_flag() != SBLOCK && (xr <= gx && yr <=gy)){
-			// cout<<"candi pad is: "<<*pad_ptr->node<<endl;
+			// cout<<"candi pad is: "<<*pad_ptr->nd_out_LDO<<endl;
 			candi_pad_set.push_back(pad_ptr);
 		}
 
@@ -2494,12 +2505,15 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 	// perform optimization
 	while(max_IRdrop > THRES && 
 		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
-		// 4. LDO should go to candi with 
+		// 4. LDO should go to candi with
+
+		Node *nd = extract_maxIR_node();
+		// clog<<"maxIR node: "<<*nd<<" "<<nd->isS()<<endl;
+		//if(nd->isS()==Y)
+			//clog<<"already LDO, should not push. "<<endl;
 		// maximum IR
-		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set);	
-		// clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
-		if(pad_ptr->node->isS()==Y)
-			clog<<"already LDO, should not push. "<<endl;
+		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set, nd);
+		//clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node);
@@ -2511,11 +2525,10 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 // return pad candi with max IR (still available candi)
 // this pad also need to be in the farest distance with
 // current ldo nodes
-Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
+Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
-	Node *nd = extract_maxIR_node();
 	// clog<<"nd with maxIR is: "<<*nd<<endl;
 	int ref_x = nd->pt.x;
 	int ref_y = nd->pt.y;
@@ -2527,9 +2540,9 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 //#if 0
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		// skip the one that already has pad
-		if(candi_pad_set[i]->node->isS()==Y)
+		if(candi_pad_set[i]->nd_out_LDO->isS()==Y)
 			 continue;
-		na = candi_pad_set[i]->node;
+		na = candi_pad_set[i]->nd_out_LDO;
 
 		diff_x = na->pt.x - ref_x;
 		diff_y = na->pt.y - ref_y;
@@ -2545,7 +2558,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set){
 			pad_ptr = candi_pad_set[i];
 		}
 	}
-
+	pad_ptr->node = nd;
 	// clog<<"min_dist, pad: "<<min_dist<<" "<<*pad_ptr->node<<endl;
 //#endif
 #if 0
@@ -3043,7 +3056,7 @@ double SubCircuit::print_matlab_LDO(){
 	FILE *f;
 	f = fopen("LDO_out.txt", "w");
 	for(size_t i=0;i<ldolist.size();i++){
-		Node *nd = ldolist[i]->A;
+		Node *nd = ldolist[i]->nd_out;
 		int xr = nd->pt.x + ldolist[i]->width;
 		int yr = nd->pt.y + ldolist[i]->height;
 		fprintf(f, "%ld %ld %d %d\n", nd->pt.x, nd->pt.y, ldolist[i]->width, ldolist[i]->height);

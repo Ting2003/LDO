@@ -216,7 +216,7 @@ void Circuit::solve(Tran &tran){
 		ckt_g.locate_g_maxIRdrop()<<endl;
 	// clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
-	ckt_l.clear_flags();
+	// ckt_l.clear_flags();
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
@@ -232,8 +232,8 @@ void Circuit::solve(Tran &tran){
 
 		flag = solve_TR(tran, time);
 		// flag = solve_TR_LDO(tran, time);
-		// clog<<"maxIR_l / g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
-		ckt_l.clear_flags();
+		clog<<"maxIR_l / g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
+		// ckt_l.clear_flags();
 		iter++;
 		if(flag == true){
 			clog<<"reach maximum LDO size: "<<endl;
@@ -241,8 +241,8 @@ void Circuit::solve(Tran &tran){
 		}
 	}
 	clog<<"print matlab. "<<endl;
-	// ckt_l.print_matlab_node();
-	//ckt_l.print_matlab_LDO();
+	ckt_l.print_matlab_node();
+	ckt_l.print_matlab_LDO();
 	// vector<LDO*>::iterator it;
 	// it = unique(ckt_l.ldolist.begin(), ckt_l.ldolist.end());
 	// ckt_l.ldolist.resize(std::distance(ckt_l.ldolist.begin(), it));
@@ -2345,6 +2345,7 @@ bool Circuit::solve_TR(Tran &tran, double time){
 
 	// only need to stamp matrix once per t step
 	ckt_l.stamp_decomp_matrix_TR(tran);
+
 	ckt_g.stamp_decomp_matrix_TR(tran);
 	// stores the Ieq for both C and L nets 
 	ckt_l.modify_rhs_tr_0(tran);
@@ -2388,14 +2389,15 @@ bool Circuit::solve_TR(Tran &tran, double time){
 			}
 			
 			clog<<"optimized new local max_IR: "<<ckt_l.max_IRdrop<<" "<<ckt_l.ldolist.size()<<endl;
-			if(fabs(time - 6.1e-9) < 1e-15 && iter ==0){
+			/*if(fabs(time - 6.2e-9) < 1e-15 && iter ==0){
 				clog<<"print matlab. "<<endl;
 				ckt_l.print_matlab_node();
 				ckt_l.print_matlab_LDO();
-			}
+			}*/
 		}
 		// calculate ldo current from ckt_l
 		ckt_l.update_ldo_current();
+		// clog<<"after update current. "<<endl;
 		// break;
 		/*for(size_t i=0;i<ldolist.size();i++){
 			clog<<"i, ldo_new vol: "<<i<<" "<<*ldolist[i]->A<<endl;
@@ -2585,6 +2587,7 @@ double Circuit::locate_maxIRdrop(){
 void Circuit::solve_DC_LDO(){
 	map<Node*, double> ldo_best;
 	pair<Node*, double> ldo_pair;
+	vector<Node *> nd_out_vec;
 
 	// first get IR drop values
 	solve_DC();
@@ -2596,12 +2599,13 @@ void Circuit::solve_DC_LDO(){
 	// clog<<"global max_IRdrop: "<<ckt_g.max_IRdrop<<endl;
 	// cout<<ckt_l.nodelist<<endl;
 	// cout<<ckt_g.nodelist<<endl;
-	Node *nd = ldolist[0]->A;
+	Node *nd = ckt_l.ldolist[0]->A;
 	ldo_pair.first = nd;
+	nd_out_vec.push_back(ckt_l.ldolist[0]->nd_out);
 	ldo_pair.second = max_IRdrop;
 	ldo_best.insert(ldo_pair);
 
-	//clog<<"first max_IR: "<<max_IRdrop<<endl;
+	// clog<<"first max_IR: "<<max_IRdrop<<endl;
 	double THRES = VDD_G * 0.1;
 	// safe area, return with current LDO location
 	// if(max_IRdrop <= THRES) return;
@@ -2613,28 +2617,36 @@ void Circuit::solve_DC_LDO(){
 		relocate_LDOs();
 		solve_DC();
 		max_IRdrop = locate_maxIRdrop();
-		Node *nd = ldolist[0]->A;
+		Node *nd = ckt_l.ldolist[0]->A;
 
 		// clog<<"optimized max_IR: "<<max_IRdrop<<" "<<*nd<<endl;
 		ldo_pair.first = nd;
+		nd_out_vec.push_back(ckt_l.ldolist[0]->nd_out);
 		ldo_pair.second = max_IRdrop;
 		ldo_best.insert(ldo_pair);
 	}
 	map<Node*, double>::iterator it;
 	Node *nd_min = NULL;
 	double min_IR=0;
+	int i=0;
+	int j=0;
 	for(it = ldo_best.begin();it!=ldo_best.end();it++){
-		// clog<<"ldo best list: "<<*it->first<<" "<< it->second<<endl;
+		// clog<<"ldo best list: "<<*it->first<<" "<< it->second<<" "<<*nd_out_vec[i]<<endl;
 		if(it ==  ldo_best.begin()){
 			min_IR = it->second;
 			nd_min = it->first;
+			j=i;
 		}else if(it->second < min_IR){
 			min_IR = it->second;
 			nd_min = it->first;
+			j=i;
 		}
+		i++;
 	}
-	// clog<<"best ldo: "<<*nd_min<<endl;
+	// clog<<"best ldo: "<<*nd_min<<" "<<*nd_out_vec[j]<<endl;
 	// switch to the best ldo
+	ckt_l.ldolist[0]->nd_out = nd_out_vec[j];
+	nd_out_vec.clear();
 	recover_best_ldo(nd_min);
 	// clog<<"after recover. "<<endl;
 	ldo_best.clear();
@@ -2644,8 +2656,9 @@ void Circuit::solve_DC_LDO(){
 	// cout<<endl;
 	// cout<<ckt_g.nodelist<<endl;
 	// max_IRdrop = locate_maxIRdrop();
-	clog<<"final max_IR with single LDO relocation: "<<max_IRdrop<<endl;
-	clog<<"final g max: "<<ckt_g.locate_g_maxIRdrop()<<endl;
+	// clog<<"final max_IR with single LDO relocation: "<<max_IRdrop<<endl;
+	// clog<<"final g max: "<<ckt_g.locate_g_maxIRdrop()<<endl;
+	// clog<<"final ldo: "<<*ckt_l.ldolist[0]->nd_out<<" "<<*ckt_l.ldolist[0]->A<<endl;
 
 	// ckt_l.print_matlab_LDO();
 	// ckt_l.print_matlab_node();
@@ -2668,7 +2681,7 @@ void Circuit::recover_best_ldo(Node *nd_min){
 	// clog<<"nd_min: "<<*nd_min<<endl;
 	// clog<<"ldo node: "<<*ckt_l.ldolist[0]->A<<endl;
 	ckt_l.rebuild_local_nets(ckt_l.ldolist[0]->A, nd_min);
-	// clog<<"final best ldo: "<<*ckt_l.ldolist[0]->A<<endl;
+	clog<<"final best ldo: "<<*ckt_l.ldolist[0]->A<<" "<<*ckt_l.ldolist[0]->nd_out<<endl;
 	ckt_g.rebuild_global_nets();
 }
 
@@ -2734,6 +2747,7 @@ void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		ldo_ptr = new LDO();
 		ldo_ptr->A = LDO_pad_vec[i]->node;
+		ldo_ptr->nd_out = LDO_pad_vec[i]->nd_out_LDO;
 		ldo_ptr->width = ldolist[0]->width;
 		ldo_ptr->height = ldolist[0]->height;
 		// build nd_in node
@@ -2830,6 +2844,7 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 	vector<Pad*> LDO_pad_vec;
 	// find the node where new LDOs shoudl go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
+	// clog<<"after extract LDO. "<<endl;
 	// if no room to add new LDO pad, return
 	if(LDO_pad_vec.size()==0){
 		// clog<<"no add new ldo. "<<endl;
@@ -2882,7 +2897,7 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	vector<Pad*> LDO_pad_vec;
 	// find the node where new LDOs shoudl go to
 	ckt_l.extract_add_LDO_dc_info(LDO_pad_vec);
-	clog<<"LDO_pad size: "<<LDO_pad_vec.size()<<endl;
+	// clog<<"LDO_pad size: "<<LDO_pad_vec.size()<<endl;
 	// if no room to add new LDO pad, return
 	if(LDO_pad_vec.size()==0)
 		return;
@@ -2969,7 +2984,7 @@ bool Circuit::optimize_local_LDO(int flag, double THRES_l, Tran &tran, double ti
 			return max_flag;
 			break;
 		}
-		//clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
 		double temp_IR = ckt_l.locate_avgIRdrop();
 		add_LDO_TR_local(tran, time);
 		ckt_l.locate_maxIRdrop();
