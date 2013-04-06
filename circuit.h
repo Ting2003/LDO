@@ -141,7 +141,7 @@ public:
 	void add_LDO_DC();
 	void add_LDO_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
-	void add_LDO_DC_local();
+	void add_LDO_DC_local(Tran tran);
 	// void add_LDO_TR_global(Tran &tran, double time, bool local_bad_flag);
 	void solve_local(Tran &tran, double time);
 	void solve_local_DC();

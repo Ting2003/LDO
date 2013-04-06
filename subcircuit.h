@@ -152,7 +152,7 @@ public:
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> pad_set);
-	void extract_add_LDO_dc_info(vector<Pad*> &LDO_pad_vec);
+	void extract_add_LDO_dc_info(vector<Pad*> &LDO_pad_vec, Tran tran);
 	// void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
 	void create_current_LDO_graph();
 	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
@@ -227,8 +227,9 @@ private:
 	void stamp_rhs_tr(bool local_flag, double time, Tran &tran);
 	void stamp_resistor_tr(Matrix & A, Net * net);
 	double current_tr(Net *net, double &time);
-	void update_partial_grid(Node *nd);
-	double update_node_value(Node *&nd, Node *add_node);
+	void update_partial_grid(Node *nd, Tran tran);
+	double update_node_value(Node *&nd, Node *add_node, Tran tran);
+	void solve_GS(Tran tran);
 	void update_queue(queue<Node*> &q, Node *nd, int iter);
 	
 	void stamp_current_tr_1(double *bp, double *b, double &time);

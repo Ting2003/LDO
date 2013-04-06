@@ -1352,6 +1352,9 @@ void SubCircuit::configure_init(){
 // update length of b and x
 void SubCircuit::reconfigure_TR(){
    size_t n= replist.size();
+
+   cholmod_free_dense(&b, cm);
+   cholmod_free_dense(&x, cm);
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    x = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
@@ -1399,6 +1402,8 @@ double SubCircuit::solve_CK_with_decomp(){
 double SubCircuit::solve_CK_with_decomp_tr(){
 	// modify rhs with Ieq
 	modify_rhs_Ieq(bp);
+
+	cholmod_free_dense(&x, cm);
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
@@ -2498,13 +2503,13 @@ void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_
 }
 #endif
 
-void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){	
+void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){	
 	int iter = 0;
 	double THRES = VDD_G * 0.1;
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop > THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 
 		Node *nd = extract_maxIR_node();
@@ -2516,7 +2521,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec){
 		//clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// update partial grid for several iter
-		update_partial_grid(pad_ptr->node);
+		update_partial_grid(pad_ptr->node, tran);
 		locate_maxIRdrop();
 		iter++;
 	}
@@ -2782,12 +2787,15 @@ void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
 // reset b
 void SubCircuit::reset_b(){
    size_t n = replist.size();
+
+   cholmod_free_dense(&b, cm);
    b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    bp = static_cast<double *> (b->x);
 }
 
 void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 	size_t n = replist.size();
+	cholmod_free_dense(&b, cm);
 	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    	bp = static_cast<double *> (b->x);
 
@@ -2840,6 +2848,7 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 // restamp bp with LDO
 void SubCircuit::stamp_rhs_DC(bool local_flag){
 	size_t n = replist.size();
+	cholmod_free_dense(&b, cm);
    	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    	bp = static_cast<double *> (b->x);
 
@@ -2907,7 +2916,8 @@ void SubCircuit::release_resources(){
 }
 
 // update partial grid around the new added pad
-void SubCircuit::update_partial_grid(Node *nd){
+// need to consider about capacitor
+void SubCircuit::update_partial_grid(Node *nd, Tran tran){
 	queue<Node *> q;
 	Node *nd_cur;
 	// Node *nbr;
@@ -2915,17 +2925,21 @@ void SubCircuit::update_partial_grid(Node *nd){
 	double epi = 1e-4;
 	double diff = 0;
 	int iter = 0;
+	double max_diff = 1;
 	
 	while(iter <5){
 		q.push(nd);
 		nd->flag_visited = iter;
 		nd->value = VDD_G;
 		int count = 0;
+		max_diff = 0;
 		while(!q.empty()){
 			nd_cur = q.front();
 			// cout<<"nd_cur: "<<*nd_cur<<endl;
 			// update this node
-			diff = update_node_value(nd_cur, nd);
+			diff = update_node_value(nd_cur, nd, tran);
+			if(nd_cur->isS()!=Y && diff > max_diff)
+				max_diff = diff;
 			// cout<<"diff: "<<diff<<endl;
 			// push nbr node into queue
 			if(diff > epi){
@@ -2935,16 +2949,19 @@ void SubCircuit::update_partial_grid(Node *nd){
 			count ++;
 		}
 
+		// clog<<"max diff in queue: "<<max_diff<<endl;
 		// clog<<"total num in queue is: "<<count<<endl;
 		iter ++;
 	}
-
+	while(!q.empty())
+		q.pop();
 	for(size_t i=0;i<replist.size();i++)
 		replist[i]->flag_visited = -1;
 }
 
 // rhs is the current vector
-double SubCircuit::update_node_value(Node *&nd, Node *add_node){
+// need to consider capacitor node
+double SubCircuit::update_node_value(Node *&nd, Node *add_node, Tran tran){
 	if(nd->isS()==Y || nd->name == add_node->name) {
 		return 1;
 	}
@@ -2957,6 +2974,7 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node){
 	double current = 0;
 	net = NULL;
 	nbr = NULL; na = NULL; nb = NULL;
+	double Ieq = 0;
 
 	V_old = nd->value;
 	
@@ -2964,7 +2982,14 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node){
 	for(int i=0;i<7;i++){
 		net = nd->nbr[i];
 		if(net ==NULL) continue;
-		G = 1.0/net->value;
+		if(net->type == CURRENT) continue;
+		// special care about cap net
+		if(net->type == CAPACITANCE){
+			G = 2*net->value / tran.step_t;
+			Ieq = net->Ieq;
+		}else{
+			G = 1.0/net->value;
+		}
 		na = net->ab[0]; nb = net->ab[1];
 		if(nd->name == na->name) nbr = nb;
 		else	nbr = na;
@@ -2975,8 +3000,12 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node){
 	}
 	if(nd->nbr[BOTTOM]== NULL) current = 0;
 	else	current = -nd->nbr[BOTTOM]->value;
+	// include cap Ieq
+	current += Ieq;
 	V_temp += current;
 	V_temp /=sum;
+	if(V_temp >= VDD_G)
+		V_temp = VDD_G;
 	nd->value  = V_temp;
  	
 	double V_improve = fabs(nd->value - V_old);
@@ -3057,9 +3086,10 @@ double SubCircuit::print_matlab_LDO(){
 	f = fopen("LDO_out.txt", "w");
 	for(size_t i=0;i<ldolist.size();i++){
 		Node *nd = ldolist[i]->nd_out;
+		Node *nd_vol = ldolist[i]->A;
 		int xr = nd->pt.x + ldolist[i]->width;
 		int yr = nd->pt.y + ldolist[i]->height;
-		fprintf(f, "%ld %ld %d %d\n", nd->pt.x, nd->pt.y, ldolist[i]->width, ldolist[i]->height);
+		fprintf(f, "%ld %ld %ld %ld %d %d\n", nd_vol->pt.x, nd_vol->pt.y, nd->pt.x, nd->pt.y, ldolist[i]->width, ldolist[i]->height);
 	}
 	fclose(f);
 	
@@ -3092,3 +3122,33 @@ double SubCircuit::print_matlab_node(){
 	}
 	fclose(f);
 }
+
+void SubCircuit::solve_GS(Tran tran){
+	double max_diff = 1;
+	int iter = 0;
+	double omega= 2-0.06;
+	Node *max_nd;
+	Node *nd_gnd = nodelist[nodelist.size()-1];
+	//clog<<"nodelist.size: "<<nodelist.size()-1<<endl;
+	while(max_diff >1e-8 && iter < 500){
+		max_diff = 0;
+		for(size_t i=0;i<nodelist.size()-1;i++){
+			Node *nd = nodelist[i];
+		
+			if(nd->isS()==Y) continue;
+
+			double V_old = nd->value;
+			update_node_value(nd, nd_gnd, tran);
+			//nd->value = (1-omega)*nd->value + omega * V_temp;
+
+			double diff = fabs(nd->value - V_old);
+			if(diff > max_diff) {
+				max_diff = diff;
+				max_nd = nd;
+			}
+
+		}
+		iter++;
+	}
+}
+
