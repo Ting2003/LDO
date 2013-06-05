@@ -107,6 +107,7 @@ public:
 	void recover_global_pad(Tran &tran, vector<Node*> &pad_set_best);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
 	void build_pad_set();
+	void add_pad_set(vector<Pad*> LDO_pad_vec);
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
 	////// new member for pad //////
 	
@@ -192,6 +193,9 @@ private:
 
 	double solve_CK_with_decomp();
 	double solve_CK_with_decomp_tr();
+
+	void solve_local(Tran &tran, double time);
+	double solve_CK_op_tr();
 	void update_ldo_current();
 	void modify_ldo_rhs();
 	void modify_ldo_rhs_TR();
@@ -245,9 +249,11 @@ private:
 	void set_eq_induc(Tran &tran);
 	void set_eq_capac(Tran &tran);
 	void modify_rhs_c_tr_0(Net *net, Tran &tran);
+	void global_modify_rhs_c_tr_0(Net *net, Tran &tran);
 	void modify_rhs_l_tr_0(Net *net, Tran &tran);
 
 	void modify_rhs_c_tr(Net *net, double *xp, double *x);
+	void global_modify_rhs_c_tr(Net *net, double * rhs, double *x);
 	void modify_rhs_l_tr(Net *net, double *xp, double *x);
 	void modify_rhs_Ieq(double *rhs);
 	void modify_rhs_Ieq_c(Net *net, double *rhs);
@@ -292,6 +298,7 @@ private:
 	double *Lx;
 	int *Li, *Lp, *Lnz;
         cholmod_common c, *cm;
+        cholmod_common c1, *cm1;
 
         cholmod_dense *b, *x;
         double *bp, *xp;

@@ -366,6 +366,7 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 				assert( fzero(ns[i]->value) == false );
 				stamp_resistor_tr(A, ns[i]);
 			}
+			// clog<<"finish resistor. "<<endl;
 			break;
 		case CURRENT:
 			break;
@@ -376,16 +377,22 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 				    !ns[i]->ab[1]->is_ground() )
 					continue; // it's a 0v via
 				stamp_VDD(A, ns[i]);
+
+				// clog<<"finish VDD "<<endl;
 			}
 			break;
 		case CAPACITANCE:
 			for(size_t i=0;i<ns.size();i++)
 				stamp_capacitance_tr(A, ns[i], tran);
+
+			// clog<<"finish capacitor. "<<endl;
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
 				stamp_inductance_tr(A, ns[i], tran);	
 			}
+
+			// clog<<"finish inductance. "<<endl;
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -400,7 +407,10 @@ void SubCircuit::modify_rhs_tr_0(Tran &tran){
 		NetPtrVector & ns = net_set[type];
 		if(type ==CAPACITANCE){	
 			for(size_t i=0;i<ns.size();i++)
-				modify_rhs_c_tr_0(ns[i], tran);
+				if(this->name != "GLOBAL")
+				 	modify_rhs_c_tr_0(ns[i], tran);
+				else
+					global_modify_rhs_c_tr_0(ns[i], tran);
 		}
 		else if(type == INDUCTANCE){
 			for(size_t i=0;i<ns.size();i++){
@@ -591,7 +601,8 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 
 // stamp capacitance Geq = 2C/delta_t
 void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
-	// cout<<"cap net: "<<*net<<endl;
+	// if(this->name == "GLOBAL")
+	   // cout<<"cap net: "<<*net<<endl;
 	double Geq = 0;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -605,10 +616,12 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 
 	if( nk->isS()!=Y  && !nk->is_ground()) {
 		A.push_back(k,k, Geq);
-		//cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
+		// if(this->name == "GLOBAL")
+			// cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		if(!nl->is_ground()&& k > l){
 			A.push_back(k,l,-Geq);
-			//cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
+			// if(this->name == "GLOBAL")
+			// cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
@@ -620,6 +633,69 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 			// cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
 	}
+}
+
+// add Ieq into rhs
+// Ieq = i(t) + 2*C / delta_t *v(t)
+void SubCircuit::global_modify_rhs_c_tr_0(Net *net, Tran &tran){
+	double i_t = 0;
+	double temp = 0;
+	double Ieq = 0;
+	// cout<<"c net: "<<*net<<endl;
+	Node *nk = net->ab[0]->rep;
+	Node *nl = net->ab[1]->rep;
+        // nk point to global net node
+	// nl point to the ground node
+	if(nk->is_ground()){
+		nk = net->ab[1]->rep;
+		nl = net->ab[0]->rep;
+	}
+	double cur_cal = 0;
+	double cur_source = 0;
+        // calculate all current flows in nk
+	for(DIRECTION d = WEST; d!= UNDEFINED; d = (DIRECTION)(d+1)){
+		Net *nbr_net = nk->nbr[d];
+		if(nbr_net == NULL) continue;
+		if(nbr_net->type == RESISTOR){
+			Node *nd_nbr = nbr_net->ab[0]->rep;
+			if(nd_nbr->name == nk->name)
+				nd_nbr = nbr_net->ab[1]->rep;
+			double current = (nd_nbr->value - nk->value ) / nbr_net->value;
+			cur_cal += current;
+		}
+		if(nbr_net->type == CURRENT)
+			cur_source = nbr_net->value;
+	}
+	cout<<"cur_cal, cur_source: "<<cur_cal<<" "<<cur_source<<endl;
+	// the current flowing in/out cap
+	i_t = cur_cal - cur_source;
+      
+        // push 2 nodes into node_set_x
+        //clog<<*nk<<" "<<k<<endl;
+	if(nk->is_ground())
+	// temp = 2*net->value/tran.step_t*(0-x[l]);
+		temp = 2*net->value/tran.step_t *(-nl->value);
+        else if(nl->is_ground()){
+         //temp = 2*net->value/tran.step_t *(x[k]);
+		temp = 2*net->value / tran.step_t *nk->value;
+        }
+        else
+        //temp = 2*net->value/tran.step_t *(x[k] - x[l]);
+        	temp = 2*net->value/tran.step_t *
+			(nk->value - nl->value);
+		
+	Ieq  = (i_t + temp);
+	net->Ieq = Ieq;
+	// cout<< "Ieq is: "<<Ieq<<endl;
+	//clog<<"Geq is: "<<2*net->value / tran.step_t<<endl;
+	/*if(!nk->is_ground()&& nk->isS()!=Y){
+		 rhs[k] += Ieq;	// for VDD SubCircuit
+		// clog<<*nk<<" rhs +: "<<rhs[k]<<endl;
+	}
+	if(!nl->is_ground()&& nl->isS()!=Y){
+		 rhs[l] += -Ieq; 
+		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
+	}*/
 }
 
 // add Ieq into rhs
@@ -681,6 +757,58 @@ void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 		 rhs[l] += -Ieq; 
 		//clog<<*nl<<" rhs +: "<<rhs[l]<<endl;
 	}*/
+}
+
+// add Ieq into rhs
+// Ieq = i(t) + 2*C / delta_t *v(t)
+void SubCircuit::global_modify_rhs_c_tr(Net *net, double * rhs, double *x){
+	double temp = 0;
+	//clog<<"c net: "<<*net<<endl;
+	Node *nk = net->ab[0]->rep;
+	Node *nl = net->ab[1]->rep;
+        // nk point to global net node
+	// nl point to the ground node
+	if(nk->is_ground()){
+		nk = net->ab[1]->rep;
+		nl = net->ab[0]->rep;
+	}
+	size_t k = nk->rid;
+	size_t l = nl->rid;
+
+	double cur_cal = 0;
+	double cur_source = 0;
+        // calculate all current flows in nk
+	for(DIRECTION d = WEST; d!= UNDEFINED; d = (DIRECTION)(d+1)){
+		Net *nbr_net = nk->nbr[d];
+		if(nbr_net == NULL) continue;
+		if(nbr_net->type == RESISTOR){
+			Node *nd_nbr = nbr_net->ab[0]->rep;
+			if(nd_nbr->name == nk->name)
+				nd_nbr = nbr_net->ab[1]->rep;
+			double current = (nd_nbr->value - nk->value ) / nbr_net->value;
+			cur_cal += current;
+		}
+		if(nbr_net->type == CURRENT)
+			cur_source = nbr_net->value;
+	}
+	cout<<"cur_cal, cur_source: "<<cur_cal<<" "<<cur_source<<endl;
+	// the current flowing in/out cap
+	double i_t = cur_cal - cur_source;
+		
+	if(nk->is_ground())
+	 temp = net->value *(-x[l]);
+        else if(nl->is_ground())
+	 temp = net->value *x[k];
+        else
+	 temp = net->value *(x[k]-x[l]);
+	
+	double Ieq  = i_t + temp;
+	if(!nk->is_ground()&& nk->isS()!=Y){
+		 rhs[k] += Ieq;	// for VDD SubCircuit
+	}
+	if(!nl->is_ground()&& nl->isS()!=Y){
+		 rhs[l] -= Ieq; 
+	}
 }
 
 // add Ieq into rhs
@@ -1172,6 +1300,13 @@ void SubCircuit::save_ckt_nodes_to_tr(Tran &tran){
 	}	
 }
 
+void SubCircuit::add_pad_set(vector<Pad*> LDO_pad_vec){
+	//push all pad nodes (LDO nodes);
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		pad_set.push_back(LDO_pad_vec[i]);
+	}
+}
+
 void SubCircuit::build_pad_set(){
 	pad_set.resize(0);
 	//push all pad nodes (LDO nodes);
@@ -1306,10 +1441,13 @@ void SubCircuit::build_local_nets(){
 }
 
 // build global current nets from LDO
+// also build global cap nets from LDO
 // only one time step
 void SubCircuit::build_global_nets(){
 	// first delete all current nets
 	int type = CURRENT;
+	// build cap net
+	int type_c = CAPACITANCE;
 	NetPtrVector &ns = net_set[type];
 	for(size_t i=0;i<ns.size();i++)
 		delete ns[i];
@@ -1324,6 +1462,7 @@ void SubCircuit::build_global_nets(){
 		}
 
 	double current;
+	double cap_value = 1e-4;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
 		current = ldolist[i]->current;
@@ -1333,6 +1472,11 @@ void SubCircuit::build_global_nets(){
 		// update top nbr net
 		nd->rep->nbr[BOTTOM] = net;
 		// clog<<"add global net: "<<*net<<endl;
+		// add cap net
+		Net *net_cap = new Net(CAPACITANCE, cap_value, nd, gnd);
+		add_net(net_cap);
+		nd->rep->nbr[BOTTOP] = net_cap;
+		
 	}
 }
 
@@ -1373,7 +1517,8 @@ void SubCircuit::stamp_decomp_matrix_DC(){
 }
 
 // stamp matrix and rhs, decomp matrix for DC
-void SubCircuit::stamp_decomp_matrix_TR(Tran &tran){ 
+void SubCircuit::stamp_decomp_matrix_TR(Tran &tran){
+   cholmod_free_factor(&L, cm);
    stamp_by_set_tr(A, tran);
    /*cout<<"transient A: "<<endl;
    for(size_t i=0;i<A.size();i++)
@@ -1397,6 +1542,25 @@ double SubCircuit::solve_CK_with_decomp(){
 	// cout<<nodelist<<endl;
 	return diff;
 }
+
+// solve eq with decomped matrix
+double SubCircuit::solve_CK_op_tr(){
+	// modify rhs with Ieq
+	modify_rhs_Ieq(bp);
+
+	cholmod_free_dense(&x, cm);
+	x = cholmod_solve(CHOLMOD_A, L, b, cm);
+
+	cholmod_free_dense(&b, cm);
+	// solve the eq
+	// cholmod_solve2(CHOLMOD_A, L, b, NULL, &x, NULL, &YY, &EE, cm);
+   	// xp = static_cast<double *> (x->x);
+	// copy solution to nodes
+   	double diff = get_voltages_from_LU_sol(xp);
+	// cholmod_free_work(cm);
+	return diff;
+}
+
 
 // solve eq with decomped matrix
 double SubCircuit::solve_CK_with_decomp_tr(){
@@ -2330,16 +2494,22 @@ void SubCircuit::rebuild_local_nets(Node *rm_node, Node *add_node){
 // rebuild all the RLV nets from ldolist
 void SubCircuit::rebuild_global_nets(){	
 	int type = CURRENT;
+	int type_c = CAPACITANCE;
 	// then delete all the nets in global circuit
 	NetPtrVector & ns = net_set[type];
+	NetPtrVector & ns_c = net_set[type_c];
 	Net *net = ns[0];
+	Net *net_cap = ns_c[0];
 	Node *nd = net->ab[0];
 	if(nd->is_ground())
 		nd = ns[0]->ab[1];
 	nd->nbr[BOTTOM] = NULL;
+	nd->nbr[BOTTOP] = NULL;
 	nd = ldolist[0]->nd_in;
 	nd->nbr[BOTTOM] = net;
-	nd->value = ldolist[0]->current;
+	nd->nbr[BOTTOP] = net_cap;
+	// mark, need to be uncomment or comment
+	// nd->value = ldolist[0]->current;
 }
 
 void SubCircuit::extract_node(char * str, Node & nd){
@@ -2508,8 +2678,8 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 	double THRES = VDD_G * 0.1;
 	// while not satisfied and still have room,
 	// perform optimization
-	while(max_IRdrop > THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <5){//LDO_pad_vec.size() <1){
+	while(max_IRdrop >= THRES && 
+		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 
 		Node *nd = extract_maxIR_node();
@@ -2523,6 +2693,8 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node, tran);
 		locate_maxIRdrop();
+		//if(iter %5==0)
+			//clog<<"new max IR: "<<max_IRdrop<<endl;
 		iter++;
 	}
 }
@@ -3152,3 +3324,15 @@ void SubCircuit::solve_GS(Tran tran){
 	}
 }
 
+// solve local
+void SubCircuit::solve_local(Tran &tran, double time){
+	stamp_decomp_matrix_TR(tran);
+	// Ieq already there
+	modify_local_nets();
+	stamp_rhs_tr(true, time, tran);
+	// solve eq with decomped matrix
+	// ckt_l.solve_CK_with_decomp_tr();
+	solve_CK_op_tr();
+	locate_maxIRdrop();
+	// clog<<"new local max IR in add LDO is: "<<ckt_l.locate_maxIRdrop()<<endl;
+}
