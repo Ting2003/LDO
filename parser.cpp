@@ -140,6 +140,9 @@ void Parser::insert_net_node(char * line, int *count){
 	case 'L':
 		net_type = INDUCTANCE;
 		break;
+	case 'T':
+		net_type = LDO_NET;
+		break;
 	default:
 		report_exit("Invalid net type!\n");
 		break;
@@ -186,6 +189,8 @@ void Parser::insert_net_node(char * line, int *count){
 // Given a net with its two nodes, update the connection information
 // for thet two nodes
 void Parser::update_node(Net * net){
+	if(net->type == LDO_NET)
+		return;
 	// first identify their connection type:
 	// 1. horizontal/vertical   2. via/VDD 3. current
 	//
@@ -400,6 +405,7 @@ void Parser::parse(char * filename, char * filename_ldo, Tran & tran){
 		case 'C':
 		case 'l':
 		case 'L':
+		case 'T':
 			insert_net_node(line, count);
 			break;
 		case '.': // command

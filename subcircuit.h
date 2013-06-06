@@ -106,7 +106,8 @@ public:
 	void recover_local_pad(Tran &tran, vector<LDO*> &ldolist_best);
 	void recover_global_pad(Tran &tran, vector<Node*> &pad_set_best);
 	bool adjust_ldo_pos(double ref_dist, double ref_x, double ref_y, LDO &ldo, MODULE *wspace);
-	void build_pad_set();
+	void build_global_pad_set();
+	void build_local_pad_set();
 	void add_pad_set(vector<Pad*> LDO_pad_vec);
 	void get_pad_tr_cur(vector<Pad*> &pad_set, Tran &tran);
 	////// new member for pad //////
@@ -289,6 +290,9 @@ private:
 	void select_omega();
 
 	void set_type(CIRCUIT_TYPE type){circuit_type = type;};
+
+	void assign_min_max_layers();
+	void build_map_landg();
         // ************* functions and members for thread **********
 
         double *temp;	
@@ -317,9 +321,14 @@ private:
 	vector<int> layers;
 	vector<bool> local_layers;
 	vector<bool> global_layers;
+	int min_layer;
+	int max_layer;
 	
 	// mapping from name to Node object pointer
 	unordered_map<string, Node*> map_node;
+	// the map of local and global ldo nodes
+	map<Node*, Node*> map_landg;
+
 	int MAX_NUM_LDO;
 	int MAX_NUM_PAD;
 

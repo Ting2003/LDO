@@ -159,15 +159,21 @@ void Circuit::print(){
 // Computation Functions
 
 // initialization before solving the circuit
-void Circuit::solve_init(){
+void Circuit::solve_init(){	
+	ckt_g.name = "GLOBAL";
+	ckt_l.name = "LOCAL";
 	ckt_l.lx = lx; ckt_l.gx = gx; 
 	ckt_l.ly = ly; ckt_l.gy = gy;
 
 	ckt_g.lx = lx; ckt_g.gx = gx; 
 	ckt_g.ly = ly; ckt_g.gy = gy;
+	ckt_l.layers = local_layers;
+	ckt_g.layers = global_layers;
+	ckt_l.assign_min_max_layers();
+	ckt_g.assign_min_max_layers();
 	// assign nodes and nets into ckt_g and ckt_l
 	build_subcircuit();
-
+	clog<<"after build subcircuit. "<<endl;
 	// update and sort nodes
 	ckt_l.solve_init(true);
 	ckt_g.solve_init(false);
@@ -196,14 +202,12 @@ void Circuit::count_merge_nodes(){
 void Circuit::solve(Tran &tran){
 	// readin LDO and store and lookup table
 	Readin_LDO();
-	// assign nodes and nets to ckt_g and l
-	// config subckt, start cholmod for ckt_g and l
+	//1. assign nodes and nets to ckt_g and l
+	//2. config subckt, start cholmod for ckt_g and l
 	solve_init();
 	// build pad set: local build LDO list - need update
-	ckt_l.name = "LOCAL";
-	ckt_l.build_pad_set();
-	ckt_g.name = "GLOBAL";
-	ckt_g.build_pad_set();
+	ckt_l.build_local_pad_set();
+	ckt_g.build_global_pad_set();
 
 	// build new nets for the single LDo
 	ckt_l.build_local_nets();
@@ -216,6 +220,7 @@ void Circuit::solve(Tran &tran){
 	clog<<"DC optimized max IR for l /g: "<<
 		ckt_l.locate_maxIRdrop()<<" "<<
 		ckt_g.locate_g_maxIRdrop()<<endl;
+	return;
 	// clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
 	// ckt_l.clear_flags();
@@ -275,23 +280,30 @@ void Circuit::solve(Tran &tran){
 void Circuit::build_subcircuit(){
 	ckt_l.ldolist = ldolist;
 	ckt_g.ldolist = ldolist;
-	int layer_l = local_layers[0];
-	//int layer_g = global_layers[0];
-	//clog<<"layer_l and g: "<<layer_l<<" "<<layer_g<<endl;
 	// build nodelist
 	for(size_t i=0;i<nodelist.size();i++){
 		if(nodelist[i]->is_ground())
 			continue;
 		int layer = nodelist[i]->get_layer();
-		if(layer_l == layer)
+		bool flag = false;
+		for(size_t j=0;j<local_layers.size();j++){
+			if(layer == local_layers[j]){
+				flag = true;
+				break;
+			}
+		}
+		if(flag == true){
 			ckt_l.nodelist.push_back(nodelist[i]);
-		else
+		}
+		else{
 			ckt_g.nodelist.push_back(nodelist[i]);
+		}
 	}
 	// then build net_set
 	Node *nd;
 	Net *net;
-	for(int type =0;type<NUM_NET_TYPE;type++){
+	// handles the LDO_NET independently
+	for(int type =0;type<NUM_NET_TYPE-1;type++){
 		NetPtrVector &ns = net_set[type];
 		for(size_t i=0;i<ns.size();i++){
 			net = ns[i];
@@ -299,18 +311,43 @@ void Circuit::build_subcircuit(){
 			nd = net->ab[0];
 			if(nd->is_ground())
 				nd = net->ab[1];
-			if(nd->get_layer()==layer_l)
+			int layer = nd->get_layer();
+			bool flag = false;
+			for(size_t j=0;j<local_layers.size();j++){
+				if(layer == local_layers[j]){
+					flag = true;
+					break;
+				}
+			}
+			if(flag == true){
+				// clog<<"local net: "<<*net<<endl;
 				ckt_l.net_set[type].push_back(net);
-			else
+			}
+			else{
+				// clog<<"global net: "<<*net<<endl;
 				ckt_g.net_set[type].push_back(net);
+			}
 		}
 	}
+
+	// write the LDO_net to both l and g
+	int type = NUM_NET_TYPE-1;
+	NetPtrVector &ns = net_set[type];
+	for(size_t i=0;i<ns.size();i++){
+		net = ns[i];
+		if(net == NULL) continue;
+		ckt_l.net_set[type].push_back(net);
+		ckt_g.net_set[type].push_back(net);
+		
+	}
+	// build the map between local and global node
+	ckt_l.build_map_landg();
+	ckt_g.build_map_landg();
 
 	// mark the geometry with occupy info
 	ckt_l.mark_geo_occupation();
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// ckt_g.build_candi_pad_set();
-	// for ckt_l, need to create new nets
 }
 
 // verify final solution with optimized LDOs
@@ -666,6 +703,8 @@ void Circuit::stamp_by_set(Matrix & A, double * b){
 				stamp_inductance_dc(A, b, ns[i]);	
 			}
 			break;
+		case LDO_NET:
+			break;
 		default:
 			report_exit("Unknwon net type\n");
 			break;
@@ -730,6 +769,8 @@ void Circuit::stamp_by_set_tr(Matrix & A, double *b, Tran &tran){
 			for(size_t i=0;i<ns.size();i++){
 				stamp_inductance_tr(A, ns[i], tran);	
 			}
+			break;
+		case LDO_NET:
 			break;
 		default:
 			report_exit("Unknwon net type\n");

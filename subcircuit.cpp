@@ -58,6 +58,7 @@ SubCircuit::~SubCircuit(){
 	Li = NULL;
 	Lp = NULL;
 	Lnz = NULL;
+	map_landg.clear();
 }
 
 void SubCircuit::check_sys() const{
@@ -323,6 +324,8 @@ void SubCircuit::stamp_by_set(Matrix & A){
 				stamp_inductance_dc(A, ns[i]);	
 			}
 			break;
+		case LDO_NET:
+			break;
 		default:
 			report_exit("Unknwon net type\n");
 			break;
@@ -393,6 +396,8 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 			}
 
 			// clog<<"finish inductance. "<<endl;
+			break;
+		case LDO_NET:
 			break;
 		default:
 			report_exit("Unknwon net type\n");
@@ -1307,13 +1312,33 @@ void SubCircuit::add_pad_set(vector<Pad*> LDO_pad_vec){
 	}
 }
 
-void SubCircuit::build_pad_set(){
-	pad_set.resize(0);
+void SubCircuit::build_global_pad_set(){
+	pad_set.resize(0);		
 	//push all pad nodes (LDO nodes);
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->isS()==Y){
+		if(nodelist[i]->isS()==Y || nodelist[i]->flag_geo == SLDO){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
+			if(nodelist[i]->flag_geo == SLDO)
+				nodelist[i]->value = VDD_G;
+			// cout<<"global pad set: "<<*nodelist[i]<<endl;
+			pad_set.push_back(pad_ptr);
+		}
+	}
+}
+
+void SubCircuit::build_local_pad_set(){
+	pad_set.resize(0);
+	int layer = 0;
+	layer = max_layer;
+	
+	//push all pad nodes (LDO nodes);
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		if(nodelist[i]->get_layer() == layer && nodelist[i]->flag_geo == SLDO){
+		// if(nodelist[i]->isS()==Y){
+			Pad *pad_ptr = new Pad();
+			pad_ptr->node = nodelist[i];
+			//clog<<"local pad: "<<*nodelist[i]<<endl;
 			pad_set.push_back(pad_ptr);
 		}
 	}
@@ -2287,7 +2312,7 @@ void SubCircuit::clear_flags(){
 	}
 }
 
-// mark the grid with block and LDO occupation
+// mark local grid with block and LDO occupation
 void SubCircuit::mark_geo_occupation(){
 	int width=0;
 	int height = 0;
@@ -2297,11 +2322,15 @@ void SubCircuit::mark_geo_occupation(){
 		height = ldolist[0]->height;
 	}
 
-	// clog<<"width and height: "<<wspacelist[0]->width<<" "<<wspacelist[0]->height<<endl;
-	Node *nd;
+	// clog<<"width and height: "<<wspacelist[0]->width<<" "<<wspacelist[0]->height<<endl;	
+	// max_local layer
+	int mlayer = max_layer;
+	// Node *nd;
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		nd = nodelist[i];
+		Node * nd = nodelist[i];
 		if(nd->isS()==Z) continue;
+		int layer = nd->get_layer();
+		if(layer != mlayer) continue;
 		int x = nd->pt.x;
 		int y = nd->pt.y;
 		// mark node with geo occupation
@@ -2320,11 +2349,12 @@ void SubCircuit::mark_geo_occupation(){
 			// clog<<"bxl, bxr, byl, byr: "<<module_xl<<" "<<module_xr<<" "<<module_yl<<" "<<module_yr<<endl;
 			// 4 node:
 			// (x, y), (xr, yr), (x, yr)
-			if((x>=module_xl && x <= module_xr &&((y>=module_yl && y <= module_yr) || (yr>=module_yl && yr <= module_yr))) 
-						||(xr>=module_xl && xr <= module_xr && ((y>=module_yl && y <= module_yr) ||(yr>=module_yl && yr <= module_yr)))){
+			if((x>=module_xl && x <= module_xr &&((y>=module_yl && y <= module_yr) || (yr>=module_yl && yr <= module_yr))) ||(xr>=module_xl && xr <= module_xr && ((y>=module_yl && y <= module_yr) ||(yr>=module_yl && yr <= module_yr)))){
 				// clog<<"mark block. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SBLOCK);
+				Node *nd_g = map_landg[nd];
+				nd_g->assign_geo_flag(SBLOCK);
 				flag_module = true;
 				break;
 			}
@@ -2337,7 +2367,9 @@ void SubCircuit::mark_geo_occupation(){
 		if(nd->get_geo_flag() != SBLOCK && (xr <= gx && yr <=gy)){
 			// cout<<"candi pad is: "<<*pad_ptr->nd_out_LDO<<endl;
 			candi_pad_set.push_back(pad_ptr);
-		}
+		}/*else{
+			cout<<"not candi pad is: "<<*nd<<endl;
+		}*/
 
 		// check if it is LDO
 		bool flag_ldo = false;
@@ -2351,6 +2383,9 @@ void SubCircuit::mark_geo_occupation(){
 				// clog<<"mark ldo. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SLDO);
+				
+				Node *nd_g = map_landg[nd];
+				nd_g->assign_geo_flag(SLDO);
 				Pad *pad_ptr = new Pad();
 				pad_ptr->node = nd;
 				candi_pad_set.push_back(pad_ptr);
@@ -2363,18 +2398,21 @@ void SubCircuit::mark_geo_occupation(){
 			continue;
 		// else assign blank
 		// clog<<"mark blank. "<<endl<<endl;
-		if(xr <= gx && yr <= gy)
-			nd->assign_geo_flag(SBLANK);
+		if(xr <= gx && yr <= gy){
+			nd->assign_geo_flag(SBLANK);	
+			Node *nd_g = map_landg[nd];
+			nd_g->assign_geo_flag(SBLOCK);
+		}
 	}
 	// count is the maximum candidate number for LDO
 	MAX_NUM_LDO = candi_pad_set.size();
-	clog<<"candi pad set size: "<<MAX_NUM_LDO<<endl;
-	/* cout<<"start to output candi_pad set. "<<endl<<endl<<endl;
-	for(size_t i=0;i<MAX_NUM_LDO;i++){
+	// clog<<"candi pad set size: "<<MAX_NUM_LDO<<endl;
+	// cout<<"start to output candi_pad set. "<<endl<<endl<<endl;
+	/*for(size_t i=0;i<MAX_NUM_LDO;i++){
 		Pad *pad = candi_pad_set[i];
-		Node *nd = pad->node;
-		if(nd != NULL)
-			cout<<"nd: "<<*nd<<endl;
+		Node *nd = pad->nd_out_LDO;
+		// if(nd != NULL)
+			// cout<<"nd: "<<*nd<<endl;
 	}*/
 }
 
@@ -2997,6 +3035,7 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 		case RESISTOR:
 		case CAPACITANCE:
 		case INDUCTANCE:
+		case LDO_NET:
 			/*for(size_t i=0;i<ns.size();i++){
 				stamp_induc_rhs_dc(bp, ns[i]);	
 			}*/
@@ -3048,6 +3087,7 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 				stamp_induc_rhs_dc(bp, ns[i]);	
 			}
 			break;
+		case LDO_NET:
 		default:
 			report_exit("Unknwon net type\n");
 			break;
@@ -3335,4 +3375,56 @@ void SubCircuit::solve_local(Tran &tran, double time){
 	solve_CK_op_tr();
 	locate_maxIRdrop();
 	// clog<<"new local max IR in add LDO is: "<<ckt_l.locate_maxIRdrop()<<endl;
+}
+
+void SubCircuit::assign_min_max_layers(){
+	min_layer = 0;
+	max_layer = 0;
+	for(size_t i=0; i<layers.size();i++){
+		if(i==0){
+			min_layer = layers[0];
+			max_layer = layers[0];
+		}else{ 
+			if(layers[i] > max_layer)
+				max_layer = layers[i];
+			if(layers[i] < min_layer)
+				min_layer = layers[i];
+		}
+	}
+}
+
+// build map between local and global ldo nodes
+// layer is the bd layer of the other ckt
+void SubCircuit::build_map_landg(){
+	int type = LDO_NET;
+	NetPtrVector &ns = net_set[type];
+	Node *na, *nb;
+	int layer = 0;
+	if(this->name == "GLOBAL"){
+		layer = min_layer;
+	}
+	else
+		layer = max_layer;
+	Node *nd;
+
+	pair<Node *, Node*> node_pair;
+	int layer_a = 0;
+	int layer_b = 0;
+	for(size_t i=0;i<ns.size();i++){
+		Net* net = ns[i];
+		na = net->ab[0];
+		layer_a = na->get_layer();
+		nb = net->ab[1];
+		layer_b = nb->get_layer();
+		// if a is local node
+		if(layer_a == layer){
+			node_pair.first = na;
+			node_pair.second = nb;	
+			map_landg.insert(node_pair);
+		}else if(layer_b == layer){
+			node_pair.first = nb;
+			node_pair.second = na;
+			map_landg.insert(node_pair);
+		}
+	}	
 }
