@@ -19,7 +19,7 @@ CFLAGS=-Wall -Wextra -pipe -O2 -msse4.2 -mssse3 -mfpmath=sse -march=native -fope
 #LDFLAGS=-s -Wl,-O1,-hash-style=gnu
 LDFLAGS=
 
-PACKAGE= ../pg_dc_p/package_ck
+PACKAGE= ../package
 
 CHOLMOD= $(PACKAGE)/CHOLMOD
 CHOLMOD_LIB_DIR=$(CHOLMOD)/Lib
@@ -28,7 +28,7 @@ GOTO2 = $(PACKAGE)/GotoBLAS2
 
 CHOLMOD_INC_DIR=$(CHOLMOD)/Include
 CHOLMOD_LIB=$(CHOLMOD_LIB_DIR)/libcholmod.a \
-	    $(PACKAGE)/AMD/Lib/libamd.a\
+	    $(CHOLMOD)/libamd.a\
 	    $(CHOLMOD)/libcolamd.a\
 	    $(CHOLMOD)/libccolamd.a\
 	    $(CHOLMOD)/libcamd.a \

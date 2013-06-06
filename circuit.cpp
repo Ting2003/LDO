@@ -2452,7 +2452,7 @@ void Circuit::Readin_LDO(){
 	pair<key_LDO, double> LDO_pair;
 	ldo_vin_vec.clear();
 	ldo_iout_vec.clear();
-	f = fopen("../data/LDO/data/LDO_lookupTable.txt", "r");
+	f = fopen("../data/LDO/LDO_lookupTable.txt", "r");
 	if( f == NULL ) 
 		report_exit("LDO table file not exist!\n");
 	char line[MAX_BUF];
