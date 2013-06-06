@@ -1450,6 +1450,7 @@ void SubCircuit::build_local_nets(){
 	Node *nd;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->A;
+		// clog<<"ldo node: "<<*nd<<endl;
 		nd->value = VDD_G;
 		Net *net = new Net(VOLTAGE, VDD_G, nd, gnd);
 		add_net(net);
@@ -1469,15 +1470,8 @@ void SubCircuit::build_local_nets(){
 // also build global cap nets from LDO
 // only one time step
 void SubCircuit::build_global_nets(){
-	// first delete all current nets
-	int type = CURRENT;
-	// build cap net
-	int type_c = CAPACITANCE;
-	NetPtrVector &ns = net_set[type];
-	for(size_t i=0;i<ns.size();i++)
-		delete ns[i];
-	ns.clear();
-	// then create new ones
+	// need to build voltage nets for ldo
+	int type = VOLTAGE;
 	Node *nd;
 	Node *gnd = NULL;
 	for(size_t i=0;i<nodelist.size();i++)
@@ -1486,22 +1480,15 @@ void SubCircuit::build_global_nets(){
 			break;
 		}
 
-	double current;
-	double cap_value = 1e-4;
+	double vol_value = VDD_G;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
-		current = ldolist[i]->current;
-		//current = 0.3;
-		Net *net = new Net(CURRENT, current, nd, gnd);
+		// clog<<"global ldo node: "<<*nd<<endl;
+		Net *net = new Net(VOLTAGE, vol_value, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[BOTTOM] = net;
-		// clog<<"add global net: "<<*net<<endl;
-		// add cap net
-		Net *net_cap = new Net(CAPACITANCE, cap_value, nd, gnd);
-		add_net(net_cap);
-		nd->rep->nbr[BOTTOP] = net_cap;
-		
+		// clog<<"add global net: "<<*net<<endl;		
 	}
 }
 

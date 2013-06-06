@@ -207,6 +207,7 @@ void Circuit::solve(Tran &tran){
 	solve_init();
 	// build pad set: local build LDO list - need update
 	ckt_l.build_local_pad_set();
+	// global pad set include LDO nets
 	ckt_g.build_global_pad_set();
 
 	// build new nets for the single LDo
@@ -2333,15 +2334,7 @@ void Circuit::solve_DC(){
 	int iter=0;
 	double diff_l = 1;
 	double diff_g = 1;
-	// int local_bad_flag = 0;
-	// double THRES_l = VDD_G*0.1;
-	// double THRES_g = 2.2*0.1;
-	// bool max_flag = false;
-	// double diff_old_l = 1;
-	// double diff_old_g = 1;
-	// double delta_diff_l = 1;
-	// double delta_diff_g = 0;
-
+	
 	// first atamp matrix: already symmetric
 	ckt_l.stamp_decomp_matrix_DC();
 	ckt_g.stamp_decomp_matrix_DC();
