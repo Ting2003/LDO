@@ -189,8 +189,7 @@ void SubCircuit::solve_init(bool flag){
 		else
 			p->rid = p->rep->rid;
 		//clog<<"p->rep: "<<*p->rep<<endl;
-	}
-	
+	}	
 	//clog<<"before build pad set. "<<endl;
 	// build_pad_set();
 
@@ -294,7 +293,7 @@ void SubCircuit::copy_node_voltages(double * x, size_t &size, bool from){
 // stamp the net in each set, 
 // *NOTE* at the same time insert the net into boundary netlist
 void SubCircuit::stamp_by_set(Matrix & A){
-   	A.clear();
+   	A.clear();	
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -314,6 +313,7 @@ void SubCircuit::stamp_by_set(Matrix & A){
 					continue; // it's a 0v via
 				stamp_VDD(A, ns[i]);
 			}
+			
 			break;
 		case CAPACITANCE:
 			//for(size_t i=0;i<ns.size();i++)
@@ -323,6 +323,7 @@ void SubCircuit::stamp_by_set(Matrix & A){
 			for(size_t i=0;i<ns.size();i++){
 				stamp_inductance_dc(A, ns[i]);	
 			}
+			
 			break;
 		case LDO_NET:
 			break;
@@ -442,40 +443,32 @@ void SubCircuit::modify_rhs_tr(double * b, double *x){
 }
 
 void SubCircuit::stamp_resistor(Matrix & A, Net * net){
-	//cout<<"net: "<<*net<<endl;
+	// cout<<endl<<"resis net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 	size_t k = nk->rid;
 	size_t l = nl->rid;
+	// cout<<"nk, nl: "<<*nk<<" "<<*nl<<endl;
+	// cout<<"k, l: "<<k<<" "<<l<<" "<<nk->isS()<<" "<<nl->isS()<<" "<< endl;
 	G = 1./net->value;
-	//cout<<"net: "<<*net<<endl;
-        if( !nk->is_ground()&& nk->isS()!=Y && 
-          (nk->nbr[TOP]== NULL 
-           || nk->nbr[TOP]->type != INDUCTANCE)) {
+        if( !nk->is_ground()&& nk->isS()!=Y &&nk->isS() != W && (nk->nbr[TOP]== NULL|| nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
            A.push_back(k,k, G);
-
            // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-           if(!nl->is_ground() && nl->isS()!=Y
-			   &&(nl->nbr[TOP]==NULL || 
-                 nl->nbr[TOP]->type != INDUCTANCE)&&(k > l)){
-                    A.push_back(k,l,-G);
-
-                  // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+           if(!nl->is_ground() && nl->isS()!=Y && nl->isS() != W &&(nl->nbr[TOP]==NULL || nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)&&(k > l)){
+                   A.push_back(k,l,-G);
+                   // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
-	if( !nl->is_ground() && nl->isS() !=Y && 
-			(nl->nbr[TOP] ==NULL 
-		||nl->nbr[TOP]->type != INDUCTANCE)) {
+	
+	if( !nl->is_ground() && nl->isS() !=Y && nl->isS() != W && (nl->nbr[TOP] ==NULL ||nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
 		A.push_back(l,l, G);
                 // cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 
-		if(!nk->is_ground()&& nk->isS()!=Y
-			&&(nk->nbr[TOP]==NULL ||
-		  nk->nbr[TOP]->type != INDUCTANCE) && l > k){
+		if(!nk->is_ground()&& nk->isS()!=Y && nk->isS() != W &&(nk->nbr[TOP]==NULL || nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE) && l > k){
 			A.push_back(l,k,-G);
-		 //cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+		  	// cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -1316,10 +1309,10 @@ void SubCircuit::build_global_pad_set(){
 	pad_set.resize(0);		
 	//push all pad nodes (LDO nodes);
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->isS()==Y || nodelist[i]->flag_geo == SLDO){
+		if(nodelist[i]->isS()==Y || nodelist[i]->isS() == W){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
-			if(nodelist[i]->flag_geo == SLDO)
+			if(nodelist[i]->isS() == W)
 				nodelist[i]->value = VDD_G;
 			// cout<<"global pad set: "<<*nodelist[i]<<endl;
 			pad_set.push_back(pad_ptr);
@@ -1334,7 +1327,7 @@ void SubCircuit::build_local_pad_set(){
 	
 	//push all pad nodes (LDO nodes);
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		if(nodelist[i]->get_layer() == layer && nodelist[i]->flag_geo == SLDO){
+		if(nodelist[i]->get_layer() == layer && nodelist[i]->isS() == W){
 		// if(nodelist[i]->isS()==Y){
 			Pad *pad_ptr = new Pad();
 			pad_ptr->node = nodelist[i];
@@ -1517,12 +1510,13 @@ void SubCircuit::reconfigure_TR(){
 }
 
 // stmap matrix and rhs, decomp matrix for DC
-void SubCircuit::stamp_decomp_matrix_DC(){
+void SubCircuit::stamp_decomp_matrix_DC(){ 
    stamp_by_set(A);
    // stamp_rhs_DC(local_flag);
    
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
+   clog<<"after ck decomp dc matrix. "<<endl;
    /*A.merge();
    cout<<"DC A: "<<A<<endl;*/
    A.clear();
@@ -2312,9 +2306,10 @@ void SubCircuit::mark_geo_occupation(){
 	// clog<<"width and height: "<<wspacelist[0]->width<<" "<<wspacelist[0]->height<<endl;	
 	// max_local layer
 	int mlayer = max_layer;
-	// Node *nd;
+	Node *nd;
+	Node *nd_g;
 	for(size_t i=0;i<nodelist.size()-1;i++){
-		Node * nd = nodelist[i];
+		nd = nodelist[i];
 		if(nd->isS()==Z) continue;
 		int layer = nd->get_layer();
 		if(layer != mlayer) continue;
@@ -2365,14 +2360,13 @@ void SubCircuit::mark_geo_occupation(){
 			int ldo_xr = ldolist[j]->A->pt.x + width;
 			int ldo_yl = ldolist[j]->A->pt.y;
 			int ldo_yr = ldolist[j]->A->pt.y + height;
+			// clog<<"ldolist->A: "<<*ldolist[j]->A<<endl;
 			// clog<<"lxl, lxr, lyl, lyr: "<<ldo_xl<<" "<<ldo_xr<<" "<<ldo_yl<<" "<<ldo_yr<<endl;
 			if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr ){
 				// clog<<"mark ldo. "<<endl<<endl;
 				// in module
 				nd->assign_geo_flag(SLDO);
 				
-				Node *nd_g = map_landg[nd];
-				nd_g->assign_geo_flag(SLDO);
 				Pad *pad_ptr = new Pad();
 				pad_ptr->node = nd;
 				candi_pad_set.push_back(pad_ptr);
@@ -2390,6 +2384,14 @@ void SubCircuit::mark_geo_occupation(){
 			Node *nd_g = map_landg[nd];
 			nd_g->assign_geo_flag(SBLOCK);
 		}
+	}
+	
+	for(size_t j=0;j<ldolist.size();j++){
+		nd = ldolist[j]->A;
+		nd->flag = W;	
+		Node *nd_g = map_landg[nd];
+		nd_g->flag = W;
+		// clog<<"ldo node nd, nd_g: "<<*nd<<" "<<*nd_g<<endl;
 	}
 	// count is the maximum candidate number for LDO
 	MAX_NUM_LDO = candi_pad_set.size();

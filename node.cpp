@@ -8,6 +8,7 @@ Node::Node():name(""),pt(Point(-1,-1,-1)), rid(0),
 	value(0.0), flag(-1), rep(NULL){
 	for(int i=0;i<7;i++) this->nbr[i] = NULL;
 	flag_visited = -1;
+	flag_geo = -1;//SUNDEFINED;
 }
 
 Node::Node(string n, Point _pt, int x, double v): 
@@ -15,6 +16,7 @@ Node::Node(string n, Point _pt, int x, double v):
 	value(v), flag(x), rep(NULL) {
 	for(int i=0;i<7;i++) this->nbr[i] = NULL;
 	flag_visited = -1;
+	flag_geo = -1;//SUNDEFINED;
 }
 
 // Ting

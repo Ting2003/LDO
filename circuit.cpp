@@ -201,7 +201,7 @@ void Circuit::count_merge_nodes(){
 //if 0
 void Circuit::solve(Tran &tran){
 	// readin LDO and store and lookup table
-	Readin_LDO();
+	// Readin_LDO();
 	//1. assign nodes and nets to ckt_g and l
 	//2. config subckt, start cholmod for ckt_g and l
 	solve_init();
@@ -2338,6 +2338,8 @@ void Circuit::solve_DC(){
 	// first atamp matrix: already symmetric
 	ckt_l.stamp_decomp_matrix_DC();
 	ckt_g.stamp_decomp_matrix_DC();
+	clog<<"after ckt_l/g stamp DC A. "<<endl;
+	return;
 	// solve DC with fixed number of LDOs
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
 		ckt_l.reset_b();

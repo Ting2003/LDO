@@ -15,7 +15,7 @@ using namespace std;
 // important: each node has at most 4 connected nets
 enum DIRECTION{WEST, EAST, SOUTH, NORTH, BOTTOM, TOP, BOTTOP, UNDEFINED};
 enum NET_TYPE{RESISTOR, CURRENT, VOLTAGE, CAPACITANCE, INDUCTANCE, LDO_NET};
-enum S_NODE{X, Y, Z};
+enum S_NODE{X, Y, Z, W}; // W is the node mark for LDO
 enum GEO_MARK{SBLANK, SBLOCK, SLDO, SPAD};
 const int NUM_NET_TYPE = 6;
 enum LAYER_DIR{HR, VT, NA}; // NA means not available
