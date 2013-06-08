@@ -2336,10 +2336,11 @@ void Circuit::solve_DC(){
 	double diff_g = 1;
 	
 	// first atamp matrix: already symmetric
+	cout<<endl<<"<==== local ckt stamping: ====>"<<endl;
 	ckt_l.stamp_decomp_matrix_DC();
+	cout<<endl<<"<==== global ckt stamping: ====>"<<endl;
 	ckt_g.stamp_decomp_matrix_DC();
-	clog<<"after ckt_l/g stamp DC A. "<<endl;
-	return;
+	
 	// solve DC with fixed number of LDOs
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <4){
 		ckt_l.reset_b();
@@ -2348,13 +2349,7 @@ void Circuit::solve_DC(){
 		ckt_l.stamp_rhs_DC(true);
 		// solve eq with decomped matrix
 		diff_l = ckt_l.solve_CK_with_decomp();
-		// clog<<"local max_IR: "<<ckt_l.locate_maxIRdrop()<<endl;
-		/*if(ckt_l.max_IRdrop > THRES_l){
-			local_bad_flag = 1;
-			max_flag = optimize_local_LDO_DC(local_bad_flag, THRES_l);
-			
-			clog<<"optimized new local max_IR: "<<ckt_l.max_IRdrop<<" "<<ckt_l.ldolist.size()<<endl;
-		}*/
+		// clog<<"local max_IR: "<<ckt_l.locate_maxIRdrop()<<endl;	
 		// calculate ldo current from ckt_l
 		// update global current net
 		ckt_l.update_ldo_current();

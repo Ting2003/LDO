@@ -525,7 +525,7 @@ void SubCircuit::stamp_induc_rhs_dc(double *b, Net * net){
 }
 
 void SubCircuit::stamp_inductance_dc(Matrix & A, Net * net){
-	//clog<<"net: "<<*net<<endl;
+	// cout<<endl<<"induc net: "<<*net<<endl;
 	double G;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
@@ -534,11 +534,13 @@ void SubCircuit::stamp_inductance_dc(Matrix & A, Net * net){
 	G = 1./net->value;
 	if( nk->isS()!=Y && !nk->is_ground()) {
 		A.push_back(k,k, 1);
+		// cout<<"push: "<<k<<" "<<k<<" "<<1<<endl;
 		// general stamping
 	}
 
 	if( nl->isS() !=Y && !nl->is_ground()) {
 		A.push_back(l,l, 1);
+		// cout<<"push: "<<l<<" "<<l<<" "<<1<<endl;
 	}
 }
 
@@ -1060,7 +1062,7 @@ void SubCircuit::stamp_current_tr_net_1(double *bp, double * b, Net * net, doubl
 // no current source at voltage source, save
 void SubCircuit::stamp_VDD(Matrix & A, Net * net){
 	// find the non-ground node
-	// cout<<"vol net: "<<*net<<endl;
+	// cout<<endl<<"vol net: "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 	size_t id = X->rep->rid;
@@ -1516,7 +1518,7 @@ void SubCircuit::stamp_decomp_matrix_DC(){
    
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
-   clog<<"after ck decomp dc matrix. "<<endl;
+   cout<<"after ck decomp dc matrix. "<<endl;
    /*A.merge();
    cout<<"DC A: "<<A<<endl;*/
    A.clear();
