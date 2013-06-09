@@ -452,21 +452,21 @@ void SubCircuit::stamp_resistor(Matrix & A, Net * net){
 	// cout<<"nk, nl: "<<*nk<<" "<<*nl<<endl;
 	// cout<<"k, l: "<<k<<" "<<l<<" "<<nk->isS()<<" "<<nl->isS()<<" "<< endl;
 	G = 1./net->value;
-        if( !nk->is_ground()&& nk->isS()!=Y &&nk->isS() != W && (nk->nbr[TOP]== NULL|| nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
+        if( !nk->is_ground()&& nk->isS()!=Y &&nk->isS() != W && nk->isS() != X && (nk->nbr[TOP]== NULL|| nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
            A.push_back(k,k, G);
            // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-           if(!nl->is_ground() && nl->isS()!=Y && nl->isS() != W &&(nl->nbr[TOP]==NULL || nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)&&(k > l)){
+           if(!nl->is_ground() && nl->isS()!=Y && nl->isS() != W && nl->isS() != X &&(nl->nbr[TOP]==NULL || nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)&&(k > l)){
                    A.push_back(k,l,-G);
                    // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
 	
-	if( !nl->is_ground() && nl->isS() !=Y && nl->isS() != W && (nl->nbr[TOP] ==NULL ||nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
+	if( !nl->is_ground() && nl->isS() !=Y && nl->isS() != W && nl->isS() != X && (nl->nbr[TOP] ==NULL ||nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
 		A.push_back(l,l, G);
-                // cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+                //  cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 
-		if(!nk->is_ground()&& nk->isS()!=Y && nk->isS() != W &&(nk->nbr[TOP]==NULL || nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE) && l > k){
+		if(!nk->is_ground()&& nk->isS()!=Y && nk->isS() != W && nk->isS()!= X &&(nk->nbr[TOP]==NULL || nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE) && l > k){
 			A.push_back(l,k,-G);
 		  	// cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
@@ -1198,16 +1198,15 @@ void SubCircuit::make_A_symmetric_local(double *b){
 }
 
 void SubCircuit::make_A_symmetric(double *b){
-	clog<<"to here. "<<endl;
 	int type_l = INDUCTANCE;
 	Node *p=NULL, *q=NULL, *r =NULL;
 
 	// first handle global inductance net
-	NetList & ns = net_set[type_l];
+	NetList & ns = net_set[type_l];	
 	for(size_t i=0;i<ns.size();i++){
 		Net *induc_net = ns[i];
 		if(induc_net == NULL) continue;
-		// node p points to X node
+		// node p points to X node, r to Y node
 		p = induc_net->ab[0]->rep;
 		r = induc_net->ab[1]->rep;
 		if(p->isS() != X){
@@ -1224,6 +1223,7 @@ void SubCircuit::make_A_symmetric(double *b){
 			size_t id = q->rid;
            		double G = 1.0 / nbr_net->value;
            		b[id] += r->value * G;
+			// clog<<"nbr net: "<<*nbr_net<<endl;
 			// clog<<"j, q, id, G, b: "<<j<<" "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
 		}
         }
@@ -1237,6 +1237,7 @@ void SubCircuit::make_A_symmetric(double *b){
 		p = vol_net->ab[0]->rep;
 		if(p->isS() != W)
 			p = vol_net->ab[1]->rep;
+		if(p->is_ground()) continue;
 		// then search neighboring nets
 		for(size_t j=0;j<7;j++){
 			Net *nbr_net = p->nbr[j];
@@ -1244,6 +1245,7 @@ void SubCircuit::make_A_symmetric(double *b){
 			q = nbr_net->ab[0]->rep;
 			if(q->name == p->name)	
 				q = nbr_net->ab[1]->rep;
+			// clog<<"nbr net: "<<*nbr_net<<endl;
 			size_t id = q->rid;
            		double G = 1.0 / nbr_net->value;
            		b[id] += p->value * G;
@@ -1476,7 +1478,7 @@ void SubCircuit::build_local_nets(){
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
-		clog<<"add local net: "<<*net<<endl;
+		// clog<<"add local net: "<<*net<<endl;
 	}
 	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
@@ -1508,7 +1510,7 @@ void SubCircuit::build_global_nets(){
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[BOTTOM] = net;
-		clog<<"add global net: "<<*net<<endl;		
+		// clog<<"add global net: "<<*net<<endl;		
 	}
 }
 
@@ -3102,13 +3104,11 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 			break;
 		}
 	}
-	clog<<"before make_A_symmetric. "<<endl;
 	// only make A symmetric for local
 	if(local_flag == true)
 		make_A_symmetric_local(bp);	
 	else
 		make_A_symmetric(bp);
-	clog<<"after make a symmetric. "<<endl;
 }
 
 // stamp ldo VDD net into bp

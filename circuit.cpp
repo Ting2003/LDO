@@ -2346,31 +2346,17 @@ void Circuit::solve_DC(){
 	// solve DC with fixed number of LDOs
 	while((diff_l > 1e-4 || diff_g > 1e-4) && iter <1){
 		ckt_l.reset_b();
-		// then update netlist
-		// ckt_l.modify_local_nets();
-		ckt_l.stamp_rhs_DC(true);
-		
-		// solve eq with decomped matrix
+		ckt_l.stamp_rhs_DC(true);	
 		diff_l = ckt_l.solve_CK_with_decomp();
 		
-		clog<<ckt_l.nodelist<<endl;
-		clog<<"local max_IR: "<<ckt_l.locate_maxIRdrop()<<endl;
-	
+		//clog<<ckt_l.nodelist<<endl;
+		//clog<<"local max_IR: "<<ckt_l.locate_maxIRdrop()<<endl;
 		ckt_g.reset_b();
-		// ckt_g.modify_global_nets();
-		clog<<"before ckt_g stamp rhs. "<<endl;	
-		// restamp global rhs with ldo current
-		ckt_g.stamp_rhs_DC(false);
-
-		//for(size_t i=0;i<ckt_l.replist.size();i++)
-			//clog<<"i, bp: "<<i<<" "<<*ckt_l.replist[i]<<" "<<ckt_l.bp[i]<<endl; 
-		
-		// ckt_g.modify_ldo_rhs();
+		ckt_g.stamp_rhs_DC(false);	
 		diff_g = ckt_g.solve_CK_with_decomp();
-		clog<<ckt_g.nodelist<<endl;
-		clog<<"global max_IR: "<<ckt_g.locate_maxIRdrop()<<endl;
-		// clog<<ckt_l.nodelist<<endl;
-		// then throw into ldo lookup table
+		// clog<<ckt_g.nodelist<<endl;
+		//clog<<"global max_IR: "<<ckt_g.locate_maxIRdrop()<<endl;
+		// then generate the ldo info for SPICE
 		update_ldo_vout();
 		
 		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl<<endl;
