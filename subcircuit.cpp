@@ -992,12 +992,12 @@ void SubCircuit::stamp_current(double * b, Net * net){
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
 
-	if( !nk->is_ground() && nk->isS()!=Y){// && 
+	if( !nk->is_ground() && nk->isS()!=Y && nk->isS() != W){// && 
 		size_t k = nk->rid;
 		b[k] += -net->value;
 		// clog<<"b: "<<k<<" "<<-net->value<<endl;
 	}
-	if( !nl->is_ground() && nl->isS() !=Y){// &&
+	if( !nl->is_ground() && nl->isS() !=Y && nl->isS() !=W){// &&
 		size_t l = nl->rid;
 		b[l] +=  net->value;
 		// clog<<"b: "<<l<<" "<<-net->value<<endl;
@@ -1178,13 +1178,13 @@ void SubCircuit::make_A_symmetric_local(double *b){
 	for(it=ns.begin();it!=ns.end();it++){
 		if( (*it) == NULL ) continue;
 			assert( fzero((*it)->value) == false );
-		if((*it)->ab[0]->isS()==Y && (*it)->ab[1]->isS()==Y)
+		if((*it)->ab[0]->isS()==W && (*it)->ab[1]->isS()==W)
 			continue;
-		// node a points to X node
-		if((*it)->ab[0]->isS()==Y){
+		// node a points to W node
+		if((*it)->ab[0]->isS()==W){
 			p = (*it)->ab[0]; q = (*it)->ab[1];
 		}
-		else if((*it)->ab[1]->isS()==Y){
+		else if((*it)->ab[1]->isS()==W){
 			p = (*it)->ab[1]; q = (*it)->ab[0];
 		}
 		else continue;
@@ -1198,33 +1198,58 @@ void SubCircuit::make_A_symmetric_local(double *b){
 }
 
 void SubCircuit::make_A_symmetric(double *b){
-	int type = RESISTOR;
-	NetList & ns = net_set[type];
-	NetList::iterator it;
+	clog<<"to here. "<<endl;
+	int type_l = INDUCTANCE;
 	Node *p=NULL, *q=NULL, *r =NULL;
 
-	for(it=ns.begin();it!=ns.end();it++){
-           if( (*it) == NULL ) continue;
-           assert( fzero((*it)->value) == false );
-           if(!((*it)->ab[0]->rep->isS()==X || (*it)->ab[1]->rep->isS()==X)) continue;
-           // node p points to X node
-           if((*it)->ab[0]->rep->isS()==X && ((*it)->ab[0]->rep->nbr[TOP]!=NULL && 
-                (*it)->ab[0]->rep->nbr[TOP]->type==INDUCTANCE)){
-              p = (*it)->ab[0]->rep; q = (*it)->ab[1]->rep;
-           } 
-           else if((*it)->ab[1]->rep->isS()==X && ((*it)->ab[1]->rep->nbr[TOP]!=NULL && 
-                (*it)->ab[1]->rep->nbr[TOP]->type==INDUCTANCE)){
-              p = (*it)->ab[1]->rep; q = (*it)->ab[0]->rep;
-           }           
-           r = p->nbr[TOP]->ab[0]->rep;
-           if(r->isS()!=Y) 
-              r = p->nbr[TOP]->ab[1]->rep;
-
-           size_t id = q->rid;
-           double G = 1.0 / (*it)->value;
-           
-           b[id] += r->value * G;
+	// first handle global inductance net
+	NetList & ns = net_set[type_l];
+	for(size_t i=0;i<ns.size();i++){
+		Net *induc_net = ns[i];
+		if(induc_net == NULL) continue;
+		// node p points to X node
+		p = induc_net->ab[0]->rep;
+		r = induc_net->ab[1]->rep;
+		if(p->isS() != X){
+			p = induc_net->ab[1]->rep;
+			r = induc_net->ab[0]->rep;
+		}
+		// then search neighboring nets
+		for(size_t j=0;j<7;j++){
+			Net *nbr_net = p->nbr[j];
+			if(nbr_net == NULL || nbr_net->type != RESISTOR) continue;
+			q = nbr_net->ab[0]->rep;
+			if(q->name == p->name)	
+				q = nbr_net->ab[1]->rep;
+			size_t id = q->rid;
+           		double G = 1.0 / nbr_net->value;
+           		b[id] += r->value * G;
+			// clog<<"j, q, id, G, b: "<<j<<" "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
+		}
         }
+	// now handles the ldo voltage nets
+	int type_v = VOLTAGE;
+	ns = net_set[type_v];
+	for(size_t i=0;i<ns.size();i++){
+		Net *vol_net = ns[i];
+		if(vol_net == NULL) continue;
+		// node p points to W node
+		p = vol_net->ab[0]->rep;
+		if(p->isS() != W)
+			p = vol_net->ab[1]->rep;
+		// then search neighboring nets
+		for(size_t j=0;j<7;j++){
+			Net *nbr_net = p->nbr[j];
+			if(nbr_net == NULL || nbr_net->type != RESISTOR) continue;
+			q = nbr_net->ab[0]->rep;
+			if(q->name == p->name)	
+				q = nbr_net->ab[1]->rep;
+			size_t id = q->rid;
+           		double G = 1.0 / nbr_net->value;
+           		b[id] += p->value * G;
+			// clog<<"q, id, G, b: "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
+		}
+	}	
 }
 
 // only inductance is connected to voltage source
@@ -1451,7 +1476,7 @@ void SubCircuit::build_local_nets(){
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
-		// clog<<"add local net: "<<*net<<endl;
+		clog<<"add local net: "<<*net<<endl;
 	}
 	/*for(int type =0 ;type <NUM_NET_TYPE;type++){
 		NetList &ns = net_set[type];
@@ -1483,7 +1508,7 @@ void SubCircuit::build_global_nets(){
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[BOTTOM] = net;
-		// clog<<"add global net: "<<*net<<endl;		
+		clog<<"add global net: "<<*net<<endl;		
 	}
 }
 
@@ -3016,10 +3041,6 @@ void SubCircuit::stamp_rhs_tr(bool local_flag, double time, Tran &tran){
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
-				if( fzero(ns[i]->value)  && 
-				    !ns[i]->ab[0]->is_ground() &&
-				    !ns[i]->ab[1]->is_ground() )
-					continue; // it's a 0v via
 				stamp_rhs_VDD(bp, ns[i]);
 			}
 			break;
@@ -3063,10 +3084,6 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 			break;
 		case VOLTAGE:
 			for(size_t i=0;i<ns.size();i++){
-				if( fzero(ns[i]->value)  && 
-				    !ns[i]->ab[0]->is_ground() &&
-				    !ns[i]->ab[1]->is_ground() )
-					continue; // it's a 0v via
 				stamp_rhs_VDD(bp, ns[i]);
 			}
 			break;
@@ -3079,21 +3096,24 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 			}
 			break;
 		case LDO_NET:
+			break;
 		default:
 			report_exit("Unknwon net type\n");
 			break;
 		}
 	}
+	clog<<"before make_A_symmetric. "<<endl;
 	// only make A symmetric for local
 	if(local_flag == true)
 		make_A_symmetric_local(bp);	
 	else
 		make_A_symmetric(bp);
+	clog<<"after make a symmetric. "<<endl;
 }
 
 // stamp ldo VDD net into bp
 void SubCircuit::stamp_rhs_VDD(double *bp, Net *net){
-	// cout<<"vol net: "<<net->type<<" "<<*net<<endl;
+	// clog<<"vol net: "<<net->type<<" "<<*net<<endl;
 	Node * X = net->ab[0];
 	if( X->is_ground() ) X = net->ab[1];
 
@@ -3103,11 +3123,11 @@ void SubCircuit::stamp_rhs_VDD(double *bp, Net *net){
 	if( south != NULL &&
 	    south->type == CURRENT ){
 		bp[id] = net->value;	    // modify it
-		// cout<<"b: ="<<id<<" "<<net->value<<endl;
+		// clog<<"b: ="<<id<<" "<<net->value<<endl;
 	}
 	else{
 		bp[id] += net->value;
-		// cout<<"b: +"<<id<<" "<<net->value<<endl;
+		// clog<<"b: +"<<id<<" "<<net->value<<endl;
 	}
 }
 
