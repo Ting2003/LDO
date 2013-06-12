@@ -200,8 +200,6 @@ void Circuit::count_merge_nodes(){
 }
 //if 0
 void Circuit::solve(Tran &tran){
-	// readin LDO and store and lookup table
-	// Readin_LDO();
 	//1. assign nodes and nets to ckt_g and l
 	//2. config subckt, start cholmod for ckt_g and l
 	solve_init();
@@ -217,10 +215,8 @@ void Circuit::solve(Tran &tran){
 	// ckt_l.calculate_local_current();
 // #if 0	
 	// solving LDO location with DC
-	solve_DC_LDO();
-	clog<<"DC optimized max IR for l /g: "<<
-		ckt_l.locate_maxIRdrop()<<" "<<
-		ckt_g.locate_g_maxIRdrop()<<endl;
+	ckt_l.optimize_ldo();
+	// solve_DC_LDO();
 	return;
 	// clog<<"after solve DC LDO. "<<endl;
 	// clear flag_visited for the pads
@@ -2510,7 +2506,7 @@ void Circuit::Readin_LDO(){
 
 // extract voltage values of ldo nets (for SPICE)
 void Circuit::extract_ldo_info(){
-	vector<vector <Node *>> va;
+	vector <Node *> va;
 	vector <Node *> vb;
 	// extract va and vb values from solutions
 	ckt_g.extract_ldo_vol(va);

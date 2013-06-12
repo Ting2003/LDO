@@ -1759,7 +1759,7 @@ void SubCircuit::relocate_pads(){
 	// move pads according to graph contraints
 	graph_move_pads();
 
-	//clog<<"after graph move. "<<endl;
+	// clog<<"after graph move. "<<endl;
 	// clear_flags();
 
 	Node *rm_node = origin_pad_set[0]->rep;
@@ -2065,7 +2065,7 @@ Node * SubCircuit::pad_projection(
 
 	sstream<<"n"<<pt.z<<"_"<<pt.x<<"_"<<pt.y; 
 	name = sstream.str();
-	// clog<<"pt_name: "<<name<<endl;
+	//clog<<"pt_name: "<<name<<endl;
 	// first see if this node is on grid
 	// and if it is occupied by pad or not
 	nd_new = get_node(name);
@@ -2080,12 +2080,12 @@ Node * SubCircuit::pad_projection(
 	Node *nb = project_local_pad(nd_new);
 	// clog<<"ldo old out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
 	ldo->nd_out = nb;
-	ldo->A = nd_new;
+	ldo->A = nb;// nd_new;
 	// clog<<"ldo new out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
 	/*if(nb->name == nd->name)
 		return nd;
 	else*/
-	return nd_new;
+	return nb;// nd_new;
 	// return nb;
 }
 
@@ -2114,6 +2114,8 @@ Node * SubCircuit::project_local_pad(Node *nd_new){
 	// clog<<"candi_pad set: "<<candi_pad_set.size()<<endl;
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		nd_ldo = candi_pad_set[i]->nd_out_LDO;
+		if(nd_ldo== NULL)
+			continue;
 		// clog<<"candi_pad_set node: "<<*nd_ldo<<endl;
 		diff_x = nd_ldo->pt.x - nd_new->pt.x;
 		diff_y = nd_ldo->pt.y - nd_new->pt.y;
@@ -2126,6 +2128,7 @@ Node * SubCircuit::project_local_pad(Node *nd_new){
 			min_dist = dist;
 			min_nd = nd_ldo;
 		}
+		// clog<<"i, size, min_dist: "<<i<<" "<<candi_pad_set.size()<<" "<<min_dist<<endl;
 	}
 	// clog<<"nd_new, min_nd: "<<*nd_new<<" "<<*min_nd<<endl;
 	return min_nd;
@@ -2284,6 +2287,7 @@ void SubCircuit::graph_move_pads(){
 		}
 		// assign later, after creating X node
 		pad_ptr->node = new_pad;
+		// clog<<"assign new pad: "<<*new_pad<<endl;
 		pad_ptr->control_nodes.clear();
 	// }while(id != -1);
 }
@@ -2516,8 +2520,8 @@ void SubCircuit::rebuild_local_nets(Node *rm_node, Node *add_node){
 			return;
 		 // clog<<"rm_nod, add_node: "<<*rm_node<<" "<<*add_node<<endl;	
 		// modify node info
-		rm_node->disableY();
-		add_node->enableY();
+		rm_node->disableW();
+		add_node->enableW();
 		
 		if(rm_node->is_LDO()){
 			add_node->enableLDO();
@@ -3472,4 +3476,73 @@ void SubCircuit::extract_ldo_vol(vector<Node *> & va){
 			}
 		}
 	}
+}
+// local circuit solve DC
+void SubCircuit::solve_DC(){
+	stamp_decomp_matrix_DC();
+	reset_b();
+	stamp_rhs_DC(true);
+	solve_CK_with_decomp();	
+}
+
+// treating ldo as local const voltage sources and optimize the number and locations of ldos
+void SubCircuit::optimize_ldo(){
+	map<Node*, double> ldo_best;
+	pair<Node*, double> ldo_pair;
+	vector<Node *> nd_out_vec;
+
+	// first solve DC circuit
+	solve_DC();
+	double max_IRdrop = locate_maxIRdrop();
+	clog<<"local initial max_IRdrop is: "<<max_IRdrop<<endl;
+	Node *nd = ldolist[0]->A;
+	ldo_pair.first = nd;
+	nd_out_vec.push_back(ldolist[0]->nd_out);
+	ldo_pair.second = max_IRdrop;
+	ldo_best.insert(ldo_pair);
+	double THRES = VDD_G * 0.1;
+	// stores the best ldolist	
+	for(int i=0;i<5;i++){
+		// optimize the locations of LDO and rebuild nets
+		// relocate_LDOs();
+		relocate_pads();
+		solve_DC();
+		max_IRdrop = locate_maxIRdrop();
+		Node *nd = ldolist[0]->A;
+
+		// clog<<"optimized max_IR: "<<max_IRdrop<<" "<<*nd<<endl;
+		ldo_pair.first = nd;
+		nd_out_vec.push_back(ldolist[0]->nd_out);
+		ldo_pair.second = max_IRdrop;
+		ldo_best.insert(ldo_pair);
+	}
+	map<Node*, double>::iterator it;
+	Node *nd_min = NULL;
+	double min_IR=0;
+	int i=0;
+	int j=0;
+	for(it = ldo_best.begin();it!=ldo_best.end();it++){
+		// clog<<"ldo best list: "<<*it->first<<" "<< it->second<<" "<<*nd_out_vec[i]<<endl;
+		if(it ==  ldo_best.begin()){
+			min_IR = it->second;
+			nd_min = it->first;
+			j=i;
+		}else if(it->second < min_IR){
+			min_IR = it->second;
+			nd_min = it->first;
+			j=i;
+		}
+		i++;
+	}
+	// clog<<"best ldo: "<<*nd_min<<" "<<*nd_out_vec[j]<<endl;
+	// switch to the best ldo
+	ldolist[0]->nd_out = nd_out_vec[j];
+	nd_out_vec.clear();
+	rebuild_local_nets(ldolist[0]->A, nd_min);
+	// clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
+	ldo_best.clear();
+	solve_DC();
+	max_IRdrop = locate_maxIRdrop();
+	clog<<"local recovered max_IR: "<<max_IRdrop<<endl;
+
 }
