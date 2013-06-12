@@ -92,7 +92,8 @@ public:
 
 	///// new functions for pad /////
 	double locate_maxIRdrop();
-	void optimize_ldo();
+	bool optimize_single_ldo();
+	bool add_ldo_DC(Tran &tran);
 	void solve_DC();
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();

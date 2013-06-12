@@ -215,17 +215,19 @@ void Circuit::solve(Tran &tran){
 	// ckt_l.calculate_local_current();
 // #if 0	
 	// solving LDO location with DC
-	ckt_l.optimize_ldo();
-	// solve_DC_LDO();
-	return;
-	// clog<<"after solve DC LDO. "<<endl;
+	bool flag = ckt_l.optimize_single_ldo();
+	// not in the limit, need to op
+	if(flag == true)
+		ckt_l.add_ldo_DC(tran);
+	clog<<"after local op DC LDO. "<<endl;
 	// clear flag_visited for the pads
 	// ckt_l.clear_flags();
 	// clog<<ckt_l.nodelist<<endl;
 	int iter = 0;
 	clog<<endl;
-	bool flag = false;
-	
+	flag = false;
+
+	return;	
 	// only need to stamp matrix once per t step
 	ckt_l.stamp_decomp_matrix_TR(tran);
 	ckt_g.stamp_decomp_matrix_TR(tran);
@@ -2771,7 +2773,7 @@ void Circuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		ldo_ptr = new LDO();
 		ldo_ptr->A = LDO_pad_vec[i]->node;
-		ldo_ptr->nd_out = LDO_pad_vec[i]->nd_out_LDO;
+		ldo_ptr->nd_out = LDO_pad_vec[i]->node;
 		ldo_ptr->width = ldolist[0]->width;
 		ldo_ptr->height = ldolist[0]->height;
 		// build nd_in node

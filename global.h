@@ -40,5 +40,6 @@ typedef pair<size_t,size_t> SizeTPair;
 class Triplet;
 typedef Triplet Matrix;
 const double VDD_G = 1.8;
+const double IR_THRES = VDD_G*0.1;
 //typedef vector<Net *> NetPtrVector;
 #endif
