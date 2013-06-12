@@ -94,6 +94,9 @@ public:
 	double locate_maxIRdrop();
 	bool optimize_single_ldo();
 	bool add_ldo_DC(Tran &tran);
+	bool solve_ldo_TR(Tran & tran);
+	bool add_ldo_TR(Tran &tran, double time);
+	void add_LDO_TR_local(Tran &tran, double time);
 	void solve_DC();
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();

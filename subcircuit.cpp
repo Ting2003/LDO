@@ -3545,3 +3545,78 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
 }
+
+bool SubCircuit::solve_ldo_TR(Tran & tran){
+	bool flag = false;
+	stamp_decomp_matrix_TR(tran);
+	int iter = 0;
+	for(double time =0; time < tran.tot_t;// && iter <1; 
+			time += tran.step_t){
+		clog<<"===== "<<time<<" ===="<<endl;
+		// solve one time step with LDO
+		// first solve TR
+		modify_rhs_tr_0(tran);
+		modify_local_nets();
+		stamp_rhs_tr(true, time, tran);
+		solve_CK_with_decomp_tr();
+		locate_maxIRdrop();
+		if(max_IRdrop >= IR_THRES){
+			add_ldo_TR(tran, time);
+		}
+		clog<<"after solve_TR. "<<endl;
+		iter++;
+		if(flag == true){
+			clog<<"reach maximum LDO size: "<<endl;
+			break;
+		}
+	}
+}
+
+// add ldo for transient steps
+bool SubCircuit::add_ldo_TR(Tran &tran, double time){
+	bool max_flag = false;
+	// add LDO to lcoal grid
+	int iter_i = 0;
+	int flag = 1;
+	while(flag ==1 && iter_i <5){
+		if((int)ldolist.size() >= MAX_NUM_LDO){
+			max_flag = true;
+			return max_flag;
+			break;
+		}
+		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+		add_LDO_TR_local(tran, time);
+		// clog<<"local opti IR: "<<ckt_l.max_IRdrop<<endl;
+		if(locate_maxIRdrop() <IR_THRES){
+			flag = 0;
+			break;
+		}
+		iter_i++;
+	}
+	return false;
+}
+
+// working on add LDOs to TR step
+void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
+	// temporary storing newly added LDOs
+	vector<Pad*> LDO_pad_vec;
+	// find the node where new LDOs shoudl go to
+	extract_add_LDO_dc_info(LDO_pad_vec, tran);
+	// if no room to add new LDO pad, return
+	if(LDO_pad_vec.size()==0){
+		return;
+	}
+	// rebuild local and global net
+	create_local_LDO_new_nets(LDO_pad_vec);
+	// recover all the ldo voltages to 1.8V
+	for(size_t i=0;i<ldolist.size();i++){
+		ldolist[i]->A->value = VDD_G;
+	}
+	add_pad_set(LDO_pad_vec);
+	solve_local(tran, time);
+	max_IRdrop = locate_maxIRdrop();
+
+	Node *nd = extract_maxIR_node();
+	//clog<<"optimized max_IR drop for TR: "<<max_IRdrop<<" "<<*nd<<endl;
+	LDO_pad_vec.clear();
+}

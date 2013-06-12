@@ -211,8 +211,6 @@ void Circuit::solve(Tran &tran){
 	// build new nets for the single LDo
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
-	// find out total local current in DC
-	// ckt_l.calculate_local_current();
 // #if 0	
 	// solving LDO location with DC
 	bool flag = ckt_l.optimize_single_ldo();
@@ -227,7 +225,9 @@ void Circuit::solve(Tran &tran){
 	clog<<endl;
 	flag = false;
 
-	return;	
+	return;
+#if 0
+	ckt_l.add_ldo_tr(Tran &tran);	
 	// only need to stamp matrix once per t step
 	ckt_l.stamp_decomp_matrix_TR(tran);
 	ckt_g.stamp_decomp_matrix_TR(tran);
@@ -268,10 +268,10 @@ void Circuit::solve(Tran &tran){
 // #endif
 	verify_solve(tran);
 
+#endif
 	// release resouces
 	ckt_l.release_resources();
 	ckt_g.release_resources();
-
 }
 //endif
 
