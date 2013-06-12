@@ -2510,7 +2510,7 @@ void Circuit::Readin_LDO(){
 
 // extract voltage values of ldo nets (for SPICE)
 void Circuit::extract_ldo_info(){
-	vector <Node *> va;
+	vector<vector <Node *>> va;
 	vector <Node *> vb;
 	// extract va and vb values from solutions
 	ckt_g.extract_ldo_vol(va);
