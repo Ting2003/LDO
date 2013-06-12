@@ -3439,3 +3439,37 @@ void SubCircuit::build_map_landg(){
 		}
 	}	
 }
+
+// extract ldo input voltages
+void SubCircuit::extract_ldo_vol(vector<Node *> & va){
+	Node *na, *nb;
+	for(size_t i=0;i<ldolist.size();i++){
+		na = ldolist[i]->A; // na is local nd
+		nb = ldolist[i]->nd_in; // nb is global nd
+		// clog<<"ldo na, nd_in, nd_out: "<<*ldolist[i]->A<<" "<<*ldolist[i]->nd_in<<" "<<*ldolist[i]->nd_out<< endl;	
+		if(name == "GLOBAL"){
+			for(size_t j=0;j<7;j++){
+				Net *net = nb->nbr[j];
+				if(net == NULL || net->type != RESISTOR) continue;
+				// clog<<"net: "<<*net<<endl;
+				Node *np = net->ab[0]->rep;
+				if(np->name == nb->name)
+					np = net->ab[1]->rep;
+				va.push_back(np);
+				// clog<<"push back nb: "<<*np<<endl;
+			}
+		}
+		else{
+			for(size_t j=0;j<7;j++){
+				Net *net = na->nbr[j];
+				if(net == NULL || net->type != RESISTOR) continue;
+				//clog<<"net: "<<*net<<endl;
+				Node *np = net->ab[0]->rep;
+				if(np->name == na->name)
+					np = net->ab[1]->rep;
+				va.push_back(np);
+				// clog<<"push back nb: "<<*np<<endl;
+			}
+		}
+	}
+}

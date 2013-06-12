@@ -293,6 +293,7 @@ private:
 
 	void assign_min_max_layers();
 	void build_map_landg();
+	void extract_ldo_vol(vector<Node *> & va);
         // ************* functions and members for thread **********
 
         double *temp;	

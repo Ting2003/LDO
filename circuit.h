@@ -221,7 +221,7 @@ private:
 	void count_merge_nodes();
 	// readin LDO and store the lookup table
 	void Readin_LDO();
-	void update_ldo_vout();
+	void extract_ldo_info();
 	void find_table_elements(double &vin, 
 		double &vin_1, 
 		double &vin_2, vector<double> vec);

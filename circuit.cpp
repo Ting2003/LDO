@@ -2357,7 +2357,7 @@ void Circuit::solve_DC(){
 		// clog<<ckt_g.nodelist<<endl;
 		//clog<<"global max_IR: "<<ckt_g.locate_maxIRdrop()<<endl;
 		// then generate the ldo info for SPICE
-		update_ldo_vout();
+		extract_ldo_info();
 		
 		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl<<endl;
 		iter++;
@@ -2448,7 +2448,7 @@ bool Circuit::solve_TR(Tran &tran, double time){
 		ckt_g.locate_g_maxIRdrop();
 		// clog<<"global max_IR: "<<ckt_g.max_IRdrop<<endl;
 		//clog<<ckt_g.nodelist<<endl;
-		update_ldo_vout();
+		//update_ldo_vout();
 				
 // #endif
 		iter++;
@@ -2508,41 +2508,29 @@ void Circuit::Readin_LDO(){
 	sort(ldo_iout_vec.begin(), ldo_iout_vec.end());
 }
 
-// with new Iout and Vin, update ldo vout 
-// with lookup Table - linear interpolation method
-// if out of range of index, choose the closest
-void Circuit::update_ldo_vout(){
-	double iout;
-	double vin;
-	//size_t n_vin = ldo_vin_vec.size();
-	//size_t n_iout = ldo_iout_vec.size();
-	double vin_1, vin_2;
-	double iout_1, iout_2;
-	for(size_t i=0;i<ldolist.size();i++){
-		vin = ldolist[i]->nd_in->value;
-		iout = ldolist[i]->current;
-		// find correlated elements in 
-		// the lookup table
-		find_table_elements(vin, vin_1, 
-			vin_2, ldo_vin_vec);
-		find_table_elements(iout, iout_1, 
-			iout_2, ldo_iout_vec);
-		// clog<<"vin, start, end: "<<vin<<" "<<vin_1<<" "<<vin_2<<endl;
-		// clog<<"iout, start, end: "<<iout<<" "<<iout_1<<" "<<iout_2<<endl;
-		// perform interpolation operation
-		double vout = inter_table_ldo(vin, iout, 
-			vin_1, vin_2, iout_1, iout_2);
-		if(vout <0)
-			vout = 0;
-		ckt_l.ldolist[i]->voltage = vout;
-		ckt_l.ldolist[i]->A->value = vout;
-		Net *net = ckt_l.ldolist[i]->A->rep->nbr[TOP];
-		//clog<<"old net: "<<*net<<endl;
-		if(net->type == VOLTAGE)
-			net->value = vout;
-		//clog<<"new net: "<<net->type<<" "<<*net<<endl;
-		// clog<<"vout: "<<vout<<endl;
+// extract voltage values of ldo nets (for SPICE)
+void Circuit::extract_ldo_info(){
+	vector <Node *> va;
+	vector <Node *> vb;
+	// extract va and vb values from solutions
+	ckt_g.extract_ldo_vol(va);
+	ckt_l.extract_ldo_vol(vb);
+	for(size_t i=0;i<va.size();i++){
+		clog<<"ldo node: "<<*va[i]<<" "<<*vb[i]<<endl;
 	}
+	// then call SPICE
+	// first need to modify the Vin1 and Vin2 in the spice 
+	// file with new values
+	FILE *f;
+	f = fopen("c_out.inc", "w");
+	int id = 1;
+	for(size_t i=0;i<va.size();i++){
+		fprintf(f, "X%d Vout%d1 Vout%d2 ldo_subckt Vol_Vin1=%f Vol_Vin2=%f\n", id, id, id, va[i]->value, vb[i]->value);
+		id++;
+	}
+	fclose(f);
+	system("hspice ldo_top.spice");
+	clog<<"after calling spice once. "<<endl;
 }
 
 // find correlated elements in the lookup table
@@ -2771,7 +2759,7 @@ void Circuit::add_LDO_DC(){
 		diff_g = ckt_g.solve_CK_with_decomp();
 		delta_diff_g = fabs(diff_g - diff_old_g);
 		// then throw into ldo lookup table
-		update_ldo_vout();
+		//update_ldo_vout();
 		
 		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl<<endl;
 		iter++;
@@ -2993,7 +2981,7 @@ void Circuit::verify_one_LDO_step(Tran &tran, double time){
 		// cout<<ckt_l.nodelist<<endl;
 		// cout<<ckt_g.nodelist<<endl;
 		// then throw into ldo lookup table
-		update_ldo_vout();
+		// update_ldo_vout();
 		iter++;
 	}
 	// save ckt_nodes value for t step
