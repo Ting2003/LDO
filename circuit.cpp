@@ -299,6 +299,7 @@ void Circuit::build_subcircuit(){
 
 	// mark the geometry with occupy info
 	ckt_l.mark_geo_occupation();
+	ckt_l.build_candi_pad_set();
 	clog<<"MAX_NUM_LDO: "<<ckt_l.MAX_NUM_LDO<<endl;
 	// ckt_g.build_candi_pad_set();
 }

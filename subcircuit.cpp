@@ -2355,6 +2355,53 @@ void SubCircuit::clear_flags(){
 	}
 }
 
+void SubCircuit::build_candi_pad_set(){
+	int width=0;
+	int height = 0;
+
+	if(ldolist.size()!=0){
+		width = ldolist[0]->width;
+		height = ldolist[0]->height;
+	}
+
+	// max_local layer
+	int mlayer = max_layer;
+	Node *nd;
+	Node *nd_g;
+	for(size_t i=0;i<nodelist.size()-1;i++){
+		nd = nodelist[i];
+		if(nd->isS()==Z) continue;
+		int layer = nd->get_layer();
+		if(layer != mlayer) continue;
+		int x = nd->pt.x;
+		int y = nd->pt.y;
+		// mark node with geo occupation
+		if(!(x % width ==0 && y % height ==0))
+			continue;
+		int xr = x + width;
+		int yr = y + width;
+		if((xr >= gx || yr >=gy))
+			continue;
+		// candi includes the SBLOCK node
+		Pad *pad_ptr = new Pad();
+		// stores the LDO geo out node
+		pad_ptr->node = nd;
+		candi_pad_set.push_back(pad_ptr);
+	}
+	// count is the maximum candidate number for LDO
+	MAX_NUM_LDO = 0;
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		Pad *pad = candi_pad_set[i];
+		Node *nd = pad->node;//nd_out_LDO;
+		if(nd != NULL && nd->flag_geo != SBLOCK){
+			MAX_NUM_LDO++;	
+			// cout<<"nd, flag_geo: "<<*nd<<" "<<nd->flag_geo<<endl;
+		}
+	}
+	
+	clog<<"candi pad / LDO size: "<<candi_pad_set.size()<<" "<<MAX_NUM_LDO<<endl;
+}
+
 // mark local grid with block and LDO occupation
 void SubCircuit::mark_geo_occupation(){
 	int width=0;
@@ -2404,17 +2451,7 @@ void SubCircuit::mark_geo_occupation(){
 			}
 		}
 		if(flag_module == true)
-			continue;
-		Pad *pad_ptr = new Pad();
-		// stores the LDO geo out node
-		pad_ptr->node = nd;
-		if(nd->get_geo_flag() != SBLOCK && (xr <= gx && yr <=gy)){
-			// cout<<"candi pad is: "<<*pad_ptr->nd_out_LDO<<endl;
-			candi_pad_set.push_back(pad_ptr);
-		}/*else{
-			cout<<"not candi pad is: "<<*nd<<endl;
-		}*/
-
+			continue;	
 		// check if it is LDO
 		bool flag_ldo = false;
 		for(size_t j=0;j<ldolist.size();j++){
@@ -2427,11 +2464,7 @@ void SubCircuit::mark_geo_occupation(){
 			if(x >= ldo_xl && x <= ldo_xr && y >= ldo_yl && y <= ldo_yr ){
 				// clog<<"mark ldo. "<<endl<<endl;
 				// in module
-				nd->assign_geo_flag(SLDO);
-				
-				Pad *pad_ptr = new Pad();
-				pad_ptr->node = nd;
-				candi_pad_set.push_back(pad_ptr);
+				nd->assign_geo_flag(SLDO);		
 				flag_ldo = true;
 				break;
 			}
@@ -2455,16 +2488,8 @@ void SubCircuit::mark_geo_occupation(){
 		nd_g->flag = W;
 		// clog<<"ldo node nd, nd_g: "<<*nd<<" "<<*nd_g<<endl;
 	}
-	// count is the maximum candidate number for LDO
-	MAX_NUM_LDO = candi_pad_set.size();
-	// clog<<"candi pad set size: "<<MAX_NUM_LDO<<endl;
-	// cout<<"start to output candi_pad set. "<<endl<<endl<<endl;
-	/*for(size_t i=0;i<MAX_NUM_LDO;i++){
-		Pad *pad = candi_pad_set[i];
-		Node *nd = pad->nd_out_LDO;
-		// if(nd != NULL)
-			// cout<<"nd: "<<*nd<<endl;
-	}*/
+
+	
 }
 
 bool SubCircuit::node_in_ldo_or_block(double x, double y){
@@ -2767,7 +2792,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop >= IR_THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 		Node *nd = extract_maxIR_node();
 		// clog<<"nd: "<<*nd<<endl;
@@ -2779,7 +2804,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 		update_partial_grid(pad_ptr->node, tran);
 		locate_maxIRdrop();
 		//if(iter %5==0)
-			//clog<<"new max IR: "<<max_IRdrop<<endl;
+		clog<<"new max IR: "<<max_IRdrop<<endl;
 		iter++;
 	}
 }
@@ -3613,7 +3638,7 @@ bool SubCircuit::add_ldo_TR(Tran &tran, double time){
 	// add LDO to lcoal grid
 	int iter_i = 0;
 	int flag = 1;
-	while(flag ==1 && iter_i <5){
+	while(flag ==1 && iter_i <1){
 		if((int)ldolist.size() >= MAX_NUM_LDO){
 			max_flag = true;
 			return max_flag;
