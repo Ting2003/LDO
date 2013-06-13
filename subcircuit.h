@@ -201,7 +201,7 @@ private:
 	double solve_CK_with_decomp();
 	double solve_CK_with_decomp_tr();
 
-	void solve_local(Tran &tran, double time);
+	void solve_local(Tran &tran, double time, size_t N_test);
 	double solve_CK_op_tr();
 	void update_ldo_current();
 	void modify_ldo_rhs();

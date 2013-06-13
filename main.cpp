@@ -88,7 +88,9 @@ int main(int argc, char * argv[]){
  		//ckt->print_matlab();
  		// delete ckt;
 	}
-	tran.print_tr_nodes();
+	// clog<<"before tran print tr nodes. "<<endl;
+	// tran.print_tr_nodes();
+	// clog<<"after tran print tr nodes. "<<endl;
 
 	close_logfile();
 

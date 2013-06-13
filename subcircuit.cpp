@@ -2767,12 +2767,13 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop >= IR_THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 		Node *nd = extract_maxIR_node();
+		// clog<<"nd: "<<*nd<<endl;
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set, nd);
-		//clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node, tran);
@@ -2790,7 +2791,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
-	// clog<<"nd with maxIR is: "<<*nd<<endl;
+	clog<<"nd with maxIR is: "<<*nd<<endl;
 	int ref_x = nd->pt.x;
 	int ref_y = nd->pt.y;
 	double min_dist = 0;
@@ -2819,7 +2820,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 			pad_ptr = candi_pad_set[i];
 		}
 	}
-	pad_ptr->node = nd;
+	// pad_ptr->node = nd;
 	return pad_ptr; 
 }
 
@@ -2852,6 +2853,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
+		clog<<"new LDO node: "<<*nd<<endl;
 		nd->enableW();
 		nd->enableLDO();
 		nd->assign_geo_flag(SLDO);
@@ -3376,8 +3378,10 @@ void SubCircuit::solve_GS(Tran tran){
 }
 
 // solve local
-void SubCircuit::solve_local(Tran &tran, double time){
-	stamp_decomp_matrix_TR(tran);
+void SubCircuit::solve_local(Tran &tran, double time, size_t N_test){
+	// stamp matrix only if the LDO number adds
+	if(N_test !=0)
+		stamp_decomp_matrix_TR(tran);
 	// Ieq already there
 	modify_local_nets();
 	stamp_rhs_tr(true, time, tran);
@@ -3577,20 +3581,24 @@ bool SubCircuit::solve_ldo_TR(Tran & tran){
 	bool flag = false;
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
-	for(double time =0; time < tran.tot_t;// && iter <1; 
+	for(double time =0; time < tran.tot_t && iter <140; 
 			time += tran.step_t){
-		clog<<"===== "<<time<<" ===="<<endl;
+		// clog<<"===== "<<time<<" ===="<<endl;
 		// solve one time step with LDO
 		// first solve TR
 		modify_rhs_tr_0(tran);
 		modify_local_nets();
 		stamp_rhs_tr(true, time, tran);
 		solve_CK_with_decomp_tr();
-		locate_maxIRdrop();
+		double max_IRdrop = locate_maxIRdrop();
+		// clog<<"max_IRdrop: "<<max_IRdrop<<endl;
 		if(max_IRdrop >= IR_THRES){
+			clog<<"===== "<<time<<" ===="<<endl;
+			clog<<"max_IRdrop > thres: "<<max_IRdrop<<" "<<IR_THRES<<endl;
 			add_ldo_TR(tran, time);
+			break;
 		}
-		clog<<"after solve_TR. "<<endl;
+		// clog<<"after solve_TR. "<<endl;
 		iter++;
 		if(flag == true){
 			clog<<"reach maximum LDO size: "<<endl;
@@ -3611,9 +3619,9 @@ bool SubCircuit::add_ldo_TR(Tran &tran, double time){
 			return max_flag;
 			break;
 		}
-		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ckt_l.ldolist.size()<<" "<<ckt_l.locate_maxIRdrop()<<endl;
+		clog<<endl<<"iter_i: "<<iter_i<<" "<<ldolist.size()<<" "<<locate_maxIRdrop()<<endl;
 		add_LDO_TR_local(tran, time);
-		// clog<<"local opti IR: "<<ckt_l.max_IRdrop<<endl;
+		clog<<"local opti IR, ldo size: "<<max_IRdrop<<" "<<ldolist.size()<<endl;
 		if(locate_maxIRdrop() <IR_THRES){
 			flag = 0;
 			break;
@@ -3630,13 +3638,14 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 	// find the node where new LDOs should go to
 	extract_add_LDO_dc_info(LDO_pad_vec, tran);
 	// if no room to add new LDO pad, return
+	clog<<"LDO_pad_vec size: "<<LDO_pad_vec.size()<<endl;
 	if(LDO_pad_vec.size()==0){
 		return;
 	}
 	// rebuild local and global net
 	create_local_LDO_new_nets(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
-	solve_local(tran, time);
+	solve_local(tran, time, LDO_pad_vec.size());
 	max_IRdrop = locate_maxIRdrop();
 
 	Node *nd = extract_maxIR_node();

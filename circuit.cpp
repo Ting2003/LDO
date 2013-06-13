@@ -221,11 +221,11 @@ void Circuit::solve(Tran &tran){
 	clog<<"after local op DC LDO. "<<endl;
 	// then start to optimize local ldo
 	ckt_l.solve_ldo_TR(tran);	
-	return;
-
+	clog<<"after solve ldo tr. "<<endl;
 	// release resouces
 	ckt_l.release_resources();
 	ckt_g.release_resources();
+	clog<<"after release resources. "<<endl;
 }
 //endif
 
@@ -2838,7 +2838,7 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 		ckt_l.ldolist[i]->A->value = VDD_G;
 	}
 	ckt_l.add_pad_set(LDO_pad_vec);
-	ckt_l.solve_local(tran, time);
+	ckt_l.solve_local(tran, time, LDO_pad_vec.size());
 	//ckt_l.solve_GS(tran);
 	//clog<<"after solve GS. "<<endl;
 	max_IRdrop = locate_maxIRdrop();
