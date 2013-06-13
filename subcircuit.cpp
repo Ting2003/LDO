@@ -2387,6 +2387,7 @@ void SubCircuit::build_candi_pad_set(){
 		Pad *pad_ptr = new Pad();
 		// stores the LDO geo out node
 		pad_ptr->node = nd;
+		pad_ptr->nd_out_LDO = nd;
 		candi_pad_set.push_back(pad_ptr);
 		if(nd->flag_geo != SBLOCK)
 			MAX_NUM_LDO++;
@@ -2800,13 +2801,14 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 		// clog<<"nd: "<<*nd<<endl;
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set, nd);
-		clog<<"new location for LDO: "<<*pad_ptr->node<<endl;
+		clog<<"new location for LDO: "<<*pad_ptr->node<<" "<<*pad_ptr->nd_out_LDO<< endl;
 		LDO_pad_vec.push_back(pad_ptr);
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node, tran);
 		locate_maxIRdrop();
+		nd = extract_maxIR_node();
 		//if(iter %5==0)
-		clog<<"new max IR: "<<max_IRdrop<<endl;
+		clog<<"new max IR: "<<max_IRdrop<<" "<<*nd<<endl;
 		iter++;
 	}
 }
@@ -2847,7 +2849,34 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 			pad_ptr = candi_pad_set[i];
 		}
 	}
-	// pad_ptr->node = nd;
+
+	size_t min_id=0;
+	min_dist = 0;
+	flag = false;
+	// now find the LDO location node
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		// skip the one that already has pad
+		if(candi_pad_set[i]->node->flag_geo == SBLOCK)
+			 continue;
+		// cout<<"candi node, sblock: "<<*candi_pad_set[i]->node<<" "<<candi_pad_set[i]->node->flag<<endl;
+		na = candi_pad_set[i]->node;
+
+		diff_x = na->pt.x - ref_x;
+		diff_y = na->pt.y - ref_y;
+		dist = sqrt(diff_x*diff_x + diff_y*diff_y);
+
+		// cout<<"na, dist: "<<*na<<" "<<dist<<endl;
+		if(flag == false){
+			min_dist = dist;
+			min_id = i;
+			flag = true;
+		}else if(min_dist > dist){
+			min_dist = dist;
+			min_id = i;
+		}
+	}
+	// fix the geo location for the LDO
+	pad_ptr->nd_out_LDO = candi_pad_set[min_id]->node;
 	return pad_ptr; 
 }
 
@@ -3179,7 +3208,7 @@ void SubCircuit::update_partial_grid(Node *nd, Tran tran){
 	int iter = 0;
 	double max_diff = 1;
 	
-	while(iter <5){
+	while(iter <1){
 		q.push(nd);
 		nd->flag_visited = iter;
 		nd->value = VDD_G;
@@ -3187,9 +3216,10 @@ void SubCircuit::update_partial_grid(Node *nd, Tran tran){
 		max_diff = 0;
 		while(!q.empty()){
 			nd_cur = q.front();
-			// cout<<"nd_cur: "<<*nd_cur<<endl;
+			cout<<"nd_cur: "<<*nd_cur;
 			// update this node
 			diff = update_node_value(nd_cur, nd, tran);
+			cout<<"new: "<<*nd_cur<<endl;
 			if(nd_cur->isS()!=W && diff > max_diff)
 				max_diff = diff;
 			// cout<<"diff: "<<diff<<endl;
