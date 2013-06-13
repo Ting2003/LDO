@@ -2368,6 +2368,7 @@ void SubCircuit::build_candi_pad_set(){
 	int mlayer = max_layer;
 	Node *nd;
 	Node *nd_g;
+	MAX_NUM_LDO = 0;
 	for(size_t i=0;i<nodelist.size()-1;i++){
 		nd = nodelist[i];
 		if(nd->isS()==Z) continue;
@@ -2387,17 +2388,18 @@ void SubCircuit::build_candi_pad_set(){
 		// stores the LDO geo out node
 		pad_ptr->node = nd;
 		candi_pad_set.push_back(pad_ptr);
+		if(nd->flag_geo != SBLOCK)
+			MAX_NUM_LDO++;
 	}
 	// count is the maximum candidate number for LDO
-	MAX_NUM_LDO = 0;
+	/* MAX_NUM_LDO = 0;
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		Pad *pad = candi_pad_set[i];
 		Node *nd = pad->node;//nd_out_LDO;
-		if(nd != NULL && nd->flag_geo != SBLOCK){
-			MAX_NUM_LDO++;	
+		if(nd != NULL){
 			// cout<<"nd, flag_geo: "<<*nd<<" "<<nd->flag_geo<<endl;
 		}
-	}
+	}*/
 	
 	clog<<"candi pad / LDO size: "<<candi_pad_set.size()<<" "<<MAX_NUM_LDO<<endl;
 }
