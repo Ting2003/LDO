@@ -2764,10 +2764,9 @@ void SubCircuit::extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_
 
 void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){	
 	int iter = 0;
-	double THRES = IR_THRES;
 	// while not satisfied and still have room,
 	// perform optimization
-	while(max_IRdrop >= THRES && 
+	while(max_IRdrop >= IR_THRES && 
 		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 		Node *nd = extract_maxIR_node();
@@ -2841,7 +2840,7 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	}*/
 }
 
-// create local current nets for2new LDO
+// create local voltage nets for2new LDO
 void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
 	Node *gnd =NULL;
@@ -2853,7 +2852,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
-		nd->enableY();
+		nd->enableW();
 		nd->enableLDO();
 		nd->assign_geo_flag(SLDO);
 		nd->value = VDD_G;
@@ -3628,18 +3627,14 @@ bool SubCircuit::add_ldo_TR(Tran &tran, double time){
 void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 	// temporary storing newly added LDOs
 	vector<Pad*> LDO_pad_vec;
-	// find the node where new LDOs shoudl go to
+	// find the node where new LDOs should go to
 	extract_add_LDO_dc_info(LDO_pad_vec, tran);
 	// if no room to add new LDO pad, return
 	if(LDO_pad_vec.size()==0){
 		return;
 	}
 	// rebuild local and global net
-	create_local_LDO_new_nets(LDO_pad_vec);
-	// recover all the ldo voltages to 1.8V
-	for(size_t i=0;i<ldolist.size();i++){
-		ldolist[i]->A->value = VDD_G;
-	}
+	create_local_LDO_new_nets(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
 	solve_local(tran, time);
 	max_IRdrop = locate_maxIRdrop();
