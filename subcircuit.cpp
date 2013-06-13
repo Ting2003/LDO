@@ -413,10 +413,10 @@ void SubCircuit::modify_rhs_tr_0(Tran &tran){
 		NetPtrVector & ns = net_set[type];
 		if(type ==CAPACITANCE){	
 			for(size_t i=0;i<ns.size();i++)
-				if(this->name != "GLOBAL")
-				 	modify_rhs_c_tr_0(ns[i], tran);
-				else
-					global_modify_rhs_c_tr_0(ns[i], tran);
+				// if(this->name != "GLOBAL")
+				 modify_rhs_c_tr_0(ns[i], tran);
+				// else
+					// global_modify_rhs_c_tr_0(ns[i], tran);
 		}
 		else if(type == INDUCTANCE){
 			for(size_t i=0;i<ns.size();i++){
@@ -483,19 +483,19 @@ void SubCircuit::stamp_resistor_tr(Matrix & A, Net * net){
    G = 1./net->value;
 
    // cout<<"resis net: "<<*net<<endl;
-   if( nk->isS()!=Y && !nk->is_ground()){
+   if( nk->isS()!=Y && nk->isS()!=W && !nk->is_ground()){
            A.push_back(k,k, G);
       	// cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
-      if(!nl->is_ground() && nl->isS()!=Y && l<k){
+      if(!nl->is_ground() && nl->isS()!=Y && nl->isS()!=W && l<k){
             A.push_back(k,l,-G);
             //cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
       }
    }
 
-   if( nl->isS() !=Y && !nl->is_ground()){
+   if( nl->isS() !=Y && nl->isS()!=W && !nl->is_ground()){
       A.push_back(l,l, G);
       // cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
-      if(!nk->is_ground() && nk->isS()!=Y && k<l){
+      if(!nk->is_ground() && nk->isS()!=Y && nk->isS()!=W && k<l){
             A.push_back(l,k,-G);
             // cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
       }
@@ -577,22 +577,22 @@ void SubCircuit::stamp_inductance_tr(Matrix & A, Net * net, Tran &tran){
 	Geq = tran.step_t / (2*net->value);
 	//net->value = Geq;
 
-	if( nk->isS()!=Y  && !nk->is_ground()) {
+	if( nk->isS()!=Y && nk->isS()!=W && !nk->is_ground()) {
 		// -1 is to clear formal inserted 1 at (k,k)
 		A.push_back(k,k, Geq);
 		// cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
 		//clog<<nl->isS()<<endl;
-		if(!nl->is_ground()&& nl->isS()!=Y && k>l){
+		if(!nl->is_ground()&& nl->isS()!=Y &&nl->isS()!=W && k>l){
 			A.push_back(k,l,-Geq);
 		        // cout<<"("<<k<<" "<<l<<" "<<-Geq<<")"<<endl;
 		}
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=Y && nl->isS()!=W && !nl->is_ground()) {
 		// -1 is to clear formal inserted 1 at (l,l)
 		A.push_back(l,l, Geq);
 		// cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
-		if(!nk->is_ground() && nk->isS()!=Y && l>k){
+		if(!nk->is_ground() && nk->isS()!=Y && nk->isS()!=W && l>k){
 			A.push_back(l,k,-Geq);
 			// cout<<"("<<l<<" "<<k<<" "<<-Geq<<")"<<endl;
 		}
@@ -614,7 +614,7 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 	// clog<<"C delta_t Geq: "<<net->value<<" "<<tran.step_t<<" "<<Geq<<endl;
 	// Ieq = i(t) + 2*C / delta_t * v(t)
 
-	if( nk->isS()!=Y  && !nk->is_ground()) {
+	if( nk->isS()!=Y  &&nk->isS()!=W && !nk->is_ground()) {
 		A.push_back(k,k, Geq);
 		// if(this->name == "GLOBAL")
 			// cout<<"("<<k<<" "<<k<<" "<<Geq<<")"<<endl;
@@ -625,7 +625,7 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 		}
 	}
 
-	if( nl->isS() !=Y && !nl->is_ground()) {
+	if( nl->isS() !=Y && nl->isS()!=W && !nl->is_ground()) {
 		A.push_back(l,l, Geq);
 		// cout<<"("<<l<<" "<<l<<" "<<Geq<<")"<<endl;
 		if(!nk->is_ground()&& l > k){
@@ -635,6 +635,7 @@ void SubCircuit::stamp_capacitance_tr(Matrix &A, Net *net, Tran &tran){
 	}
 }
 
+// global network has no cap, so invalid
 // add Ieq into rhs
 // Ieq = i(t) + 2*C / delta_t *v(t)
 void SubCircuit::global_modify_rhs_c_tr_0(Net *net, Tran &tran){
@@ -1010,13 +1011,13 @@ void SubCircuit::stamp_current_tr_net(double * b, Net * net, double &time){
 	// cout<<"current: "<<current<<endl;
 	Node * nk = net->ab[0]->rep;
 	Node * nl = net->ab[1]->rep;
-	if( !nk->is_ground()&& nk->isS()!=Y) { 
+	if( !nk->is_ground()&& nk->isS()!=Y && nk->isS()!=W) { 
 		size_t k = nk->rid;
 		//clog<<"node, rid: "<<*nk<<" "<<k<<endl;
 		b[k] += -current;
 		// cout<<"time, k, b: "<<time<<" "<<k<<" "<<b[k]<<endl;
 	}
-	if( !nl->is_ground() && nl->isS()!=Y) {
+	if( !nl->is_ground() && nl->isS()!=Y && nl->isS()!=W) {
 		size_t l = nl->rid;
 		//clog<<"node, rid: "<<*nl<<" "<<l<<endl;
 		b[l] +=  current;
@@ -1261,6 +1262,7 @@ void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
 	NetList::iterator it;
 	Node *p, *q;
 
+	// first handle global inductance net
 	for(it=ns.begin();it!=ns.end();it++){
            if( (*it) == NULL ) continue;
            assert( fzero((*it)->value) == false );
@@ -1283,6 +1285,32 @@ void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
            // b[id] += x[p->rid] *G;
            // clog<<"id, stamp p->value, G, b: "<<id<<" "<<p->value<<" "<<G<<" "<<b[id]<<endl;
         }
+	
+	// now handles the ldo voltage nets
+	int type_v = VOLTAGE;
+	ns = net_set[type_v];
+	for(size_t i=0;i<ns.size();i++){
+		Net *vol_net = ns[i];
+		if(vol_net == NULL) continue;
+		// node p points to W node
+		p = vol_net->ab[0]->rep;
+		if(p->isS() != W)
+			p = vol_net->ab[1]->rep;
+		if(p->is_ground()) continue;
+		// then search neighboring nets
+		for(size_t j=0;j<7;j++){
+			Net *nbr_net = p->nbr[j];
+			if(nbr_net == NULL || nbr_net->type != RESISTOR) continue;
+			q = nbr_net->ab[0]->rep;
+			if(q->name == p->name)	
+				q = nbr_net->ab[1]->rep;
+			// clog<<"nbr net: "<<*nbr_net<<endl;
+			size_t id = q->rid;
+           		double G = 1.0 / nbr_net->value;
+           		b[id] += p->value * G;
+			// clog<<"q, id, G, b: "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
+		}
+	}
 }
 
 bool compare_Node_G(const Node_G *nd_1, const Node_G *nd_2){
@@ -2952,11 +2980,11 @@ void SubCircuit::modify_rhs_Ieq_c(Net *net, double *rhs){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 	
-	if(!nk->is_ground()&& nk->isS()!=Y){
+	if(!nk->is_ground()&& nk->isS()!=Y && nk->isS()!=W){
 		 rhs[k] += net->Ieq;	// for VDD SubCircuit
 		// cout<<*nk<<" rhs +: "<<k<<" "<<rhs[k]<<endl;
 	}
-	if(!nl->is_ground()&& nl->isS()!=Y){
+	if(!nl->is_ground()&& nl->isS()!=Y && nl->isS()!=W){
 		 rhs[l] += -net->Ieq; 
 		// cout<<*nl<<" rhs +: "<<l<<" "<<rhs[l]<<endl;
 	}
@@ -2975,11 +3003,11 @@ void SubCircuit::modify_rhs_Ieq_l(Net *net, double *rhs){
 	size_t k = nk->rid;
 	size_t l = nl->rid;
 
-	if(nk->isS() !=Y && !nk->is_ground()){
+	if(nk->isS() !=Y && nk->isS()!=W && !nk->is_ground()){
 		 rhs[k] += net->Ieq; // VDD SubCircuit
 		// clog<<*nk<<" "<<rhs[k]<<endl;
 	}
-	if(nl->isS()!=Y && !nl->is_ground()){
+	if(nl->isS()!=Y && nl->isS()!=W && !nl->is_ground()){
 		 rhs[l] += -net->Ieq; // VDD SubCircuit
 		// clog<<*nl<<" "<<rhs[l]<<endl;
 	}

@@ -198,6 +198,7 @@ void Circuit::count_merge_nodes(){
 	}
 	//clog<<"number of nodes can be merged is: "<<count<<endl;
 }
+
 //if 0
 void Circuit::solve(Tran &tran){
 	//1. assign nodes and nets to ckt_g and l
@@ -218,57 +219,10 @@ void Circuit::solve(Tran &tran){
 	if(flag == true)
 		ckt_l.add_ldo_DC(tran);
 	clog<<"after local op DC LDO. "<<endl;
-	// clear flag_visited for the pads
-	// ckt_l.clear_flags();
-	// clog<<ckt_l.nodelist<<endl;
-	int iter = 0;
-	clog<<endl;
-	flag = false;
-
+	// then start to optimize local ldo
+	ckt_l.solve_ldo_TR(tran);	
 	return;
-#if 0
-	ckt_l.add_ldo_tr(Tran &tran);	
-	// only need to stamp matrix once per t step
-	ckt_l.stamp_decomp_matrix_TR(tran);
-	ckt_g.stamp_decomp_matrix_TR(tran);
-	clog<<"after ckt_g stamp tr. "<<endl;
 
-	// double time = 0;
-	// add_LDO_all_global(tran, time);
-	// go along all time steps
-	for(double time =0; time < tran.tot_t;// && iter <1; 
-			time += tran.step_t){
-		clog<<"===== "<<time<<" ===="<<endl;
-		// solve one time step with LDO
-
-		flag = solve_TR(tran, time);
-		clog<<"after solve_TR. "<<endl;
-		// flag = solve_TR_LDO(tran, time);
-		// clog<<"maxIR_l / g: "<<ckt_l.locate_maxIRdrop()<<" "<<ckt_g.locate_g_maxIRdrop()<<endl;
-		// ckt_l.clear_flags();
-		iter++;
-		if(flag == true){
-			clog<<"reach maximum LDO size: "<<endl;
-			break;
-		}
-	}
-	/*clog<<"print matlab. "<<endl;
-	ckt_l.print_matlab_node();
-	ckt_l.print_matlab_LDO();
-	*/
-	// vector<LDO*>::iterator it;
-	// it = unique(ckt_l.ldolist.begin(), ckt_l.ldolist.end());
-	// ckt_l.ldolist.resize(std::distance(ckt_l.ldolist.begin(), it));
-	clog<<"final ldo size: "<<ckt_l.ldolist.size()<<" "<<ckt_l.MAX_NUM_LDO<<endl;
-	// for(size_t i=0;i<ckt_l.ldolist.size();i++)
-		// cout<<"i, ldo: "<<i<<" "<<*ckt_l.ldolist[i]->A<<endl;
-	// return;
-	// clog<<endl;
-	clog<<"==== entering verify stage ==== "<<endl;
-// #endif
-	verify_solve(tran);
-
-#endif
 	// release resouces
 	ckt_l.release_resources();
 	ckt_g.release_resources();
