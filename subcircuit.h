@@ -218,6 +218,7 @@ private:
 	void reconfigure_TR();
 	void mark_geo_occupation();
 	void build_candi_pad_set();
+	void create_new_LDOs(vector<Pad*> LDO_pad_vec);
 	void extract_node(char * str, Node & nd);
 
 	void count_merge_nodes();

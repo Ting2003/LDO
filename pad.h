@@ -16,10 +16,12 @@ class Pad{
 public:
 	Pad();
 	~Pad();
-	
+
+	// stores the electrical connection pt	
 	Node * node;
-	// stores the node for LDO geo output node
+	// stores the node for LDO geometrical physical location node
 	Node * nd_out_LDO;
+	
 	// record the controlled nodes and weighting
 	map<Node*, double> control_nodes;
 	// stores the neighboring pads for a pad

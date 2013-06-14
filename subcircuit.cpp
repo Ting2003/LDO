@@ -2795,20 +2795,22 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop >= IR_THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 		Node *nd = extract_maxIR_node();
 		// clog<<"nd: "<<*nd<<endl;
 		// maximum IR
 		Pad *pad_ptr = locate_candi_pad_maxIR(candi_pad_set, nd);
-		clog<<"new location for LDO: "<<*pad_ptr->node<<" "<<*pad_ptr->nd_out_LDO<< endl;
+		// clog<<"new location for LDO: "<<*pad_ptr->node<<" "<<*pad_ptr->nd_out_LDO<< endl;
 		LDO_pad_vec.push_back(pad_ptr);
+		// assign to be W node
+		pad_ptr->node->enableW();
 		// update partial grid for several iter
 		update_partial_grid(pad_ptr->node, tran);
 		locate_maxIRdrop();
 		nd = extract_maxIR_node();
 		//if(iter %5==0)
-		clog<<"new max IR: "<<max_IRdrop<<" "<<*nd<<endl;
+		// clog<<"new max IR: "<<max_IRdrop<<" "<<*nd<<endl;
 		iter++;
 	}
 }
@@ -2820,7 +2822,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 	double min_vol = VDD_G;
 	Pad *pad_ptr = NULL;
 	bool flag = false;
-	clog<<"nd with maxIR is: "<<*nd<<endl;
+	// clog<<"nd with maxIR is: "<<*nd<<endl;
 	int ref_x = nd->pt.x;
 	int ref_y = nd->pt.y;
 	double min_dist = 0;
@@ -2897,6 +2899,23 @@ void SubCircuit::update_single_pad_flag(Pad* pad){
 	}*/
 }
 
+// create new LDO objects
+void SubCircuit::create_new_LDOs(vector<Pad*> LDO_pad_vec){
+	for(size_t i=0;i<LDO_pad_vec.size();i++){
+		Pad * pad_ptr = LDO_pad_vec[i];
+		LDO *ldo_ptr;
+		ldo_ptr = new LDO();
+		ldo_ptr->width = ldolist[0]->width;
+		ldo_ptr->height = ldolist[0]->height;
+		ldo_ptr->A = pad_ptr->node;
+		ldo_ptr->nd_out = pad_ptr->nd_out_LDO;
+		ldo_ptr->nd_in = map_landg[pad_ptr->nd_out_LDO];
+		ldolist.push_back(ldo_ptr);
+		// clog<<"LDO_0: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_in<<" "<<*ldolist[0]->nd_out<<endl;
+		// clog<<"new LDO node: "<<*ldo_ptr->A<<" "<<*ldo_ptr->nd_in<<" "<<*ldo_ptr->nd_out<<endl;
+	}	
+}
+
 // create local voltage nets for2new LDO
 void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	Node *nd;
@@ -2909,7 +2928,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 
 	for(size_t i=0;i<LDO_pad_vec.size();i++){
 		nd = LDO_pad_vec[i]->node;
-		clog<<"new LDO node: "<<*nd<<endl;
+		// clog<<"new LDO node: "<<*nd<<endl;
 		nd->enableW();
 		nd->enableLDO();
 		nd->assign_geo_flag(SLDO);
@@ -3203,23 +3222,25 @@ void SubCircuit::update_partial_grid(Node *nd, Tran tran){
 	Node *nd_cur;
 	// Node *nbr;
 	// double sum = 0;
-	double epi = 1e-4;
+	double epi = 1e-6;
 	double diff = 0;
 	int iter = 0;
 	double max_diff = 1;
 	
-	while(iter <1){
+	while(iter <5){
 		q.push(nd);
 		nd->flag_visited = iter;
 		nd->value = VDD_G;
 		int count = 0;
 		max_diff = 0;
-		while(!q.empty()){
+		while(!q.empty()){// && count<8){
 			nd_cur = q.front();
-			cout<<"nd_cur: "<<*nd_cur;
+			// if(iter==5)
+			// cout<<"nd_cur: "<<*nd_cur;
 			// update this node
 			diff = update_node_value(nd_cur, nd, tran);
-			cout<<"new: "<<*nd_cur<<endl;
+			// if(iter==5)
+			// cout<<" new: "<<*nd_cur<<endl;
 			if(nd_cur->isS()!=W && diff > max_diff)
 				max_diff = diff;
 			// cout<<"diff: "<<diff<<endl;
@@ -3237,6 +3258,7 @@ void SubCircuit::update_partial_grid(Node *nd, Tran tran){
 	}
 	while(!q.empty())
 		q.pop();
+	// recover to default flag_visited
 	for(size_t i=0;i<replist.size();i++)
 		replist[i]->flag_visited = -1;
 }
@@ -3257,9 +3279,25 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node, Tran tran){
 	net = NULL;
 	nbr = NULL; na = NULL; nb = NULL;
 	double Ieq = 0;
+	double V_improve;
 
 	V_old = nd->value;
-	
+	// skip the top small via nodes
+	if(nd->get_layer()== max_layer && nd->isS()!=W){
+		// cout<<"nd: "<<*nd<<endl;
+		net = nd->nbr[BOTTOM];
+		if(net != NULL){
+			nbr = net->ab[0]->rep;
+			if(nbr->name == nd->name)
+				nbr = net->ab[1]->rep;
+			// cout<<" top node net, nbr: "<<*net<<" "<<*nbr<<endl;
+			nd->value = nbr->value;
+			// cout<<"nd new value: "<<*nd<<endl;
+		}
+		V_improve = fabs(nd->value - V_old);
+		return V_improve;	
+	}
+
 	// update nd->value
 	for(int i=0;i<7;i++){
 		net = nd->nbr[i];
@@ -3268,6 +3306,7 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node, Tran tran){
 		// special care about cap net
 		if(net->type == CAPACITANCE){
 			G = 2*net->value / tran.step_t;
+			// cout<<"Geq: "<<G<<endl;
 			Ieq = net->Ieq;
 		}else{
 			G = 1.0/net->value;
@@ -3275,11 +3314,14 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node, Tran tran){
 		na = net->ab[0]; nb = net->ab[1];
 		if(nd->name == na->name) nbr = nb;
 		else	nbr = na;
+		
+		sum += G;
+		// cout<<" net, nbr: "<<*net<<" "<<*nbr<<endl;
 		if(!nbr->is_ground()){
-			sum += G;
 			V_temp += G*nbr->value;
 		}
 	}
+	// cout<<"sum, V_temp: "<<sum<<" "<<V_temp;
 	if(nd->nbr[BOTTOM]== NULL) current = 0;
 	else	current = -nd->nbr[BOTTOM]->value;
 	// include cap Ieq
@@ -3290,7 +3332,8 @@ double SubCircuit::update_node_value(Node *&nd, Node *add_node, Tran tran){
 		V_temp = VDD_G;
 	nd->value  = V_temp;
  	
-	double V_improve = fabs(nd->value - V_old);
+	// cout<<"V_temp with current: "<<current<<" "<<V_temp<<endl;
+	V_improve = fabs(nd->value - V_old);
 
 	return V_improve;
 }
@@ -3626,7 +3669,8 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	}
 	clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
 	// rebuild local and global net
-	create_local_LDO_new_nets(LDO_pad_vec);
+	create_local_LDO_new_nets(LDO_pad_vec);	
+	create_new_LDOs(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
 	solve_DC();
 	max_IRdrop = locate_maxIRdrop();
@@ -3653,7 +3697,9 @@ bool SubCircuit::solve_ldo_TR(Tran & tran){
 			clog<<"===== "<<time<<" ===="<<endl;
 			clog<<"max_IRdrop > thres: "<<max_IRdrop<<" "<<IR_THRES<<endl;
 			add_ldo_TR(tran, time);
-			break;
+			max_IRdrop = locate_maxIRdrop();
+			clog<<"optimized max_IR is: "<<max_IRdrop<<endl;
+			// break;
 		}
 		// clog<<"after solve_TR. "<<endl;
 		iter++;
@@ -3670,15 +3716,15 @@ bool SubCircuit::add_ldo_TR(Tran &tran, double time){
 	// add LDO to lcoal grid
 	int iter_i = 0;
 	int flag = 1;
-	while(flag ==1 && iter_i <1){
+	while(flag ==1){// && iter_i <20){
 		if((int)ldolist.size() >= MAX_NUM_LDO){
 			max_flag = true;
 			return max_flag;
 			break;
 		}
-		clog<<endl<<"iter_i: "<<iter_i<<" "<<ldolist.size()<<" "<<locate_maxIRdrop()<<endl;
+		// clog<<endl<<"iter_i: "<<iter_i<<" "<<ldolist.size()<<" "<<locate_maxIRdrop()<<endl;
 		add_LDO_TR_local(tran, time);
-		clog<<"local opti IR, ldo size: "<<max_IRdrop<<" "<<ldolist.size()<<endl;
+		// clog<<"iter_i, optimized IR, ldo size: "<<iter_i<<" "<<max_IRdrop<<" "<<ldolist.size()<<endl;
 		if(locate_maxIRdrop() <IR_THRES){
 			flag = 0;
 			break;
@@ -3695,17 +3741,18 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 	// find the node where new LDOs should go to
 	extract_add_LDO_dc_info(LDO_pad_vec, tran);
 	// if no room to add new LDO pad, return
-	clog<<"LDO_pad_vec size: "<<LDO_pad_vec.size()<<endl;
+	// clog<<"LDO_pad_vec size: "<<LDO_pad_vec.size()<<endl;
 	if(LDO_pad_vec.size()==0){
 		return;
 	}
 	// rebuild local and global net
-	create_local_LDO_new_nets(LDO_pad_vec);	
+	create_local_LDO_new_nets(LDO_pad_vec);
+	create_new_LDOs(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
 	solve_local(tran, time, LDO_pad_vec.size());
 	max_IRdrop = locate_maxIRdrop();
 
-	Node *nd = extract_maxIR_node();
+	// Node *nd = extract_maxIR_node();
 	//clog<<"optimized max_IR drop for TR: "<<max_IRdrop<<" "<<*nd<<endl;
 	LDO_pad_vec.clear();
 }
