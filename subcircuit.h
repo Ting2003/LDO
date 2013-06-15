@@ -97,7 +97,8 @@ public:
 	bool solve_ldo_TR(Tran & tran);
 	bool add_ldo_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
-	void solve_DC();
+	void solve_DC(bool local_flag);
+	void solve_TR(Tran &tran, bool local_flag);
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
 	double locate_g_maxIRdrop();
@@ -164,9 +165,7 @@ public:
 	// void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
 	void create_current_LDO_graph();
 	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
-	void create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec);
-
-	void create_global_pad_new_nets(vector<Pad*> LDO_pad_vec);
+	void create_global_LDO_new_nets(vector<LDO*> local_ldolist);
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
 	void build_pad_graph(vector<Pad*> &pad_set);

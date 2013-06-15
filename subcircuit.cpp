@@ -699,7 +699,7 @@ void SubCircuit::global_modify_rhs_c_tr_0(Net *net, Tran &tran){
 	}*/
 }
 
-// add Ieq into rhs
+// calc equivalent current for capacitor net
 // Ieq = i(t) + 2*C / delta_t *v(t)
 void SubCircuit::modify_rhs_c_tr_0(Net *net, Tran &tran){
 	double i_t = 0;
@@ -863,7 +863,7 @@ void SubCircuit::set_eq_capac(Tran &tran){
 		ns[i]->value = 2*ns[i]->value/tran.step_t;
 }
 
-// add Ieq into rhs
+// calc equivalent Ieq for inductor net
 // Ieq = i(t) + delta_t / (2*L) *v(t)
 void SubCircuit::modify_rhs_l_tr_0(Net *net, Tran &tran){
 	// clog<<"l net: "<<*net<<endl;
@@ -2940,8 +2940,8 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 	}
 }
 
-// create local current nets for new LDO
-void SubCircuit::create_global_pad_new_nets(vector<Pad*> LDO_pad_vec){
+// build new LDOs and vol nets for the LDOs
+void SubCircuit::create_global_LDO_new_nets(vector<LDO*> local_ldolist){
 	Node *nd;
 	Node *gnd =NULL;
 	for(size_t i=0;i<nodelist.size();i++)
@@ -2950,50 +2950,14 @@ void SubCircuit::create_global_pad_new_nets(vector<Pad*> LDO_pad_vec){
 			break;
 		}
 
-	for(size_t i=0;i<LDO_pad_vec.size();i++){
-		nd = LDO_pad_vec[i]->node;
-		nd->enableY();
-		nd->enableLDO();
-		nd->value = 2.2;
+	for(size_t i=0;i<local_ldolist.size();i++){
+		nd = local_ldolist[i]->nd_in;
+		nd->enableW();
+		nd->value = VDD_G;
 		Net *net = new Net(VOLTAGE, 2.2, nd, gnd);
 		add_net(net);
 		// update top nbr net
 		nd->rep->nbr[TOP] = net;
-	}
-}
-
-// need to create all the RLVI nets
-void SubCircuit::create_global_LDO_new_nets(vector<Pad*> LDO_pad_vec){
-	Node *nd, *nd_in;
-	double current_value = 0;
-	// Net *net;
-	Node *gnd = NULL;
-	for(size_t i=0;i<nodelist.size();i++)
-		if(nodelist[i]->is_ground()){
-			gnd = nodelist[i];
-			break;
-		}
-
-	stringstream sstream;
-	// Node *gnd = nodelist[nodelist.size()-1];
-	NET_TYPE net_type;
-	long ldo_z = ldolist[0]->nd_in->pt.z;
-	for(size_t i=0;i<LDO_pad_vec.size();i++){
-		nd = LDO_pad_vec[i]->node;
-		sstream.str("");
-		sstream<<"n"<<ldo_z<<"_"<<nd->pt.x<<"_"<<nd->pt.y;
-		nd_in = get_node(sstream.str());
-		// clog<<"nd:"<<*nd<<" nd_in: "<<*nd_in<<endl;
-		// update_node(net_resis);
-		// then create current net 
-		net_type = CURRENT;
-		Net *net_current = new Net(net_type, 
-			current_value, nd_in, gnd);
-		add_net(net_current);
-
-		// clog<<"new cur net: "<<*net_current<<endl;
-		nd_in->nbr[BOTTOM] = net_current;
-		//update_node(net_current);
 	}
 }
 
@@ -3578,10 +3542,9 @@ void SubCircuit::extract_ldo_vol(vector<Node *> & va){
 	}
 }
 // local circuit solve DC
-void SubCircuit::solve_DC(){
+void SubCircuit::solve_DC(bool local_flag){
 	stamp_decomp_matrix_DC();
-	reset_b();
-	stamp_rhs_DC(true);
+	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();	
 }
 
@@ -3592,7 +3555,8 @@ bool SubCircuit::optimize_single_ldo(){
 	vector<Node *> nd_out_vec;
 
 	// first solve DC circuit
-	solve_DC();
+	bool local_flag = true;
+	solve_DC(local_flag);
 	double max_IRdrop = locate_maxIRdrop();
 	clog<<"local initial max_IRdrop is: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
@@ -3606,7 +3570,7 @@ bool SubCircuit::optimize_single_ldo(){
 		// optimize the locations of LDO and rebuild nets
 		// relocate_LDOs();
 		relocate_pads();
-		solve_DC();
+		solve_DC(local_flag);
 		max_IRdrop = locate_maxIRdrop();
 		Node *nd = ldolist[0]->A;
 
@@ -3641,7 +3605,7 @@ bool SubCircuit::optimize_single_ldo(){
 	rebuild_local_nets(ldolist[0]->A, nd_min);
 	// clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
 	ldo_best.clear();
-	solve_DC();
+	solve_DC(local_flag);
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"local recovered max_IR: "<<max_IRdrop<<endl;
 	double thres = VDD_G * 0.1;
@@ -3672,7 +3636,8 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	create_local_LDO_new_nets(LDO_pad_vec);	
 	create_new_LDOs(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
-	solve_DC();
+	bool local_flag = true;
+	solve_DC(local_flag);
 	max_IRdrop = locate_maxIRdrop();
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
@@ -3682,7 +3647,7 @@ bool SubCircuit::solve_ldo_TR(Tran & tran){
 	bool flag = false;
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
-	for(double time =0; time < tran.tot_t && iter <140; 
+	for(double time =0; time < tran.tot_t;// && iter <140; 
 			time += tran.step_t){
 		// clog<<"===== "<<time<<" ===="<<endl;
 		// solve one time step with LDO
@@ -3755,4 +3720,20 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 	// Node *nd = extract_maxIR_node();
 	//clog<<"optimized max_IR drop for TR: "<<max_IRdrop<<" "<<*nd<<endl;
 	LDO_pad_vec.clear();
+}
+
+// solve transient circuit with current ldos
+// need to link nodes and change the LDO voltage values from SPICE
+void SubCircuit::solve_TR(Tran &tran, bool local_flag){
+	// stamp and decomp A
+	stamp_decomp_matrix_TR(tran);
+	int iter = 0;
+	for(double time =0; time < tran.tot_t && iter <140; 
+			time += tran.step_t){
+		// calc equivalent current nets for cap and induc
+		modify_rhs_tr_0(tran);
+		// stamp rhs and make_A_symmetric	
+		stamp_rhs_tr(local_flag, time, tran);
+		solve_CK_with_decomp_tr();
+	}
 }

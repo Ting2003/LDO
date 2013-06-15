@@ -222,6 +222,11 @@ void Circuit::solve(Tran &tran){
 	// then start to optimize local ldo
 	ckt_l.solve_ldo_TR(tran);	
 	clog<<"after solve ldo tr. "<<endl;
+	
+	// first need to builid global nets for the new added LDOs
+	ckt_g.create_global_LDO_new_nets(ckt_l.ldolist);
+	// then verify solution with the LDOs
+	total_solve(tran);	
 	// release resouces
 	ckt_l.release_resources();
 	ckt_g.release_resources();
@@ -2830,7 +2835,7 @@ void Circuit::add_LDO_TR_local(Tran &tran, double time){
 	}
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
-	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+	// ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
@@ -2875,7 +2880,7 @@ void Circuit::add_LDO_TR(Tran &tran, double time){
 	
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
-	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+	// ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 
 	// for(size_t i=0;i<LDO_pad_vec.size();i++)
 		// clog<<"i, LDO_pad: "<<i<<" "<<*LDO_pad_vec[i]->node<<endl;
@@ -3041,7 +3046,7 @@ void Circuit::add_LDO_DC_local(Tran tran){
 	// clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
 	// rebuild local and global net
 	ckt_l.create_local_LDO_new_nets(LDO_pad_vec);
-	ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
+	// ckt_g.create_global_LDO_new_nets(LDO_pad_vec);
 
 	// create new LDOs in circuit
 	create_new_LDOs(LDO_pad_vec);
@@ -3066,5 +3071,28 @@ void Circuit::solve_local_DC(){
 	// cout<<"new diff_l, local max IR is: "<<diff_l<<" "<<ckt_l.locate_maxIRdrop()<<endl;
 }
 
+// with local optimized number of LDOs, update the voltage values of LDOs
+void Circuit::total_solve(Tran &tran){
+	int iter = 0 ;
+	for(;iter<1;iter++){
+		// 1. first solve global and local ckts
+		global_local_solve(tran);
+		// then call SPICE to update voltages
+		SPICE_solve();
+	}
+}
 
+// solve DC and TR for global and local ckt
+// need to record the voltage values for SPICE
+void Circuit::global_local_solve(Tran &tran){
+	bool local_flag = true;
+	ckt_l.solve_DC(local_flag);
+	ckt_l.solve_TR(tran, local_flag);
+	local_flag = false;
+	ckt_g.solve_DC(local_flag);
+	ckt_g.solve_TR(tran, local_flag);
+}
 
+// call spice to update the voltage values
+void Circuit::SPICE_solve(){
+}
