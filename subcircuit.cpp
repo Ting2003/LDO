@@ -59,6 +59,7 @@ SubCircuit::~SubCircuit(){
 	Lp = NULL;
 	Lnz = NULL;
 	map_landg.clear();
+	va.clear();
 }
 
 void SubCircuit::check_sys() const{
@@ -454,21 +455,21 @@ void SubCircuit::stamp_resistor(Matrix & A, Net * net){
 	G = 1./net->value;
         if( !nk->is_ground()&& nk->isS()!=Y &&nk->isS() != W && nk->isS() != X && (nk->nbr[TOP]== NULL|| nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
            A.push_back(k,k, G);
-           // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
+	   // cout<<"("<<k<<" "<<k<<" "<<G<<")"<<endl;
            if(!nl->is_ground() && nl->isS()!=Y && nl->isS() != W && nl->isS() != X &&(nl->nbr[TOP]==NULL || nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)&&(k > l)){
                    A.push_back(k,l,-G);
-                   // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
+		   // cout<<"("<<k<<" "<<l<<" "<<-G<<")"<<endl;
            }
         }
 
 	
 	if( !nl->is_ground() && nl->isS() !=Y && nl->isS() != W && nl->isS() != X && (nl->nbr[TOP] ==NULL ||nl->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE)) {
 		A.push_back(l,l, G);
-                //  cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
+		// cout<<"("<<l<<" "<<l<<" "<<G<<")"<<endl;
 
 		if(!nk->is_ground()&& nk->isS()!=Y && nk->isS() != W && nk->isS()!= X &&(nk->nbr[TOP]==NULL || nk->nbr[TOP]->type != INDUCTANCE || nk->nbr[TOP]->type != VOLTAGE) && l > k){
 			A.push_back(l,k,-G);
-		  	// cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
+			// cout<<"("<<l<<" "<<k<<" "<<-G<<")"<<endl;
                 }
 	}
 }
@@ -1231,6 +1232,7 @@ void SubCircuit::make_A_symmetric(double *b){
 	// now handles the ldo voltage nets
 	int type_v = VOLTAGE;
 	ns = net_set[type_v];
+	int count = 0 ;
 	for(size_t i=0;i<ns.size();i++){
 		Net *vol_net = ns[i];
 		if(vol_net == NULL) continue;
@@ -1239,6 +1241,9 @@ void SubCircuit::make_A_symmetric(double *b){
 		if(p->isS() != W)
 			p = vol_net->ab[1]->rep;
 		if(p->is_ground()) continue;
+		// if(p->name == "n5_100_100")
+			// cout<<"count, vol net: "<<count<<" "<<*vol_net<<endl;
+			count++;
 		// then search neighboring nets
 		for(size_t j=0;j<7;j++){
 			Net *nbr_net = p->nbr[j];
@@ -1246,11 +1251,13 @@ void SubCircuit::make_A_symmetric(double *b){
 			q = nbr_net->ab[0]->rep;
 			if(q->name == p->name)	
 				q = nbr_net->ab[1]->rep;
-			// clog<<"nbr net: "<<*nbr_net<<endl;
+			if(p->name == "n5_100_100")
+			cout<<"nbr net: "<<*nbr_net<<endl;
 			size_t id = q->rid;
            		double G = 1.0 / nbr_net->value;
            		b[id] += p->value * G;
-			// clog<<"q, id, G, b: "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
+			if(p->name == "n5_100_100")
+			cout<<"q, id, G, b: "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
 		}
 	}	
 }
@@ -1536,7 +1543,7 @@ void SubCircuit::build_global_nets(){
 		// clog<<"global ldo node: "<<*nd<<endl;
 		Net *net = new Net(VOLTAGE, vol_value, nd, gnd);
 		add_net(net);
-		// update top nbr net
+		// update BOTTOM nbr net
 		nd->rep->nbr[BOTTOM] = net;
 		// clog<<"add global net: "<<*net<<endl;		
 	}
@@ -2858,7 +2865,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 	// now find the LDO location node
 	for(size_t i=0;i<candi_pad_set.size();i++){
 		// skip the one that already has pad
-		if(candi_pad_set[i]->node->flag_geo == SBLOCK)
+		if(candi_pad_set[i]->node->flag_geo == SBLOCK || candi_pad_set[i]->node->flag_geo == SLDO)
 			 continue;
 		// cout<<"candi node, sblock: "<<*candi_pad_set[i]->node<<" "<<candi_pad_set[i]->node->flag<<endl;
 		na = candi_pad_set[i]->node;
@@ -2877,6 +2884,7 @@ Pad* SubCircuit::locate_candi_pad_maxIR(vector<Pad*> pad_set, Node *nd){
 			min_id = i;
 		}
 	}
+	candi_pad_set[min_id]->node->flag_geo = SLDO;
 	// fix the geo location for the LDO
 	pad_ptr->nd_out_LDO = candi_pad_set[min_id]->node;
 	return pad_ptr; 
@@ -2941,7 +2949,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 }
 
 // build new LDOs and vol nets for the LDOs
-void SubCircuit::create_global_LDO_new_nets(vector<LDO*> local_ldolist){
+void SubCircuit::create_global_LDO_new_nets(){
 	Node *nd;
 	Node *gnd =NULL;
 	for(size_t i=0;i<nodelist.size();i++)
@@ -2950,14 +2958,16 @@ void SubCircuit::create_global_LDO_new_nets(vector<LDO*> local_ldolist){
 			break;
 		}
 
-	for(size_t i=0;i<local_ldolist.size();i++){
-		nd = local_ldolist[i]->nd_in;
+	// cout<<"local ldo size: "<<local_ldolist.size()<<endl;
+	for(size_t i=0;i<ldolist.size();i++){
+		nd = ldolist[i]->nd_in;
 		nd->enableW();
 		nd->value = VDD_G;
-		Net *net = new Net(VOLTAGE, 2.2, nd, gnd);
+		Net *net = new Net(VOLTAGE, VDD_G, nd, gnd);
 		add_net(net);
 		// update top nbr net
-		nd->rep->nbr[TOP] = net;
+		nd->rep->nbr[BOTTOM] = net;
+		// cout<<"new global net: "<<*nd<<" "<<*net<<endl;
 	}
 }
 
@@ -3542,10 +3552,16 @@ void SubCircuit::extract_ldo_vol(vector<Node *> & va){
 	}
 }
 // local circuit solve DC
-void SubCircuit::solve_DC(bool local_flag){
+void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
-	solve_CK_with_decomp();	
+	solve_CK_with_decomp();
+	if(extract_flag ==  true){
+		clog<<"before extract ldo voltages. "<<endl;
+		// store the LDO nbr nodes to va
+		extract_ldo_voltages(local_flag);
+		clog<<"after extract ldo voltages. "<<endl;
+	}
 }
 
 // treating ldo as local const voltage sources and optimize the number and locations of ldos
@@ -3556,7 +3572,8 @@ bool SubCircuit::optimize_single_ldo(){
 
 	// first solve DC circuit
 	bool local_flag = true;
-	solve_DC(local_flag);
+	bool extract_flag = false;
+	solve_DC(local_flag, extract_flag);
 	double max_IRdrop = locate_maxIRdrop();
 	clog<<"local initial max_IRdrop is: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
@@ -3570,7 +3587,7 @@ bool SubCircuit::optimize_single_ldo(){
 		// optimize the locations of LDO and rebuild nets
 		// relocate_LDOs();
 		relocate_pads();
-		solve_DC(local_flag);
+		solve_DC(local_flag, extract_flag);
 		max_IRdrop = locate_maxIRdrop();
 		Node *nd = ldolist[0]->A;
 
@@ -3605,7 +3622,7 @@ bool SubCircuit::optimize_single_ldo(){
 	rebuild_local_nets(ldolist[0]->A, nd_min);
 	// clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
 	ldo_best.clear();
-	solve_DC(local_flag);
+	solve_DC(local_flag, extract_flag);
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"local recovered max_IR: "<<max_IRdrop<<endl;
 	double thres = VDD_G * 0.1;
@@ -3617,6 +3634,7 @@ bool SubCircuit::optimize_single_ldo(){
 // add more ldo into circuit to fix DC
 bool SubCircuit::add_ldo_DC(Tran & tran){
 	bool max_flag = false;
+	bool extract_flag = false;
 	// out of budget
 	if(ldolist.size() >= MAX_NUM_LDO){
 		max_flag = true;
@@ -3637,7 +3655,7 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	create_new_LDOs(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
 	bool local_flag = true;
-	solve_DC(local_flag);
+	solve_DC(local_flag, extract_flag);
 	max_IRdrop = locate_maxIRdrop();
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
@@ -3736,4 +3754,46 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag){
 		stamp_rhs_tr(local_flag, time, tran);
 		solve_CK_with_decomp_tr();
 	}
+}
+
+// extract to va
+void SubCircuit::extract_ldo_voltages(bool local_flag){
+	Node *nd;
+	vector<double> va_step;
+	// first clear the vector
+	for(size_t i=0;i<va.size();i++){
+		for(size_t j=0;j<va[i].size();j++)
+			va[i].clear();
+		va.clear();
+	}
+
+	// store the values	
+	for(size_t i=0;i<ldolist.size();i++){
+		if(local_flag == true)
+			nd = ldolist[i]->A;
+		else
+			nd = ldolist[i]->nd_in;
+		Node *nbr;
+		DIRECTION d;
+		if(local_flag == true)
+			d = BOTTOM;
+		else{
+			d = TOP;
+		}
+		Net *net = nd->nbr[d];
+		nbr = net->ab[0]->rep;
+		if(nbr->name == nd->name)
+			nbr = net->ab[1]->rep;		
+		
+		// clog<<"j, nd, nbr: "<<i<<" "<<*nd<<" "<<*nbr<<endl;
+		va_step.push_back(nbr->value);
+	}
+	va.push_back(va_step);
+#if 0	
+	for(size_t i=0;i<va.size();i++){
+		for(size_t j=0;j<va[i].size();j++){
+			clog<<"i, j, value: "<<i<<" "<<j<<" "<<va[i][j]<<endl;
+		}
+	}
+#endif
 }

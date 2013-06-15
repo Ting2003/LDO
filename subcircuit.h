@@ -97,7 +97,8 @@ public:
 	bool solve_ldo_TR(Tran & tran);
 	bool add_ldo_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
-	void solve_DC(bool local_flag);
+	void solve_DC(bool local_flag, bool extract_flag);	
+	void extract_ldo_voltages(bool local_flag);
 	void solve_TR(Tran &tran, bool local_flag);
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
@@ -123,7 +124,10 @@ public:
 	double avg_IRdrop;
 	vector<Pad*> pad_set;
 	vector<Node*> origin_pad_set;
-	vector<Pad*> candi_pad_set;
+	vector<Pad*> candi_pad_set;	
+	// 1st dimension records time step
+	// 2nd dimension records the vol values for LDOs
+	vector<vector<double> > va;
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
 	void print_pad_map(vector<Pad*> &pad_set);
@@ -165,7 +169,7 @@ public:
 	// void extract_add_pad_dc_info(vector<Pad*> & LDO_pad_vec, bool local_bad_flag);
 	void create_current_LDO_graph();
 	void create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec);
-	void create_global_LDO_new_nets(vector<LDO*> local_ldolist);
+	void create_global_LDO_new_nets();
 	void extract_min_max_pads_new(double VDD, vector<double> ref_drop_vec, bool local_flag);
 
 	void build_pad_graph(vector<Pad*> &pad_set);

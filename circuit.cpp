@@ -222,9 +222,15 @@ void Circuit::solve(Tran &tran){
 	// then start to optimize local ldo
 	ckt_l.solve_ldo_TR(tran);	
 	clog<<"after solve ldo tr. "<<endl;
-	
+	/*for(size_t i=0;i<ckt_l.ldolist.size();i++){
+		cout<<"i, ldo->A, nd_in, nd_out: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<*ckt_l.ldolist[i]->nd_in<<" "<<*ckt_l.ldolist[i]->nd_out<<endl;
+	}*/
+// #endif
 	// first need to builid global nets for the new added LDOs
-	ckt_g.create_global_LDO_new_nets(ckt_l.ldolist);
+	if(ckt_l.ldolist.size() != ckt_g.ldolist.size()){
+		ckt_g.ldolist = ckt_l.ldolist;
+		ckt_g.create_global_LDO_new_nets();
+	}
 	// then verify solution with the LDOs
 	total_solve(tran);	
 	// release resouces
@@ -3086,11 +3092,14 @@ void Circuit::total_solve(Tran &tran){
 // need to record the voltage values for SPICE
 void Circuit::global_local_solve(Tran &tran){
 	bool local_flag = true;
-	ckt_l.solve_DC(local_flag);
-	ckt_l.solve_TR(tran, local_flag);
+	bool extract_flag = true;
+	// ckt_l.solve_DC(local_flag, extract_flag);
+	// clog<<"after ckt_l solve_DC. "<<endl;
+	// ckt_l.solve_TR(tran, local_flag);
 	local_flag = false;
-	ckt_g.solve_DC(local_flag);
-	ckt_g.solve_TR(tran, local_flag);
+	ckt_g.solve_DC(local_flag, extract_flag);
+	// cout<<ckt_g.nodelist<<endl;
+	// ckt_g.solve_TR(tran, local_flag);
 }
 
 // call spice to update the voltage values
