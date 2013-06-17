@@ -322,7 +322,8 @@ void SubCircuit::stamp_by_set(Matrix & A){
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_dc(A, ns[i]);	
+				stamp_inductance_dc(A, ns[i]);
+					
 			}
 			
 			break;
@@ -363,6 +364,7 @@ void SubCircuit::stamp_current_tr_1(double *bp, double *b, double &time){
 // stamp the transient matrix
 void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
    	A.clear();
+	
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -394,7 +396,8 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 			break;
 		case INDUCTANCE:
 			for(size_t i=0;i<ns.size();i++){
-				stamp_inductance_tr(A, ns[i], tran);	
+				stamp_inductance_tr(A, ns[i], tran);
+					
 			}
 
 			// clog<<"finish inductance. "<<endl;
@@ -408,18 +411,21 @@ void SubCircuit::stamp_by_set_tr(Matrix & A, Tran &tran){
 	}
 }
 
-// update rhs by transient nets
+// calculate Ieq of C and L for each step
 void SubCircuit::modify_rhs_tr_0(Tran &tran){
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
-		if(type ==CAPACITANCE){	
-			for(size_t i=0;i<ns.size();i++)
+		if(type ==CAPACITANCE){
+			// clog<<"calc Ieq of C.  "<<ns.size()<<endl;	
+			for(size_t i=0;i<ns.size();i++){
 				// if(this->name != "GLOBAL")
 				 modify_rhs_c_tr_0(ns[i], tran);
+		}
 				// else
 					// global_modify_rhs_c_tr_0(ns[i], tran);
 		}
 		else if(type == INDUCTANCE){
+			// clog<<"calc Ieq of L. "<<ns.size()<<endl;
 			for(size_t i=0;i<ns.size();i++){
 				modify_rhs_l_tr_0(ns[i], tran);	
 			}
@@ -1229,12 +1235,13 @@ void SubCircuit::make_A_symmetric(double *b){
 			// clog<<"j, q, id, G, b: "<<j<<" "<<*q<<" "<<id<<" "<<G<<" "<<b[id]<<endl;
 		}
         }
+	
 	// now handles the ldo voltage nets
 	int type_v = VOLTAGE;
-	ns = net_set[type_v];
+	NetList & ns_1 = net_set[type_v];
 	int count = 0 ;
-	for(size_t i=0;i<ns.size();i++){
-		Net *vol_net = ns[i];
+	for(size_t i=0;i<ns_1.size();i++){
+		Net *vol_net = ns_1[i];
 		if(vol_net == NULL) continue;
 		// node p points to W node
 		p = vol_net->ab[0]->rep;
@@ -1295,9 +1302,10 @@ void SubCircuit::make_A_symmetric_tr(double *b, Tran &tran){
 	
 	// now handles the ldo voltage nets
 	int type_v = VOLTAGE;
-	ns = net_set[type_v];
-	for(size_t i=0;i<ns.size();i++){
-		Net *vol_net = ns[i];
+
+	NetList & ns_1 = net_set[type_v];
+	for(size_t i=0;i<ns_1.size();i++){
+		Net *vol_net = ns_1[i];
 		if(vol_net == NULL) continue;
 		// node p points to W node
 		p = vol_net->ab[0]->rep;
@@ -2957,7 +2965,7 @@ void SubCircuit::create_global_LDO_new_nets(){
 			gnd = nodelist[i];
 			break;
 		}
-
+	
 	// cout<<"local ldo size: "<<local_ldolist.size()<<endl;
 	for(size_t i=0;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
@@ -3127,7 +3135,7 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 	cholmod_free_dense(&b, cm);
    	b = cholmod_zeros(n, 1, CHOLMOD_REAL, cm);
    	bp = static_cast<double *> (b->x);
-
+	
 	for(int type=0;type<NUM_NET_TYPE;type++){
 		NetPtrVector & ns = net_set[type];
 		switch(type){
@@ -3155,6 +3163,7 @@ void SubCircuit::stamp_rhs_DC(bool local_flag){
 			break;
 		}
 	}
+	
 	// only make A symmetric for local
 	if(local_flag == true)
 		make_A_symmetric_local(bp);	
@@ -3556,11 +3565,12 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();
+	
 	if(extract_flag ==  true){
-		clog<<"before extract ldo voltages. "<<endl;
+		// clog<<"before extract ldo voltages. "<<endl;
 		// store the LDO nbr nodes to va
 		extract_ldo_voltages(local_flag);
-		clog<<"after extract ldo voltages. "<<endl;
+		// clog<<"after extract ldo voltages. "<<endl;
 	}
 }
 
@@ -3746,10 +3756,12 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag){
 	// stamp and decomp A
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
-	for(double time =0; time < tran.tot_t && iter <140; 
+	for(double time =0; time < tran.tot_t ;// && iter <140; 
 			time += tran.step_t){
+		// clog<<"before modify rhs: "<<time<<endl;
 		// calc equivalent current nets for cap and induc
 		modify_rhs_tr_0(tran);
+		// clog<<"after modify rhs: "<<time<<endl;
 		// stamp rhs and make_A_symmetric	
 		stamp_rhs_tr(local_flag, time, tran);
 		solve_CK_with_decomp_tr();
