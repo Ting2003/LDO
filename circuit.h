@@ -217,14 +217,14 @@ private:
 	void solve_DC_LDO();
 	void total_solve(Tran &tran);
 	void global_local_solve(Tran &tran);
-	void SPICE_solve();
+	void SPICE_solve(Tran &tran);
 	bool solve_TR_LDO(Tran &tran, double time);
 	bool solve_TR(Tran &tran, double time);
 
 	void count_merge_nodes();
 	// readin LDO and store the lookup table
 	void Readin_LDO();
-	void extract_ldo_info();
+	void extract_ldo_info(Tran &tran);
 	void find_table_elements(double &vin, 
 		double &vin_1, 
 		double &vin_2, vector<double> vec);

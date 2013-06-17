@@ -2957,7 +2957,7 @@ void SubCircuit::create_local_LDO_new_nets(vector<Pad*> LDO_pad_vec){
 }
 
 // build new LDOs and vol nets for the LDOs
-void SubCircuit::create_global_LDO_new_nets(){
+void SubCircuit::create_global_LDO_new_nets(size_t base_size){
 	Node *nd;
 	Node *gnd =NULL;
 	for(size_t i=0;i<nodelist.size();i++)
@@ -2967,7 +2967,7 @@ void SubCircuit::create_global_LDO_new_nets(){
 		}
 	
 	// cout<<"local ldo size: "<<local_ldolist.size()<<endl;
-	for(size_t i=0;i<ldolist.size();i++){
+	for(size_t i=base_size;i<ldolist.size();i++){
 		nd = ldolist[i]->nd_in;
 		nd->enableW();
 		nd->value = VDD_G;
@@ -3565,13 +3565,14 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();
-	
+#if 0	
 	if(extract_flag ==  true){
 		// clog<<"before extract ldo voltages. "<<endl;
 		// store the LDO nbr nodes to va
 		extract_ldo_voltages(local_flag);
 		// clog<<"after extract ldo voltages. "<<endl;
 	}
+#endif
 }
 
 // treating ldo as local const voltage sources and optimize the number and locations of ldos
@@ -3752,7 +3753,7 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 
 // solve transient circuit with current ldos
 // need to link nodes and change the LDO voltage values from SPICE
-void SubCircuit::solve_TR(Tran &tran, bool local_flag){
+void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag){
 	// stamp and decomp A
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
@@ -3765,6 +3766,18 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag){
 		// stamp rhs and make_A_symmetric	
 		stamp_rhs_tr(local_flag, time, tran);
 		solve_CK_with_decomp_tr();
+		if(extract_flag == true){
+			extract_ldo_voltages(local_flag);
+		}
+	}
+}
+
+// clear va before each solving process
+void SubCircuit::clear_va(){
+	for(size_t i=0;i<va.size();i++){
+		for(size_t j=0;j<va[i].size();j++)
+			va[i].clear();
+		va.clear();
 	}
 }
 
@@ -3772,12 +3785,6 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag){
 void SubCircuit::extract_ldo_voltages(bool local_flag){
 	Node *nd;
 	vector<double> va_step;
-	// first clear the vector
-	for(size_t i=0;i<va.size();i++){
-		for(size_t j=0;j<va[i].size();j++)
-			va[i].clear();
-		va.clear();
-	}
 
 	// store the values	
 	for(size_t i=0;i<ldolist.size();i++){

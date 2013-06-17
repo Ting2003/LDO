@@ -226,8 +226,9 @@ void Circuit::solve(Tran &tran){
 //#endif
 	// first need to builid global nets for the new added LDOs
 	if(ckt_l.ldolist.size() != ckt_g.ldolist.size()){
+		size_t old_size = ckt_g.ldolist.size();
 		ckt_g.ldolist = ckt_l.ldolist;
-		ckt_g.create_global_LDO_new_nets();
+		ckt_g.create_global_LDO_new_nets(old_size);
 	}
 	// then verify solution with the LDOs
 	total_solve(tran);	
@@ -2319,7 +2320,7 @@ void Circuit::solve_DC(){
 		// clog<<ckt_g.nodelist<<endl;
 		//clog<<"global max_IR: "<<ckt_g.locate_maxIRdrop()<<endl;
 		// then generate the ldo info for SPICE
-		extract_ldo_info();
+		// extract_ldo_info(tran);
 		
 		// clog<<"iter, diff_l, diff_g: "<<iter<<" "<<diff_l<<" "<<diff_g<<endl<<endl;
 		iter++;
@@ -2471,27 +2472,43 @@ void Circuit::Readin_LDO(){
 }
 
 // extract voltage values of ldo nets (for SPICE)
-void Circuit::extract_ldo_info(){
-	vector <Node *> va;
-	vector <Node *> vb;
-	// extract va and vb values from solutions
-	ckt_g.extract_ldo_vol(va);
-	ckt_l.extract_ldo_vol(vb);
-	for(size_t i=0;i<va.size();i++){
-		clog<<"ldo node: "<<*va[i]<<" "<<*vb[i]<<endl;
-	}
+void Circuit::extract_ldo_info(Tran &tran){	
 	// then call SPICE
 	// first need to modify the Vin1 and Vin2 in the spice 
 	// file with new values
 	FILE *f;
 	f = fopen("c_out.inc", "w");
 	int id = 1;
-	for(size_t i=0;i<va.size();i++){
-		fprintf(f, "X%d Vout%d1 Vout%d2 ldo_subckt Vol_Vin1=%f Vol_Vin2=%f\n", id, id, id, va[i]->value, vb[i]->value);
+	int num_ldo = ckt_l.ldolist.size();
+	for(size_t i=0;i<num_ldo;i++){
+		fprintf(f, "vVin_%d1 Vin_%d1 0 PWL(", id, id);
+		double time = 0;
+		for(size_t j=0;j<ckt_g.va.size();j++){
+			fprintf(f, "%.5e %lf ", time, ckt_g.va[j][i]);
+			time += tran.step_t;
+		}
+		fprintf(f, ")\n");
+
+		fprintf(f, "vVin_%d2 Vin_%d2 0 PWL(", id, id);
+		time = 0;
+		for(size_t j=0;j<ckt_l.va.size();j++){
+			fprintf(f, "%.5e %lf ", time, ckt_l.va[j][i]);
+			time += tran.step_t;
+		}
+		fprintf(f, ")\n");
+		
+		fprintf(f, "X_%d Vin_%d1 Vin_%d2 Vout_%d1 Vout_%d2 ldo_subckt\n", id, id, id, id, id);
+		id++;
+	}
+	fprintf(f, ".tran %.5e %.5e\n", tran.step_t, tran.tot_t);
+	
+	id = 1;
+	for(size_t i=0;i<num_ldo;i++){
+		fprintf(f, ".print V(Vout_%d1) V(Vout_%d2)\n", id, id);
 		id++;
 	}
 	fclose(f);
-	system("hspice ldo_top.spice");
+	system("hspice ldo_top.spice > ldo_top.lis");
 	clog<<"after calling spice once. "<<endl;
 }
 
@@ -3079,10 +3096,14 @@ void Circuit::solve_local_DC(){
 void Circuit::total_solve(Tran &tran){
 	int iter = 0 ;
 	for(;iter<1;iter++){
+		ckt_l.clear_va();
+		ckt_g.clear_va();
 		// 1. first solve global and local ckts
 		global_local_solve(tran);
+		clog<<"after C solve. "<<endl;
+		// clog<<"ckt_l.va_size: "<<ckt_l.va.size()<<" "<<ckt_g.va.size()<<endl;
 		// then call SPICE to update voltages
-		SPICE_solve();
+		SPICE_solve(tran);
 	}
 }
 
@@ -3092,15 +3113,17 @@ void Circuit::global_local_solve(Tran &tran){
 	bool local_flag = true;
 	bool extract_flag = true;
 	ckt_l.solve_DC(local_flag, extract_flag);
-	ckt_l.solve_TR(tran, local_flag);	
+	ckt_l.solve_TR(tran, local_flag, extract_flag);	
 	clog<<"after ckt_l solve_DC and TR. "<<endl;
 	local_flag = false;
 	ckt_g.solve_DC(local_flag, extract_flag);
 	// cout<<ckt_g.nodelist<<endl;
-	ckt_g.solve_TR(tran, local_flag);
+	ckt_g.solve_TR(tran, local_flag, extract_flag);
 	clog<<"after ckt_g solve_DC and TR. "<<endl;
 }
 
 // call spice to update the voltage values
-void Circuit::SPICE_solve(){
+void Circuit::SPICE_solve(Tran &tran){
+	// write c_out.inc file
+	extract_ldo_info(tran);
 }
