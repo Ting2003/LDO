@@ -225,6 +225,8 @@ private:
 	// readin LDO and store the lookup table
 	void Readin_LDO();
 	void extract_ldo_info(Tran &tran);
+	void extract_spice_out(Tran &tran);
+	void extract_spice_out_dc();
 	void find_table_elements(double &vin, 
 		double &vin_1, 
 		double &vin_2, vector<double> vec);

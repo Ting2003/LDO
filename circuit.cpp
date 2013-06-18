@@ -2481,7 +2481,7 @@ void Circuit::extract_ldo_info(Tran &tran){
 	int id = 1;
 	int num_ldo = ckt_l.ldolist.size();
 	for(size_t i=0;i<num_ldo;i++){
-		fprintf(f, "vVin_%d1 Vin_%d1 0 PWL(", id, id);
+		fprintf(f, "vVin1_%d Vin1_%d 0 PWL(", id, id);
 		double time = 0;
 		for(size_t j=0;j<ckt_g.va.size();j++){
 			fprintf(f, "%.5e %lf ", time, ckt_g.va[j][i]);
@@ -2489,7 +2489,7 @@ void Circuit::extract_ldo_info(Tran &tran){
 		}
 		fprintf(f, ")\n");
 
-		fprintf(f, "vVin_%d2 Vin_%d2 0 PWL(", id, id);
+		fprintf(f, "vVin2_%d Vin2_%d 0 PWL(", id, id);
 		time = 0;
 		for(size_t j=0;j<ckt_l.va.size();j++){
 			fprintf(f, "%.5e %lf ", time, ckt_l.va[j][i]);
@@ -2497,19 +2497,17 @@ void Circuit::extract_ldo_info(Tran &tran){
 		}
 		fprintf(f, ")\n");
 		
-		fprintf(f, "X_%d Vin_%d1 Vin_%d2 Vout_%d1 Vout_%d2 ldo_subckt\n", id, id, id, id, id);
+		fprintf(f, "X_%d Vin1_%d Vin2_%d Vout1_%d Vout2_%d ldo_subckt\n", id, id, id, id, id);
 		id++;
 	}
 	fprintf(f, ".tran %.5e %.5e\n", tran.step_t, tran.tot_t);
 	
 	id = 1;
 	for(size_t i=0;i<num_ldo;i++){
-		fprintf(f, ".print V(Vout_%d1) V(Vout_%d2)\n", id, id);
+		fprintf(f, ".print V(Vout1_%d) V(Vout2_%d)\n", id, id);
 		id++;
 	}
 	fclose(f);
-	system("hspice ldo_top.spice > ldo_top.lis");
-	clog<<"after calling spice once. "<<endl;
 }
 
 // find correlated elements in the lookup table
@@ -3126,4 +3124,82 @@ void Circuit::global_local_solve(Tran &tran){
 void Circuit::SPICE_solve(Tran &tran){
 	// write c_out.inc file
 	extract_ldo_info(tran);
+	// call SPICE
+	system("hspice ldo_top.spice > ldo_top.lis");
+	clog<<"after calling spice once. "<<endl;
+	// then read back the data Vout1 and2
+	extract_spice_out(tran);
+}
+
+// extract vout1 and 2 from SPICE.lis file
+void Circuit::extract_spice_out(Tran &tran){
+	extract_spice_out_dc();
+}
+
+void Circuit::extract_spice_out_dc(){
+	ifstream f;
+	string line_s;
+	char line[MAX_BUF];
+	char *chs;
+	char *saveptr;
+	const char *sep = " +:_=";
+	// string name;
+// #if 0
+	double vol;
+	int id;
+// #endif
+	f.open("ldo_top.lis");
+
+
+	while(f){
+		getline(f, line_s);
+		strcpy(line, line_s.c_str());
+		chs = line;
+		// cout<<line<<endl;
+		// extract DC info
+		if(line[1]!='+')
+			continue;
+		
+		// cout<<line_s<<endl;
+		int count = 0;
+		while(chs!=NULL){
+			// 0
+			if(count++ ==0)
+				chs = strtok_r(line, sep, &saveptr);
+				// cout<<chs<<endl;
+			else
+				chs = strtok_r(NULL, sep, &saveptr);
+			// if(chs[0] != '0')
+				//continue;
+			
+			// cout<<chs<<endl;
+			// vin1 / vin2 / vout1 / vout2
+			chs = strtok_r(NULL, sep, &saveptr);
+			// cout<<chs<<endl; 
+			if(chs != NULL){
+				string name = chs; 
+			if(!(name== "vin1" || name == "vin2" || name == "vout1" || name == "vout2"))
+				break;	
+				cout<<"name: "<<name<<" ";
+			} 
+			// cout<<chs<<endl;
+			
+			// comes the id
+			chs = strtok_r(NULL, sep, &saveptr);
+			if(chs != NULL){
+				id = atol(chs);	
+				cout<<id<<" ";
+			}
+			// value
+			chs = strtok_r(NULL, sep, &saveptr);
+			if(chs != NULL){
+				vol = atof(chs);
+				cout<<"vol: "<<vol<<endl;
+			}
+			
+			// cout<<chs<<endl;
+		}
+		// cout<<"after 1 line. "<<endl;
+	}
+	f.close();
 }
