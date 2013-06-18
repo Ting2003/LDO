@@ -1588,7 +1588,7 @@ void SubCircuit::stamp_decomp_matrix_DC(){
    
    A.set_row(replist.size());
    Algebra::CK_decomp(A, L, cm);
-   cout<<"after ck decomp dc matrix. "<<endl;
+   // cout<<"after ck decomp dc matrix. "<<endl;
    /*A.merge();
    cout<<"DC A: "<<A<<endl;*/
    A.clear();
@@ -3565,14 +3565,14 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();
-#if 0	
+// #if 0	
 	if(extract_flag ==  true){
 		// clog<<"before extract ldo voltages. "<<endl;
 		// store the LDO nbr nodes to va
 		extract_ldo_voltages(local_flag);
 		// clog<<"after extract ldo voltages. "<<endl;
 	}
-#endif
+// #endif
 }
 
 // treating ldo as local const voltage sources and optimize the number and locations of ldos

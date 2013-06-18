@@ -2483,7 +2483,7 @@ void Circuit::extract_ldo_info(Tran &tran){
 	for(size_t i=0;i<num_ldo;i++){
 		fprintf(f, "vVin1_%d Vin1_%d 0 PWL(", id, id);
 		double time = 0;
-		for(size_t j=0;j<ckt_g.va.size();j++){
+		for(size_t j=1;j<ckt_g.va.size();j++){
 			fprintf(f, "%.5e %lf ", time, ckt_g.va[j][i]);
 			time += tran.step_t;
 		}
@@ -2491,7 +2491,7 @@ void Circuit::extract_ldo_info(Tran &tran){
 
 		fprintf(f, "vVin2_%d Vin2_%d 0 PWL(", id, id);
 		time = 0;
-		for(size_t j=0;j<ckt_l.va.size();j++){
+		for(size_t j=1;j<ckt_l.va.size();j++){
 			fprintf(f, "%.5e %lf ", time, ckt_l.va[j][i]);
 			time += tran.step_t;
 		}
@@ -3178,23 +3178,27 @@ void Circuit::extract_spice_out_dc(){
 			// cout<<chs<<endl; 
 			if(chs != NULL){
 				string name = chs; 
-			if(!(name== "vin1" || name == "vin2" || name == "vout1" || name == "vout2"))
+			if(!(name == "vout1" || name == "vout2"))
 				break;	
-				cout<<"name: "<<name<<" ";
+				// cout<<"name: "<<name<<" ";
 			} 
 			// cout<<chs<<endl;
 			
 			// comes the id
 			chs = strtok_r(NULL, sep, &saveptr);
 			if(chs != NULL){
-				id = atol(chs);	
-				cout<<id<<" ";
+				id = atol(chs);
+				// cout<<id<<" ";
 			}
 			// value
 			chs = strtok_r(NULL, sep, &saveptr);
 			if(chs != NULL){
 				vol = atof(chs);
-				cout<<"vol: "<<vol<<endl;
+				if(name == "vout1")
+					ckt_g.va[0][id-1] = vol;
+				else
+					ckt_l.va[0][id-1] = vol;
+				// cout<<"vol: "<<vol<<endl;
 			}
 			
 			// cout<<chs<<endl;
