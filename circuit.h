@@ -216,7 +216,7 @@ private:
 	void solve_DC();
 	void solve_DC_LDO();
 	void total_solve(Tran &tran);
-	void global_local_solve(Tran &tran);
+	void global_local_solve(Tran &tran, bool flag_va);
 	void SPICE_solve(Tran &tran);
 	bool solve_TR_LDO(Tran &tran, double time);
 	bool solve_TR(Tran &tran, double time);

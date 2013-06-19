@@ -97,9 +97,10 @@ public:
 	bool solve_ldo_TR(Tran & tran);
 	bool add_ldo_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
-	void solve_DC(bool local_flag, bool extract_flag);	
-	void extract_ldo_voltages(bool local_flag);
-	void solve_TR(Tran &tran, bool local_flag, bool extract_flag);
+	void solve_DC(bool local_flag, bool extract_flag, bool flag_va);	
+	void extract_ldo_voltages(bool local_flag, int index);
+	void solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va);
+	void modify_va_vol_nets(int index, bool local_flag);
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
 	double locate_g_maxIRdrop();

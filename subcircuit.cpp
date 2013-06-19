@@ -3561,7 +3561,13 @@ void SubCircuit::extract_ldo_vol(vector<Node *> & va){
 	}
 }
 // local circuit solve DC
-void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
+void SubCircuit::solve_DC(bool local_flag, bool extract_flag, bool flag_va){
+	int index = 0;
+	// use va to modify voltage nets
+	if(flag_va == true){
+		modify_va_vol_nets(index, local_flag);
+	}
+		
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();
@@ -3569,7 +3575,7 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag){
 	if(extract_flag ==  true){
 		// clog<<"before extract ldo voltages. "<<endl;
 		// store the LDO nbr nodes to va
-		extract_ldo_voltages(local_flag);
+		extract_ldo_voltages(local_flag, 0);
 		// clog<<"after extract ldo voltages. "<<endl;
 	}
 // #endif
@@ -3584,7 +3590,8 @@ bool SubCircuit::optimize_single_ldo(){
 	// first solve DC circuit
 	bool local_flag = true;
 	bool extract_flag = false;
-	solve_DC(local_flag, extract_flag);
+	bool flag_va = false;
+	solve_DC(local_flag, extract_flag, flag_va);
 	double max_IRdrop = locate_maxIRdrop();
 	clog<<"local initial max_IRdrop is: "<<max_IRdrop<<endl;
 	Node *nd = ldolist[0]->A;
@@ -3598,7 +3605,7 @@ bool SubCircuit::optimize_single_ldo(){
 		// optimize the locations of LDO and rebuild nets
 		// relocate_LDOs();
 		relocate_pads();
-		solve_DC(local_flag, extract_flag);
+		solve_DC(local_flag, extract_flag, flag_va);
 		max_IRdrop = locate_maxIRdrop();
 		Node *nd = ldolist[0]->A;
 
@@ -3633,7 +3640,7 @@ bool SubCircuit::optimize_single_ldo(){
 	rebuild_local_nets(ldolist[0]->A, nd_min);
 	// clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
 	ldo_best.clear();
-	solve_DC(local_flag, extract_flag);
+	solve_DC(local_flag, extract_flag, flag_va);
 	max_IRdrop = locate_maxIRdrop();
 	clog<<"local recovered max_IR: "<<max_IRdrop<<endl;
 	double thres = VDD_G * 0.1;
@@ -3666,7 +3673,8 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	create_new_LDOs(LDO_pad_vec);	
 	add_pad_set(LDO_pad_vec);
 	bool local_flag = true;
-	solve_DC(local_flag, extract_flag);
+	bool flag_va = false;
+	solve_DC(local_flag, extract_flag, flag_va);
 	max_IRdrop = locate_maxIRdrop();
 	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
@@ -3753,12 +3761,17 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 
 // solve transient circuit with current ldos
 // need to link nodes and change the LDO voltage values from SPICE
-void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag){
+void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va){
 	// stamp and decomp A
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
+	int count = 1;
 	for(double time =0; time < tran.tot_t ;// && iter <140; 
 			time += tran.step_t){
+		// use va to modify voltage nets
+		if(flag_va == true){
+			modify_va_vol_nets(count, local_flag);
+		}	
 		// clog<<"before modify rhs: "<<time<<endl;
 		// calc equivalent current nets for cap and induc
 		modify_rhs_tr_0(tran);
@@ -3767,8 +3780,9 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag){
 		stamp_rhs_tr(local_flag, time, tran);
 		solve_CK_with_decomp_tr();
 		if(extract_flag == true){
-			extract_ldo_voltages(local_flag);
+			extract_ldo_voltages(local_flag, count);
 		}
+		count++;
 	}
 }
 
@@ -3782,9 +3796,12 @@ void SubCircuit::clear_va(){
 }
 
 // extract to va
-void SubCircuit::extract_ldo_voltages(bool local_flag){
+void SubCircuit::extract_ldo_voltages(bool local_flag, int index){
 	Node *nd;
-	vector<double> va_step;
+	if(va[index].size()!= ldolist.size())
+		va[index].resize(ldolist.size());
+	// vector<double> va_step;
+	// va_step.resize(ldolist.size());
 
 	// store the values	
 	for(size_t i=0;i<ldolist.size();i++){
@@ -3805,9 +3822,9 @@ void SubCircuit::extract_ldo_voltages(bool local_flag){
 			nbr = net->ab[1]->rep;		
 		
 		// clog<<"j, nd, nbr: "<<i<<" "<<*nd<<" "<<*nbr<<endl;
-		va_step.push_back(nbr->value);
+		va[index][i] = nbr->value;
 	}
-	va.push_back(va_step);
+	// va[index] =va_step;
 #if 0	
 	for(size_t i=0;i<va.size();i++){
 		for(size_t j=0;j<va[i].size();j++){
@@ -3815,4 +3832,26 @@ void SubCircuit::extract_ldo_voltages(bool local_flag){
 		}
 	}
 #endif
+}
+
+// index shows DC or the time step
+// local_flag decides the dir of nets
+void SubCircuit::modify_va_vol_nets(int index, bool local_flag){
+	Node *nd;
+	Net *net;
+	DIRECTION d;
+	if(local_flag == true)
+		d = TOP;	
+	else
+		d = BOTTOM;
+	for(int i=0;i<ldolist.size();i++){
+		if(local_flag == true)
+			nd = ldolist[i]->A;
+		else
+			nd = ldolist[i]->nd_in;
+		net = nd->nbr[d];
+		// cout<<"old vol net: "<<*net<<" "<<*ldolist[i]->nd_in<<" "<<*ldolist[i]->nd_out<<endl;
+		net->value = va[index][i];
+		// cout<<"new value: "<<net->value<<endl;
+	}
 }
