@@ -3134,6 +3134,8 @@ void Circuit::SPICE_solve(Tran &tran){
 // extract vout1 and 2 from SPICE.lis file
 void Circuit::extract_spice_out(Tran &tran){
 	extract_spice_out_dc();
+	extract_spice_out_tr(tran);
+	// now the vout1 and vout2 data are stored in va of ckt_l and ckt_g
 }
 
 void Circuit::extract_spice_out_dc(){
@@ -3204,6 +3206,57 @@ void Circuit::extract_spice_out_dc(){
 			// cout<<chs<<endl;
 		}
 		// cout<<"after 1 line. "<<endl;
+	}
+	f.close();
+}
+
+// extract transient information from spice
+void Circuit::extract_spice_out_tr(Tran &tran){
+	ifstream f;
+	string line_s;
+	char line[MAX_BUF];
+	char *chs;
+	char *saveptr;
+	const char *sep = " _";
+	// string name;
+// #if 0
+	double vol_1;
+	double vol_2;
+	int id_1, id_2;
+	char time_item[MAX_BUF];
+	int length = tran.tot_t / tran.step_t +1;
+// #endif
+	f.open("ldo_top.lis");
+	while(f){
+		getline(f, line_s);
+		strcpy(line, line_s.c_str());
+		if(line[0]=='x'){
+			for(int i=0;i<3;i++){
+				getline(f, line_s);
+			}
+			
+			// cout<<"line_s: "<<line_s<<endl;
+			// line_s now contains vout1 and 2
+			strcpy(line, line_s.c_str());	
+			chs = line;
+			int count = 0;
+			chs = strtok_r(line, sep, &saveptr);
+			// now comes the id
+			chs = strtok_r(NULL, sep, &saveptr);
+			id_1 = atol(chs);
+			id_2 = id_1;
+			
+			// read in the time step data
+			for(int i=0;i<length;i++){
+				getline(f, line_s);
+				strcpy(line, line_s.c_str());
+				// cout<<"vol line: "<<line<<endl;
+				sscanf(line, "%s %lf %lf", time_item, &vol_1, &vol_2);
+				// cout<<"vol_1 / 2: "<<vol_1<<" "<<vol_2<<endl;
+				ckt_g.va[i+1][id_1-1] = vol_1;
+				ckt_l.va[i+1][id_2-1] = vol_2;	
+			}
+		}
 	}
 	f.close();
 }
