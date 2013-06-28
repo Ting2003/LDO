@@ -67,7 +67,7 @@ int main(int argc, char * argv[]){
  	parser.parse(input, input_ldo, tran);
  	//chip.extract_rec();
  	//parser.parse_ldo(input_ldo);
- 	// clog<<"finish parsing circuit. "<<endl;
+ 	clog<<"finish parsing circuit. "<<endl;
 
 	// do the job
 	size_t i=0;

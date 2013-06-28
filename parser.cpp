@@ -58,7 +58,6 @@ void Parser::extract_node(char * str, Node & nd){
 	x = atol(chs);
 	chs = strtok_r(NULL, sep, &saveptr);
 	y = atol(chs);
-
 	nd.name.assign(str);
 	nd.pt.set(x,y,z);
 	nd.flag = flag;
@@ -502,24 +501,24 @@ void Parser::parse_ldo_line(char *line){
 	int width = atol(chs);
 	// height
 	chs = strtok_r(NULL, sep, &saveptr);
-	int height = atol(chs);	
+	int height = atol(chs);
 	// store width and height
 	ldo_ptr->width = width;
 	ldo_ptr->height = height;
 	p_chip->ldolist.push_back(ldo_ptr);
-
+	
 	// build output node and net
 	extract_node(sA, nd);
 	nd_ptr = ckt->get_node(nd.name);
 	if(nd_ptr==NULL)
-		report_exit("LDO node error!");	
+		report_exit("LDO node error!");		
 	ldo_ptr->A = nd_ptr;
 	ldo_ptr->nd_out = nd_ptr;
 	nd_ptr->enableY(); // make this node VDD source
 	nd_ptr->enableLDO();
 	// initiallize voltage
 	ldo_ptr->voltage = VDD_G;
-
+	
 	// build input node and net
 	extract_node(sA_in, nd);
 	nd_ptr = ckt->get_node(nd.name);
@@ -575,7 +574,6 @@ void Parser::parse_wspace(char *line){
 	
 	wspace_ptr = new MODULE();
 	Point * pt;
-
 	chs = strtok_r(line, sep, &saveptr);
 	//clog<<"chs: "<<chs<<endl;
 	wspace_ptr->name = chs;

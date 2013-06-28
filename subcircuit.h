@@ -94,12 +94,13 @@ public:
 	double locate_maxIRdrop();
 	bool optimize_single_ldo();
 	bool add_ldo_DC(Tran &tran);
-	bool solve_ldo_TR(Tran & tran);
+	void add_ldo_DC_TR(Tran &tran);
+	bool solve_ldo_TR(Tran & tran, bool flag_va);
 	bool add_ldo_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
-	void solve_DC(bool local_flag, bool extract_flag, bool flag_va);	
+	double solve_DC(bool local_flag, bool extract_flag, bool flag_va);	
 	void extract_ldo_voltages(bool local_flag, int index);
-	void solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va);
+	double solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va, double &max_IR);
 	void modify_va_vol_nets(int index, bool local_flag);
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
@@ -203,11 +204,11 @@ private:
 	void stamp_decomp_matrix_DC();
 	void stamp_decomp_matrix_TR(Tran &tran);
 
-	double solve_CK_with_decomp();
-	double solve_CK_with_decomp_tr();
+	void solve_CK_with_decomp();
+	double solve_CK_with_decomp_tr(bool flag_va, int index);
 
 	void solve_local(Tran &tran, double time, size_t N_test);
-	double solve_CK_op_tr();
+	void solve_CK_op_tr();
 	void update_ldo_current();
 	void modify_ldo_rhs();
 	void modify_ldo_rhs_TR();
@@ -298,7 +299,10 @@ private:
 	void copy_node_voltages(double *x, size_t &size, bool from=true);
 
 	// after solving, copy node voltage from replist to nodes
-	double get_voltages_from_LU_sol(double *x);
+	void get_voltages_from_LU_sol(double *x, int index, int length, bool local_flag);
+	void assign_sol_DC(double * x);
+	void assign_sol_TR(double * x, int index);
+	double find_error(double *x, int index);
 	void select_omega();
 
 	void set_type(CIRCUIT_TYPE type){circuit_type = type;};
@@ -321,6 +325,8 @@ private:
         double *bp, *xp;
 
 	// ********* sparse vectors ******
+	int length;
+	bool local_flag;
 	int flag_ck;
 	vector<Node_TR_PRINT> ckt_nodes;
 	// ************** member variables *******************

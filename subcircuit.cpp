@@ -254,21 +254,62 @@ void SubCircuit::solve_LU(Tran &tran, bool local_flag){
 }
 #endif
 
-// given vector x that obtained from LU, set the value to the corresponding
-// node in nodelist
-double SubCircuit::get_voltages_from_LU_sol(double * x){
+// push nodes' voltage values to value_vec
+void SubCircuit::assign_sol_DC(double * x){
+   size_t i;
+   for(i=0;i<nodelist.size()-1;i++){
+      Node * node = nodelist[i];
+      size_t id = node->rep->rid;  // get rep's id in Vec
+      node->value = x[id];
+   }
+}
+
+// push nodes' voltage values to value_vec
+void SubCircuit::assign_sol_TR(double * x, int index){
+   size_t i;
+   int length_tr = length-1;
+   for(i=0;i<nodelist.size()-1;i++){
+      Node * node = nodelist[i];
+      size_t id = node->rep->rid;  // get rep's id in Vec
+      node->value = x[id];
+      if(local_flag == false)
+	      continue;
+      // only push vec for local grid
+      if(node->value_vec.size()!= length_tr){
+	      //if(node->name == "n3_34_73")
+	//clog<<"push back: "<<*node<<" "<<node->value_vec.size()<<" "<<x[id]<<endl;
+      	node->value_vec.push_back(x[id]);
+      }
+      else{
+	 // if(node->name == "n3_34_73")
+		//clog<<"update. "<<*node<<" "<<index<<" "<<node->value_vec[index]<<endl;
+	node->value_vec[index] = x[id];
+       }
+   }
+}
+
+// calculate the error from previous step
+// only execute for local grid
+// index is the id in value_vec
+double SubCircuit::find_error(double *x, int index){
+   if(local_flag == false){
+	   return 0;
+   }
    size_t i;
    double max_diff = 0;
    double diff = 0;
    for(i=0;i<nodelist.size()-1;i++){
-      Node * node = nodelist[i];
+      Node * node = nodelist[i]->rep;
       size_t id = node->rep->rid;  // get rep's id in Vec
-      double v = x[id];		// get its rep's value
-      //cout<<"node_vol, x, diff: "<<node->value<<" "<<v<<" "<<diff<<endl;
+      node->value = x[id];
+      // read last step value
+      double v = node->value_vec[index];
+      // get its rep's value
       diff = abs(node->value - v);
+      // if(node->name == "n3_34_73") 
+	  //    clog<<"index, node->value, v: "<<index<<" "<<node->value<<" "<<v<<endl;
       if(diff  > max_diff)
 	      max_diff = diff;
-      node->value = v;
    }
    return max_diff;
 }
@@ -1609,20 +1650,19 @@ void SubCircuit::stamp_decomp_matrix_TR(Tran &tran){
 }
 
 // solve eq with decomped matrix
-double SubCircuit::solve_CK_with_decomp(){
+void SubCircuit::solve_CK_with_decomp(){
 	//for(size_t i=0;i<replist.size();i++)
 		//cout<<"i, dc bp: "<<i<<" "<<bp[i]<<endl; 
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
 	// copy solution to nodes
-   	double diff = get_voltages_from_LU_sol(xp);
+   	assign_sol_DC(xp);
 	// cout<<nodelist<<endl;
-	return diff;
 }
 
 // solve eq with decomped matrix
-double SubCircuit::solve_CK_op_tr(){
+void SubCircuit::solve_CK_op_tr(){
 	// modify rhs with Ieq
 	modify_rhs_Ieq(bp);
 
@@ -1634,14 +1674,14 @@ double SubCircuit::solve_CK_op_tr(){
 	// cholmod_solve2(CHOLMOD_A, L, b, NULL, &x, NULL, &YY, &EE, cm);
    	// xp = static_cast<double *> (x->x);
 	// copy solution to nodes
-   	double diff = get_voltages_from_LU_sol(xp);
+   	assign_sol_DC(xp);
 	// cholmod_free_work(cm);
-	return diff;
 }
 
 
 // solve eq with decomped matrix
-double SubCircuit::solve_CK_with_decomp_tr(){
+double SubCircuit::solve_CK_with_decomp_tr(bool flag_va, int index){
+	double diff = 0;
 	// modify rhs with Ieq
 	modify_rhs_Ieq(bp);
 
@@ -1649,6 +1689,8 @@ double SubCircuit::solve_CK_with_decomp_tr(){
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
+	if(flag_va == true)
+		diff = find_error(xp, index);
 	/*cout<<endl<<"after solve tr. "<<endl;
 	for(size_t i=0;i<replist.size();i++){
 		// cout<<bp[i]<<endl;
@@ -1656,9 +1698,7 @@ double SubCircuit::solve_CK_with_decomp_tr(){
 	 }*/
    	// save_ckt_nodes(tran, xp, time);
 	// copy solution to nodes
-   	double diff = get_voltages_from_LU_sol(xp);
-	// clog<<"diff: "<<diff<<endl;
-	// cout<<nodelist<<endl;
+   	assign_sol_TR(xp, index);
 	return diff;
 }
 
@@ -3561,7 +3601,7 @@ void SubCircuit::extract_ldo_vol(vector<Node *> & va){
 	}
 }
 // local circuit solve DC
-void SubCircuit::solve_DC(bool local_flag, bool extract_flag, bool flag_va){
+double SubCircuit::solve_DC(bool local_flag, bool extract_flag, bool flag_va){
 	int index = 0;
 	// use va to modify voltage nets
 	if(flag_va == true){
@@ -3571,6 +3611,11 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag, bool flag_va){
 	stamp_decomp_matrix_DC();
 	stamp_rhs_DC(local_flag);
 	solve_CK_with_decomp();
+	max_IRdrop = locate_maxIRdrop();
+	/*if(local_flag ==true)
+		clog<<"diff_dc for ckt_l: "<<diff<<endl;
+	else
+		clog<<"diff_dc for ckt_g: "<<diff<<endl;*/
 // #if 0	
 	if(extract_flag ==  true){
 		// clog<<"before extract ldo voltages. "<<endl;
@@ -3578,6 +3623,7 @@ void SubCircuit::solve_DC(bool local_flag, bool extract_flag, bool flag_va){
 		extract_ldo_voltages(local_flag, 0);
 		// clog<<"after extract ldo voltages. "<<endl;
 	}
+	return max_IRdrop;
 // #endif
 }
 
@@ -3680,19 +3726,26 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	LDO_pad_vec.clear();
 }
 
-bool SubCircuit::solve_ldo_TR(Tran & tran){
+bool SubCircuit::solve_ldo_TR(Tran & tran, bool flag_va){
 	bool flag = false;
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
+	int count = 1;
+	int index = 0;
 	for(double time =0; time < tran.tot_t;// && iter <140; 
 			time += tran.step_t){
+		if(flag_va == true){
+			bool local_flag = true;
+			modify_va_vol_nets(count, local_flag);
+		}
 		// clog<<"===== "<<time<<" ===="<<endl;
 		// solve one time step with LDO
 		// first solve TR
 		modify_rhs_tr_0(tran);
 		modify_local_nets();
 		stamp_rhs_tr(true, time, tran);
-		solve_CK_with_decomp_tr();
+		index = count-1;
+		solve_CK_with_decomp_tr(false, index);
 		double max_IRdrop = locate_maxIRdrop();
 		// clog<<"max_IRdrop: "<<max_IRdrop<<endl;
 		if(max_IRdrop >= IR_THRES){
@@ -3709,6 +3762,7 @@ bool SubCircuit::solve_ldo_TR(Tran & tran){
 			clog<<"reach maximum LDO size: "<<endl;
 			break;
 		}
+		count ++;
 	}
 }
 
@@ -3761,12 +3815,14 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 
 // solve transient circuit with current ldos
 // need to link nodes and change the LDO voltage values from SPICE
-void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va){
+double SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va, double & max_IR){
+	double diff_max = -1;
 	// stamp and decomp A
 	stamp_decomp_matrix_TR(tran);
 	int iter = 0;
 	int count = 1;
-	for(double time =0; time < tran.tot_t ;// && iter <140; 
+	int index = 0;
+	for(double time =0; time < tran.tot_t  ;//&& iter <10; 
 			time += tran.step_t){
 		// use va to modify voltage nets
 		if(flag_va == true){
@@ -3778,12 +3834,38 @@ void SubCircuit::solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool f
 		// clog<<"after modify rhs: "<<time<<endl;
 		// stamp rhs and make_A_symmetric	
 		stamp_rhs_tr(local_flag, time, tran);
-		solve_CK_with_decomp_tr();
+		index = count-1;
+		// get solution first
+		double diff = solve_CK_with_decomp_tr(flag_va, index);
+		// then compare
+		//if(flag_va == true){
+		  // clog<<"start find_diff: "<<index<<endl;
+		  // double diff = find_error(xp, index);
+		  if(diff_max == -1)
+			diff_max = diff;
+		  else if(diff > diff_max)
+			diff_max = diff;
+		//}
+
+		// clog<<"find error: "<<diff<<endl;
+		max_IRdrop = locate_maxIRdrop();
+		if(max_IRdrop > max_IR)
+			max_IR = max_IRdrop;
+		/*if(local_flag)
+			clog<<"local tr_diff is: "<<diff<<endl;
+		else
+			clog<<"global tr_diff is: "<<diff<<endl;
+		*/
+		// clog<<"solving time: "<<time<<" out of: "<<tran.tot_t;
 		if(extract_flag == true){
 			extract_ldo_voltages(local_flag, count);
 		}
+		// clog<<" after extract ldo voltages. "<<endl;
+		
 		count++;
 	}
+	// return maximum error point
+	return diff_max;
 }
 
 // clear va before each solving process
@@ -3854,4 +3936,20 @@ void SubCircuit::modify_va_vol_nets(int index, bool local_flag){
 		net->value = va[index][i];
 		// cout<<"new value: "<<net->value<<endl;
 	}
+}
+
+// a whole sys for add DC and TR. No optimizing of single DC LDO
+void SubCircuit::add_ldo_DC_TR(Tran &tran){
+	// first solve DC circuit
+	bool local_flag = true;
+	bool extract_flag = false;
+	bool flag_va = true;
+	// assign vol values from va first
+	// and then solve
+	solve_DC(local_flag, extract_flag, flag_va);
+	double max_IRdrop = locate_maxIRdrop();
+	// optimize if necessary
+	if(max_IRdrop > IR_THRES)
+		add_ldo_DC(tran);
+	solve_ldo_TR(tran, flag_va);
 }

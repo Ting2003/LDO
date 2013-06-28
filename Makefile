@@ -13,22 +13,22 @@ OBJ=$(SRC:.cpp=.o)
 BIN=pg_tr
 RELEASE=IPGS
 CPPFLAGS=
-CFLAGS=-Wall -Wextra -pipe -O2 -msse4.2 -mssse3 -mfpmath=sse -march=native -fopenmp#-fopenmp
+#CFLAGS=-Wall -Wextra -pipe -O2 -msse4.2 -mssse3 -mfpmath=sse -march=native -fopenmp#-fopenmp
+CFLAGS=-Wall -Wextra -pipe -O2 -msse2 #-mfpmath=sse  #-fopenmp#-fopenmp
 #CFLAGS=-Wall -Wextra -pipe -g -msse4.2 -mssse3 -mfpmath=sse -march=native -fopenmp
 #CFLAGS=-Wall -g #-Wextra -pipe -O2 -msse4.2 -mssse3 -mfpmath=sse -march=core2
 #LDFLAGS=-s -Wl,-O1,-hash-style=gnu
-LDFLAGS=
+LDFLAGS= #-L
+LDADD = -lrt
 
-PACKAGE= ../package
+PACKAGE= ../package#/SuiteSparse
 
 CHOLMOD= $(PACKAGE)/CHOLMOD
 CHOLMOD_LIB_DIR=$(CHOLMOD)/Lib
 
-GOTO2 = $(PACKAGE)/GotoBLAS2
-
 CHOLMOD_INC_DIR=$(CHOLMOD)/Include
 CHOLMOD_LIB=$(CHOLMOD_LIB_DIR)/libcholmod.a \
-	    $(CHOLMOD)/libamd.a\
+	    $(PACKAGE)/AMD/Lib/libamd.a\
 	    $(CHOLMOD)/libcolamd.a\
 	    $(CHOLMOD)/libccolamd.a\
 	    $(CHOLMOD)/libcamd.a \
@@ -37,14 +37,14 @@ CHOLMOD_LIB=$(CHOLMOD_LIB_DIR)/libcholmod.a \
 	
 main: $(OBJ)
 	@echo "Making project..."
-	$(CC) $(LDFLAGS)$(CFLAGS) -o $(BIN) $(OBJ) $(CHOLMOD_LIB)
+	$(CC) $(LDFLAGS)$(CFLAGS) -o $(BIN) $(OBJ) $(CHOLMOD_LIB) $(LDADD)
 
 release: $(OBJ)
-	$(CC) $(LDFLAGS)$(CFLAGS) -static -o $(BIN) $(OBJ) $(CHOLMOD_LIB)
+	$(CC) $(LDFLAGS)$(CFLAGS) -static -o $(BIN) $(OBJ) $(CHOLMOD_LIB) $(LDADD)
 
 test: 
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) \
-	-I$(CHOLMOD_INC_DIR) -o test test.cpp $(CHOLMOD_LIB)
+	-I$(CHOLMOD_INC_DIR) -o test test.cpp $(CHOLMOD_LIB) $(LDADD)
 
 all: main
 	@echo "Making all..."

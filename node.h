@@ -77,6 +77,7 @@ public:
 
 private:
 	double value;		// voltage
+	vector<double> value_vec; // stores the 1002 time step values
 	// flag = 1 --> X
 	// flag = 2 --> Y
 	// flag = 3 --> Z

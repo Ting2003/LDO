@@ -17,7 +17,7 @@
 
 #include <string>
 #include <vector>
-#include <tr1/unordered_map>
+//#include <tr1/unordered_map>
 #include <map>
 #include <cmath>
 #include "global.h"
@@ -35,7 +35,7 @@
 #include <queue>
 
 using namespace std;
-using namespace std::tr1;
+//using namespace std::tr1;
 
 typedef vector<double> DoubleVector;
 typedef vector<Net *> NetPtrVector;
@@ -119,8 +119,8 @@ public:
 	vector<double> worst_cur_new;
 	// mapping from name to Node object pointer
 	// two map node_pt lists: global and local
-	unordered_map<string, Node*> map_node_pt_g;
-	unordered_map<string, Node*> map_node_pt_l;
+	map<string, Node*> map_node_pt_g;
+	map<string, Node*> map_node_pt_l;
 	
 	////// new functions for pad /////
 	void assign_distance(Node *nds, Node *nd, double dist);
@@ -130,15 +130,15 @@ public:
 	double update_pad_pos(vector<Pad*> &pad_set, double ref_drop_value, size_t i);
 	double update_pad_pos_all(vector<Pad *> & pad_set, vector<double> ref_drop_vec);
 	void round_data(double &data);
-	Node * pad_projection(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd, bool local_flag);
-	void project_pads(unordered_map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
-	bool has_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name) const;
-	Node * get_node_pt(unordered_map<string, Node*>map_node_pt, string pt_name);
+	Node * pad_projection(map<string, Node*> map_node_pt, vector<Pad*> &pad_set, Pad *pad, Node *nd, bool local_flag);
+	void project_pads(map<string, Node*> map_node_pt, vector<Pad*> &pad_set);
+	bool has_node_pt(map<string, Node*>map_node_pt, string pt_name) const;
+	Node * get_node_pt(map<string, Node*>map_node_pt, string pt_name);
 	void build_map_node_pt();
 	void build_ldolist(vector<LDO*> ldo_vec);
 	void build_wspacelist(vector<MODULE*> wspace_vec);
 	void relocate_LDOs();
-	void add_LDO_DC();
+	// void add_LDO_DC();
 	void add_LDO_TR(Tran &tran, double time);
 	void add_LDO_TR_local(Tran &tran, double time);
 	void add_LDO_DC_local(Tran tran);
@@ -170,8 +170,8 @@ public:
 	void print_matlab();
 	void clear_pad_control_nodes(vector<Pad*> &pad_set);
 	void update_pad_control_nodes(vector<Pad*> &pad_set, vector<double> & ref_drop_vec, size_t iter);
-	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
-	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, unordered_map<string, Node*> map_node_pt, bool local_flag);
+	void extract_min_max_pads(double VDD, vector<Pad*> & pad_set, vector<double> ref_drop_vec, map<string, Node*> map_node_pt, bool local_flag);
+	void extract_min_max_pads_new(double VDD, vector<Pad*> &pad_set, vector<double> ref_drop_vec, map<string, Node*> map_node_pt, bool local_flag);
 
 	void build_graph(vector<Pad*> &pad_set);
 	void build_graph_global();
@@ -181,14 +181,14 @@ public:
 	Node * expand_candi_pads(Node *na);
 	Pad *find_nbr_pad(vector<Pad*> &pad_set, Pad *pad);
 	double get_distance(Node *na, Node *nb);
-	void graph_move_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
+	void graph_move_pads(map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	int locate_max_drop_pad(vector<Pad*> &pad_set, vector<double> vec);
 	double calc_avg_ref_drop(vector<Pad*> &pad_set, vector<double> &ref_drop_vec);
 	double calc_avg_ref(vector<Pad*> &pad_set, vector<double> ref_drop_vec);
 	double locate_ref(vector<Pad*> &pad_set, size_t i);
-	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec,unordered_map<string, Node*> map_node_pt, bool local_flag);
+	void dynamic_update_violate_ref(double VDD, vector<Pad*> &pad_set, vector<double> & ref_drop_vec, map<string, Node*> map_node_pt, bool local_flag);
 	bool print_flag(Node *nd);
-	void move_violate_pads(unordered_map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
+	void move_violate_pads(map<string, Node*> map_node_pt, vector<Pad *> &pad_set, vector<double> ref_drop_vec, bool local_flag);
 	void modify_newxy(vector<Pad*> &pad_set);
 	double resolve_direct(Tran &tran, bool local_flag);
 	void resolve_queue(vector<Node *> origin_pad_set);
@@ -209,17 +209,17 @@ private:
 	void solve_LU(Tran &tran);
 	void solve_LU_core(Tran &tran);
 	void verify_solve(Tran &tran);
-	void verify_one_LDO_step(Tran &tran, double time);
+	// void verify_one_LDO_step(Tran &tran, double time);
 
 	// initialize things before solve_iteration
 	void solve_init();
-	void solve_DC();
+	// void solve_DC();
 	void solve_DC_LDO();
-	void total_solve(Tran &tran);
-	void global_local_solve(Tran &tran, bool flag_va);
+	void total_solve(Tran &tran, double &max_IR_l);
+	double global_local_solve(Tran &tran, bool flag_va, double &max_IR_l);
 	void SPICE_solve(Tran &tran);
-	bool solve_TR_LDO(Tran &tran, double time);
-	bool solve_TR(Tran &tran, double time);
+	//bool solve_TR_LDO(Tran &tran, double time);
+	// bool solve_TR(Tran &tran, double time);
 
 	void count_merge_nodes();
 	// readin LDO and store the lookup table
@@ -328,6 +328,7 @@ private:
 	vector<double> ldo_vin_vec;
 	// record ldo iout list
 	vector<double> ldo_iout_vec;
+	int length; // record the num of steps
 	// TABLE_LDO table_ldo;
 
 	SubCircuit ckt_g;	// global subcircuit
@@ -343,13 +344,13 @@ private:
 	vector<int> global_layers;
 	
 	// mapping from name to Node object pointer
-	unordered_map<string, Node*> map_node;
+	map<string, Node*> map_node;
 
 	// mapping from Net name to object pointer
 	// unordered_map<string, Net*> map_net;
 
 	// mapping from Node pointer to their index in nodelist
-	unordered_map<Node *, size_t> node_id;
+	map<Node *, size_t> node_id;
 	//unordered_map<Node *, size_t> rep_id;
 
 	// circuit name
@@ -393,7 +394,11 @@ inline bool Circuit::has_node(string name) const{
 
 // get a node by name
 inline Node * Circuit::get_node(string name){
-	unordered_map<string, Node*>::const_iterator it = map_node.find(name);
+	// clog<<"initial it. "<<endl;
+	map<string, Node*>::iterator it;
+	//clog<<"before find it: "<<endl;
+	it = map_node.find(name);
+	//clog<<"after find name. "<<endl;
 	if( it != map_node.end() ) return it->second;
 	else return NULL;
 }

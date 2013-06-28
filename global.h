@@ -23,7 +23,7 @@ enum RUN_MODE{IT,LU};
 enum CIRCUIT_TYPE{WB, C4, UNKNOWN};
 
 const size_t INFTY = std::numeric_limits<size_t>::max();
-const int MAX_BUF = 512;
+const int MAX_BUF = 2560;
 const int MAX_LAYER = 30;
 const double VIRTUAL_RESISTER=1e-10;
 const double FLOAT_ZERO = 1e-30;
