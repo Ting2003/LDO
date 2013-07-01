@@ -272,7 +272,7 @@ void SubCircuit::assign_sol_TR(double * x, int index){
       Node * node = nodelist[i];
       size_t id = node->rep->rid;  // get rep's id in Vec
       node->value = x[id];
-      if(local_flag == false)
+      /*if(local_flag == false)
 	      continue;
       // only push vec for local grid
       if(node->value_vec.size()!= length_tr){
@@ -284,10 +284,10 @@ void SubCircuit::assign_sol_TR(double * x, int index){
 	 // if(node->name == "n3_34_73")
 		//clog<<"update. "<<*node<<" "<<index<<" "<<node->value_vec[index]<<endl;
 	node->value_vec[index] = x[id];
-       }
+       }*/
    }
 }
-
+#if 0
 // calculate the error from previous step
 // only execute for local grid
 // index is the id in value_vec
@@ -313,6 +313,7 @@ double SubCircuit::find_error(double *x, int index){
    }
    return max_diff;
 }
+#endif
 
 // copy node voltages from the SubCircuit to a Vec
 // from = true then copy SubCircuit to x
@@ -1689,8 +1690,8 @@ double SubCircuit::solve_CK_with_decomp_tr(bool flag_va, int index){
 	// solve the eq
 	x = cholmod_solve(CHOLMOD_A, L, b, cm);
    	xp = static_cast<double *> (x->x);
-	if(flag_va == true)
-		diff = find_error(xp, index);
+	//if(flag_va == true)
+		//diff = find_error(xp, index);
 	/*cout<<endl<<"after solve tr. "<<endl;
 	for(size_t i=0;i<replist.size();i++){
 		// cout<<bp[i]<<endl;
@@ -2162,13 +2163,9 @@ Node * SubCircuit::pad_projection(
 	// if this node is not occupied by pad
 	// need to adjust the local pads
 	Node *nb = project_local_pad(nd_new);
-	// clog<<"ldo old out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
-	ldo->nd_out = nb;
+
 	ldo->A = nb;// nd_new;
-	// clog<<"ldo new out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
-	/*if(nb->name == nd->name)
-		return nd;
-	else*/
+	// clog<<"ldo old out and A: "<<*ldo->nd_out<<" "<<*ldo->A<<endl;
 	return nb;// nd_new;
 	// return nb;
 }
@@ -2359,6 +2356,10 @@ void SubCircuit::graph_move_pads(){
 		// clog<<"pad: "<<*pad<<endl;
 		// new nd_out
 		new_pad = pad_projection(pad_ptr, pad);
+
+		// now find the geometrical location for LDO	
+		// 1. project to nearest LDO candi nodes
+		find_LDO_geo_node();
 		// clog<<" old pad / new pad: "<<*pad<<" "<<*new_pad<<endl;
 
 		pad_ptr->visit_flag = true;
@@ -2619,7 +2620,7 @@ Node * SubCircuit::expand_ldo_location(double ref_dist, int ref_x, int ref_y, LD
 	}
 	// if no candidates, return original node
 	if(min_nd == NULL)
-		return ldo_ptr.A;
+		return ldo_ptr.nd_out;
 	// clog<<"min_dist, min_nd: "<<min_dist<<" "<<*min_nd<<" "<<endl;
 	// else return candidate node
 	return min_nd;
@@ -2850,7 +2851,7 @@ void SubCircuit::extract_add_LDO_dc_info(vector<Pad*> & LDO_pad_vec, Tran tran){
 	// while not satisfied and still have room,
 	// perform optimization
 	while(max_IRdrop >= IR_THRES && 
-		(int)ldolist.size() < MAX_NUM_LDO && iter <2){//LDO_pad_vec.size() <1){
+		(int)ldolist.size() < MAX_NUM_LDO && iter <1){//LDO_pad_vec.size() <1){
 		// 4. LDO should go to candi with
 		Node *nd = extract_maxIR_node();
 		// clog<<"nd: "<<*nd<<endl;
@@ -3433,7 +3434,7 @@ double SubCircuit::print_matlab_LDO(){
 	FILE *f;
 	f = fopen("LDO_out.txt", "w");
 	for(size_t i=0;i<ldolist.size();i++){
-		Node *nd = ldolist[i]->nd_out;
+		Node *nd = ldolist[i]->nd_in;
 		Node *nd_vol = ldolist[i]->A;
 		int xr = nd->pt.x + ldolist[i]->width;
 		int yr = nd->pt.y + ldolist[i]->height;
@@ -3453,7 +3454,6 @@ double SubCircuit::print_matlab_LDO(){
 		fprintf(f, "%d %d\n", xr, yr);
 	}
 	fclose(f);
-
 }
 
 // print the IRd-drop distribution map
@@ -3463,10 +3463,20 @@ double SubCircuit::print_matlab_node(){
 	FILE *f;
 	f = fopen("node_out.txt", "w");	
 
+	int layer;
+	int count = 0;
 	// don't output ground node
 	for(size_t i=0;i<replist.size();i++){
+		count++;
+		if(replist[i]== NULL) continue;
+		//clog<<"replist: "<<*replist[i]<<endl;
+		if(replist[i]->is_ground()) continue;
 		if(replist[i]->isS()==Z) continue;
-		fprintf(f, "%ld %ld  %.5e\n", replist[i]->pt.y+1, replist[i]->pt.x+1, VDD_G-nodelist[i]->value);
+		layer = replist[i]->get_layer();
+		if(layer == max_layer)
+			continue;
+		//clog<<"replist: "<<*replist[i]<<endl;
+		fprintf(f, "%ld %ld  %.5e\n", replist[i]->pt.y+1, replist[i]->pt.x+1, VDD_G-replist[i]->value);
 	}
 	fclose(f);
 }
@@ -3640,6 +3650,8 @@ bool SubCircuit::optimize_single_ldo(){
 	solve_DC(local_flag, extract_flag, flag_va);
 	double max_IRdrop = locate_maxIRdrop();
 	clog<<"local initial max_IRdrop is: "<<max_IRdrop<<endl;
+	clog<<"initial ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
+	//return false;
 	Node *nd = ldolist[0]->A;
 	ldo_pair.first = nd;
 	nd_out_vec.push_back(ldolist[0]->nd_out);
@@ -3684,7 +3696,8 @@ bool SubCircuit::optimize_single_ldo(){
 	ldolist[0]->nd_out = nd_out_vec[j];
 	nd_out_vec.clear();
 	rebuild_local_nets(ldolist[0]->A, nd_min);
-	// clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_out<<endl;
+	clog<<"final best ldo: "<<*ldolist[0]->A<<" "<<*ldolist[0]->nd_in<<" "<<*ldolist[0]->nd_out<<endl;
+	// clog<<"final best pad: "<<*pad_set[0]->node<<" "<<*pad_set[0]->nd_out_LDO<<endl;
 	ldo_best.clear();
 	solve_DC(local_flag, extract_flag, flag_va);
 	max_IRdrop = locate_maxIRdrop();
@@ -3713,7 +3726,7 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 		// clog<<"no add new ldo. "<<endl;
 		return false;
 	}
-	clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
+	// clog<<"new LDO: "<<*LDO_pad_vec[0]->node<<endl;	
 	// rebuild local and global net
 	create_local_LDO_new_nets(LDO_pad_vec);	
 	create_new_LDOs(LDO_pad_vec);	
@@ -3722,8 +3735,11 @@ bool SubCircuit::add_ldo_DC(Tran & tran){
 	bool flag_va = false;
 	solve_DC(local_flag, extract_flag, flag_va);
 	max_IRdrop = locate_maxIRdrop();
-	// clog<<"final max_IR drop for TR: "<<max_IRdrop<<endl;
+	clog<<"final max_IR drop for DC: "<<max_IRdrop<<endl;
 	LDO_pad_vec.clear();
+	if(max_IRdrop > IR_THRES)
+		return true;
+	return false;
 }
 
 bool SubCircuit::solve_ldo_TR(Tran & tran, bool flag_va){
@@ -3738,7 +3754,7 @@ bool SubCircuit::solve_ldo_TR(Tran & tran, bool flag_va){
 			bool local_flag = true;
 			modify_va_vol_nets(count, local_flag);
 		}
-		// clog<<"===== "<<time<<" ===="<<endl;
+		clog<<"===== "<<time<<" ===="<<endl;
 		// solve one time step with LDO
 		// first solve TR
 		modify_rhs_tr_0(tran);
@@ -3753,7 +3769,7 @@ bool SubCircuit::solve_ldo_TR(Tran & tran, bool flag_va){
 			clog<<"max_IRdrop > thres: "<<max_IRdrop<<" "<<IR_THRES<<endl;
 			add_ldo_TR(tran, time);
 			max_IRdrop = locate_maxIRdrop();
-			clog<<"optimized max_IR is: "<<max_IRdrop<<endl;
+			clog<<"optimized max_IR / LDO is: "<<max_IRdrop<<" "<<ldolist.size()<<endl;
 			// break;
 		}
 		// clog<<"after solve_TR. "<<endl;
@@ -3811,6 +3827,53 @@ void SubCircuit::add_LDO_TR_local(Tran &tran, double time){
 	// Node *nd = extract_maxIR_node();
 	//clog<<"optimized max_IR drop for TR: "<<max_IRdrop<<" "<<*nd<<endl;
 	LDO_pad_vec.clear();
+}
+
+// solve transient circuit with current ldos
+// need to link nodes and change the LDO voltage values from SPICE
+double SubCircuit::verify_ckt(Tran &tran){
+	link_ckt_nodes(tran);
+	solve_DC(true, false, false);
+	// stamp and decomp A
+	stamp_decomp_matrix_TR(tran);
+	int iter = 0;
+	int count = 1;
+	int index = 0;
+	bool local_flag = true;
+	bool flag_va = false;
+	double max_IR = 0;
+	int max_step = 0;
+	for(double time =0; time < tran.tot_t  ;//&& iter <10; 
+			time += tran.step_t){
+		// use va to modify voltage nets
+		if(flag_va == true){
+			modify_va_vol_nets(count, local_flag);
+		}	
+		// clog<<"before modify rhs: "<<time<<endl;
+		// calc equivalent current nets for cap and induc
+		modify_rhs_tr_0(tran);
+		// clog<<"after modify rhs: "<<time<<endl;
+		// stamp rhs and make_A_symmetric	
+		stamp_rhs_tr(local_flag, time, tran);
+		index = count-1;
+		// get solution first
+		solve_CK_with_decomp_tr(flag_va, index);
+		max_IRdrop = locate_maxIRdrop();
+		if(max_IRdrop > max_IR){
+			max_IR = max_IRdrop;
+			max_step  = count-1;
+		}
+		/*if(count == 911){
+			clog<<"print matlab node. "<<endl;
+			print_matlab_node();	
+		}*/
+		save_ckt_nodes();	
+		count++;
+	}
+	clog<<"max_IRdrop happens in: "<<max_IR<<" "<<max_step<<endl;
+	save_ckt_nodes_to_tr(tran);
+	// return maximum error point
+	return max_IR;
 }
 
 // solve transient circuit with current ldos
@@ -3932,9 +3995,7 @@ void SubCircuit::modify_va_vol_nets(int index, bool local_flag){
 		else
 			nd = ldolist[i]->nd_in;
 		net = nd->nbr[d];
-		// cout<<"old vol net: "<<*net<<" "<<*ldolist[i]->nd_in<<" "<<*ldolist[i]->nd_out<<endl;
 		net->value = va[index][i];
-		// cout<<"new value: "<<net->value<<endl;
 	}
 }
 
@@ -3952,4 +4013,65 @@ void SubCircuit::add_ldo_DC_TR(Tran &tran){
 	if(max_IRdrop > IR_THRES)
 		add_ldo_DC(tran);
 	solve_ldo_TR(tran, flag_va);
+}
+
+// find possible geo node for an ldo
+void SubCircuit::find_LDO_geo_node(){
+	Node *nd = ldolist[0]->A;
+	Pad *pad_ptr = pad_set[0];
+	bool flag = false;
+	int ref_x = nd->pt.x;
+	int ref_y = nd->pt.y;
+
+	clog<<"nd: "<<*nd<<" "<<nd->pt<<endl;
+	int min_id = 0;
+	double min_dist = 0;
+	double diff_x = 0;
+	double diff_y = 0;
+	double dist;
+	Node *na;
+
+	for(size_t i=0;i<candi_pad_set.size();i++){
+		// skip the one that already has pad
+		if(candi_pad_set[i]->node->flag_geo == SBLOCK || candi_pad_set[i]->node->flag_geo == SLDO)
+			 continue;
+		na = candi_pad_set[i]->node;
+
+		diff_x = na->pt.x - ref_x;
+		diff_y = na->pt.y - ref_y;
+		dist = sqrt(diff_x*diff_x + diff_y*diff_y);
+
+		// clog<<"na, dist: "<<*na<<" "<<dist<<endl;
+		if(flag == false){
+			min_dist = dist;
+			min_id = i;
+			// pad_ptr = candi_pad_set[i];
+			flag = true;
+		}else if(min_dist > dist){
+			min_dist = dist;
+			min_id = i;
+			//pad_ptr = candi_pad_set[i];
+		}
+	}
+	ldolist[0]->nd_out->flag_geo = SBLANK;
+	ldolist[0]->nd_in->flag_geo = SBLANK;
+	int W_flag = ldolist[0]->nd_in->flag;
+	ldolist[0]->nd_in->flag = -1;
+	ldolist[0]->nd_in->value = 0;
+	Net *net = ldolist[0]->nd_in->nbr[BOTTOM];
+	ldolist[0]->nd_in->nbr[BOTTOM] = NULL;
+	candi_pad_set[min_id]->node->flag_geo = SLDO;
+	// fix the geo location for the LDO
+	pad_ptr->nd_out_LDO = candi_pad_set[min_id]->node;
+	ldolist[0]->nd_out = pad_ptr->nd_out_LDO;
+	ldolist[0]->nd_in = map_landg[pad_ptr->nd_out_LDO];
+	ldolist[0]->nd_in->flag = W_flag;
+	ldolist[0]->nd_in->value = VDD_G;
+	ldolist[0]->nd_in->nbr[BOTTOM] = net;
+	if(!net->ab[0]->is_ground())
+		net->ab[0] = ldolist[0]->nd_in;
+	else
+		net->ab[1] = ldolist[0]->nd_in;
+
+	// clog<<"ldo->A and nd_in: "<<*pad_ptr->node<<" "<<*pad_ptr->nd_out_LDO<<endl;
 }

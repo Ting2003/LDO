@@ -89,7 +89,7 @@ int main(int argc, char * argv[]){
  		// delete ckt;
 	}
 	// clog<<"before tran print tr nodes. "<<endl;
-	// tran.print_tr_nodes();
+	tran.print_tr_nodes();
 	// clog<<"after tran print tr nodes. "<<endl;
 
 	close_logfile();

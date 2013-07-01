@@ -329,6 +329,7 @@ private:
 	// record ldo iout list
 	vector<double> ldo_iout_vec;
 	int length; // record the num of steps
+	double tr_error;
 	// TABLE_LDO table_ldo;
 
 	SubCircuit ckt_g;	// global subcircuit

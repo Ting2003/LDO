@@ -101,6 +101,7 @@ public:
 	double solve_DC(bool local_flag, bool extract_flag, bool flag_va);	
 	void extract_ldo_voltages(bool local_flag, int index);
 	double solve_TR(Tran &tran, bool local_flag, bool extract_flag, bool flag_va, double &max_IR);
+	double verify_ckt(Tran &tran);
 	void modify_va_vol_nets(int index, bool local_flag);
 	double locate_avgIRdrop();
 	Node* extract_maxIR_node();
@@ -278,6 +279,7 @@ private:
 	bool qualify_pad(Node *nd_new, LDO *ldo, unordered_map<string, Node*> map_node_pt);
 	void locate_ldo_region_bound(int a, int b, int &min, int &max);
 	Node * project_local_pad(Node *nd_new);
+	void find_LDO_geo_node();
 	void project_ldo_node(int &ref_x, int &ref_y, LDO &ldo);
 	bool node_in_ldo_or_block(double ref_x, double ref_y);
 	Node * expand_ldo_location(double ref_dist, int ref_x, int ref_y, LDO &ldo_ptr);
@@ -302,7 +304,7 @@ private:
 	void get_voltages_from_LU_sol(double *x, int index, int length, bool local_flag);
 	void assign_sol_DC(double * x);
 	void assign_sol_TR(double * x, int index);
-	double find_error(double *x, int index);
+	// double find_error(double *x, int index);
 	void select_omega();
 
 	void set_type(CIRCUIT_TYPE type){circuit_type = type;};

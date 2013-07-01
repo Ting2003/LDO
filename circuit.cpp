@@ -223,15 +223,22 @@ void Circuit::solve(Tran &tran){
 	// build new nets for the single LDo
 	ckt_l.build_local_nets();
 	ckt_g.build_global_nets();
-//#if 0	
+// #if 0	
 	// solving LDO location with DC
 	bool flag = ckt_l.optimize_single_ldo();
+	clog<<"DC max_IR: "<<ckt_l.locate_maxIRdrop()<<" "<<flag<<endl;
+	
+	//ckt_l.print_matlab_node();
+	// ckt_l.print_matlab_LDO();
+	//clog<<"after print matlab node. "<<endl;
+	//return;
 	// not in the limit, need to op
-	if(flag == true)
-		ckt_l.add_ldo_DC(tran);
+	while(flag == true)
+		flag = ckt_l.add_ldo_DC(tran);
+	clog<<"ldo size after DC: "<<ckt_l.ldolist.size()<<endl;
 	bool flag_va = false;
 	// then start to optimize local ldo
-	ckt_l.solve_ldo_TR(tran, flag_va);	
+	ckt_l.solve_ldo_TR(tran, flag_va);	     clog<<"finish solve ckt_l TR. "<<endl;	
 	/*for(size_t i=0;i<ckt_l.ldolist.size();i++){
 		cout<<"i, ldo->A, nd_in, nd_out: "<<i<<" "<<*ckt_l.ldolist[i]->A<<" "<<*ckt_l.ldolist[i]->nd_in<<" "<<*ckt_l.ldolist[i]->nd_out<<endl;
 	}*/
@@ -245,8 +252,12 @@ void Circuit::solve(Tran &tran){
 		}
 		double max_IR_l = 0;
 		// then verify solution with the LDOs
+		clog<<"before total solve. "<<endl;
 		total_solve(tran, max_IR_l);
 		clog<<"after total solve, max_IR, thres: "<<max_IR_l<<" "<<IR_THRES<<endl;
+		//break;
+		if(ckt_l.ldolist.size()>= ckt_l.MAX_NUM_LDO)
+			break;
 		// keep optimizing local grid
 		if(max_IR_l > IR_THRES){
 			// optimizing local grid again
@@ -254,6 +265,13 @@ void Circuit::solve(Tran &tran){
 		}else
 			break;
 	}
+
+	// after converge, start to output local grid nodes
+	double max_IR = ckt_l.verify_ckt(tran);
+	clog<<"verified max_IR is: "<<max_IR<<endl;
+
+	// ckt_l.print_matlab_node();
+	// ckt_l.print_matlab_LDO();
 	// release resouces
 	ckt_l.release_resources();
 	ckt_g.release_resources();
@@ -3135,21 +3153,24 @@ void Circuit::total_solve(Tran &tran, double &max_IR_l){
 	// clog<<"ckt_l/g va size: "<<length<<endl;
 	int iter = 0 ;
 	bool flag_va = false;
-	double diff_g = 1;
+	tr_error = 0;
+	double diff_l = 1;
 	// clog<<"start total solve. "<<diff_g<<endl;
-	while(iter <=3 || diff_g > 1e-3){
+	while(iter <=3 || diff_l > 3e-4){
 	//for(;iter<=10;iter++){
 		// flag for assign va to voltage nets
 		if(iter > 0) flag_va = true;
 		clog<<"iter: "<<iter<<endl;
 		// 1. first solve global and local ckts
-		diff_g = global_local_solve(tran, flag_va, max_IR_l);
+		diff_l = global_local_solve(tran, flag_va, max_IR_l);
+		clog<<"iter, diff_l: "<<iter<<" "<<diff_l<<endl;
 		// clog<<"after C solve. "<<endl;
 		// clog<<"ckt_l.va_size: "<<ckt_l.va.size()<<" "<<ckt_g.va.size()<<endl;
 		// then call SPICE to update voltages
 		SPICE_solve(tran);
 		iter++;
 	}
+		
 }
 
 // solve DC and TR for global and local ckt
@@ -3157,19 +3178,22 @@ void Circuit::total_solve(Tran &tran, double &max_IR_l){
 double Circuit::global_local_solve(Tran &tran, bool flag_va, double & max_IR_l){
 	bool local_flag = true;
 	bool extract_flag = true;
-
 	double tr_diff_g = 0;
 	double tr_diff_l = 0;
 	max_IR_l = ckt_l.solve_DC(local_flag, extract_flag, flag_va);
-	
 	tr_diff_l = ckt_l.solve_TR(tran, local_flag, extract_flag, flag_va, max_IR_l);
+	double converge_error = fabs(max_IR_l - tr_error);
+	tr_error = max_IR_l;
+	clog<<"after solve local grid. "<<endl;
+	//double converge_error = fabs(tr_diff_l - tr_error);
+	//tr_error = tr_diff_l;
 	local_flag = false;
 	double max_IR_g = ckt_g.solve_DC(local_flag, extract_flag, flag_va);
 	// cout<<ckt_g.nodelist<<endl;
 	ckt_g.solve_TR(tran, local_flag, extract_flag, flag_va, max_IR_g);
-	clog<<"max tr_error / IRdrop for ckt_l: "<<tr_diff_l<<" "<<max_IR_l<<endl;
+	clog<<"converge_error / IRdrop for ckt_l: "<<converge_error<<" "<<max_IR_l<<endl;
 	// clog<<"max tr IRdrop for ckt_l/g is: "<<max_IR_l<<" "<<max_IR_g<<endl;
-	return tr_diff_l;
+	return converge_error;
 }
 
 // call spice to update the voltage values
